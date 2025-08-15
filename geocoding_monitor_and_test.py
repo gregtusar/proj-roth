@@ -111,6 +111,10 @@ class GeocodingMonitor:
         try:
             print(f"🗺️  Testing mapping framework with {stats['geocoded_voters']} geocoded voters...")
             
+            if not self.visualizer.setup_credentials():
+                print("❌ Failed to setup visualizer credentials")
+                return False
+            
             voter_df = self.visualizer.get_geocoded_voter_sample(limit=min(1000, stats['geocoded_voters']))
             
             if not voter_df.empty:

@@ -185,7 +185,7 @@ class BigQueryVoterGeocodingPipeline:
                 standardized_address=None, error=str(e)
             )
     
-    def geocode_address(self, address: str, fallback_to_census: bool = None) -> GeocodingResult:
+    def geocode_address(self, address: str, fallback_to_census: Optional[bool] = None) -> GeocodingResult:
         """Geocode an address with fallback options."""
         if fallback_to_census is None:
             fallback_to_census = not bool(self.gmaps_client)
@@ -306,9 +306,9 @@ class BigQueryVoterGeocodingPipeline:
                 bigquery.ScalarQueryParameter("voter_id", "STRING", voter_id),
                 bigquery.ScalarQueryParameter("latitude", "FLOAT64", result.latitude),
                 bigquery.ScalarQueryParameter("longitude", "FLOAT64", result.longitude),
-                bigquery.ScalarQueryParameter("accuracy", "STRING", result.accuracy),
+                bigquery.ScalarQueryParameter("accuracy", "STRING", result.accuracy or ''),
                 bigquery.ScalarQueryParameter("source", "STRING", result.source),
-                bigquery.ScalarQueryParameter("full_address", "STRING", result.standardized_address),
+                bigquery.ScalarQueryParameter("full_address", "STRING", result.standardized_address or ''),
             ]
         )
         

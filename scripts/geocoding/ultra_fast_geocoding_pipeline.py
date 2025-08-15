@@ -84,23 +84,36 @@ class UltraFastGeocodingPipeline(BigQueryVoterGeocodingPipeline):
                 voter_ids.append(f"'{voter_id}'")
                 cases_lat.append(f"WHEN '{voter_id}' THEN {result.latitude}")
                 cases_lng.append(f"WHEN '{voter_id}' THEN {result.longitude}")
-                cases_accuracy.append(f"WHEN '{voter_id}' THEN '{result.accuracy or ''}'")
-                cases_source.append(f"WHEN '{voter_id}' THEN '{result.source}'")
-                standardized_addr = (result.standardized_address or '').replace("'", "''")
+                
+                accuracy_val = (result.accuracy or '').replace("'", "''").replace('"', '""')
+                cases_accuracy.append(f"WHEN '{voter_id}' THEN '{accuracy_val}'")
+                
+                source_val = (result.source or '').replace("'", "''").replace('"', '""')
+                cases_source.append(f"WHEN '{voter_id}' THEN '{source_val}'")
+                
+                standardized_addr = (result.standardized_address or '')
+                standardized_addr = standardized_addr.replace("'", "''").replace('"', '""').replace('\\', '\\\\')
+                standardized_addr = standardized_addr.replace(';', '').replace('--', '').replace('/*', '').replace('*/', '')
                 cases_address.append(f"WHEN '{voter_id}' THEN '{standardized_addr}'")
         
         if not voter_ids:
             return
         
+        lat_cases = ' '.join(cases_lat) if cases_lat else 'NULL'
+        lng_cases = ' '.join(cases_lng) if cases_lng else 'NULL'
+        accuracy_cases = ' '.join(cases_accuracy) if cases_accuracy else 'NULL'
+        source_cases = ' '.join(cases_source) if cases_source else 'NULL'
+        address_cases = ' '.join(cases_address) if cases_address else 'NULL'
+        
         query = f"""
         UPDATE `{self.project_id}.{self.dataset_id}.voters`
         SET 
-            latitude = CASE id {' '.join(cases_lat)} END,
-            longitude = CASE id {' '.join(cases_lng)} END,
-            geocoding_accuracy = CASE id {' '.join(cases_accuracy)} END,
-            geocoding_source = CASE id {' '.join(cases_source)} END,
+            latitude = CASE id {lat_cases} END,
+            longitude = CASE id {lng_cases} END,
+            geocoding_accuracy = CASE id {accuracy_cases} END,
+            geocoding_source = CASE id {source_cases} END,
             geocoding_timestamp = CURRENT_TIMESTAMP(),
-            full_address = CASE id {' '.join(cases_address)} END
+            full_address = CASE id {address_cases} END
         WHERE id IN ({', '.join(voter_ids)})
         """
         

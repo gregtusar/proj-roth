@@ -136,7 +136,7 @@ CREATE OR REPLACE TABLE `proj-roth.voter_data.street_party_summary` (
   
   last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
 )
-CLUSTER BY county, republican_pct DESC;
+CLUSTER BY county;
 
 
 /*

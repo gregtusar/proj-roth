@@ -38,7 +38,7 @@ def main():
 
         if geocoded > 0:
             sample_query = '''
-            SELECT voter_id, party_affiliation, county, latitude, longitude
+            SELECT id, party_affiliation, county, latitude, longitude
             FROM `proj-roth.voter_data.voters`
             WHERE latitude IS NOT NULL AND longitude IS NOT NULL
             LIMIT 5
@@ -47,7 +47,7 @@ def main():
             sample_result = client.query(sample_query).to_dataframe()
             print('\nSample geocoded voters:')
             for _, row in sample_result.iterrows():
-                print(f'  {row["voter_id"]}: {row["party_affiliation"]} in {row["county"]} at ({row["latitude"]:.4f}, {row["longitude"]:.4f})')
+                print(f'  {row["id"]}: {row["party_affiliation"]} in {row["county"]} at ({row["latitude"]:.4f}, {row["longitude"]:.4f})')
         
         return True
 

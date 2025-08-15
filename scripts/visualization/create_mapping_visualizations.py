@@ -84,35 +84,9 @@ class VoterMappingVisualizer:
             return pd.DataFrame()
     
     def get_street_party_summary(self):
-        """Get street-level party summary data."""
-        query = f"""
-        SELECT 
-            street_address,
-            county_name,
-            municipality,
-            latitude,
-            longitude,
-            total_voters,
-            republican_count,
-            democratic_count,
-            unaffiliated_count,
-            other_count,
-            ROUND(republican_count * 100.0 / total_voters, 1) as republican_pct,
-            ROUND(democratic_count * 100.0 / total_voters, 1) as democratic_pct
-        FROM `{self.project_id}.{self.dataset_id}.street_party_summary`
-        WHERE latitude IS NOT NULL 
-        AND longitude IS NOT NULL
-        AND total_voters >= 5  -- Only streets with meaningful voter counts
-        ORDER BY total_voters DESC
-        """
-        
-        try:
-            df = self.bq_client.query(query).to_dataframe()
-            logger.info(f"Retrieved {len(df)} street-level summaries")
-            return df
-        except Exception as e:
-            logger.error(f"Error retrieving street party summary: {e}")
-            return pd.DataFrame()
+        """DEPRECATED: Street-level aggregation removed per user request."""
+        logger.warning("Street-level aggregation has been removed - using individual voter records only")
+        return pd.DataFrame()
     
     def create_folium_map(self, df, output_file="voter_map.html"):
         """Create an interactive Folium map showing voter concentrations."""
@@ -168,84 +142,9 @@ class VoterMappingVisualizer:
         return output_file
     
     def create_heatmap_visualization(self, street_df, output_file="party_heatmap.html"):
-        """Create a heatmap showing party concentrations by street."""
-        if street_df.empty:
-            logger.warning("No street data available for heatmap")
-            return None
-        
-        fig = make_subplots(
-            rows=1, cols=2,
-            subplot_titles=('Republican Concentration', 'Democratic Concentration'),
-            specs=[[{"type": "scattermapbox"}, {"type": "scattermapbox"}]]
-        )
-        
-        fig.add_trace(
-            go.Scattermapbox(
-                lat=street_df['latitude'],
-                lon=street_df['longitude'],
-                mode='markers',
-                marker=dict(
-                    size=street_df['total_voters'] / 2,
-                    color=street_df['republican_pct'],
-                    colorscale='Reds',
-                    cmin=0,
-                    cmax=100,
-                    colorbar=dict(title="Republican %", x=0.45)
-                ),
-                text=street_df.apply(lambda x: 
-                    f"Street: {x['street_address']}<br>"
-                    f"County: {x['county_name']}<br>"
-                    f"Total Voters: {x['total_voters']}<br>"
-                    f"Republican: {x['republican_pct']}%", axis=1),
-                hovertemplate='%{text}<extra></extra>',
-                name='Republican %'
-            ),
-            row=1, col=1
-        )
-        
-        fig.add_trace(
-            go.Scattermapbox(
-                lat=street_df['latitude'],
-                lon=street_df['longitude'],
-                mode='markers',
-                marker=dict(
-                    size=street_df['total_voters'] / 2,
-                    color=street_df['democratic_pct'],
-                    colorscale='Blues',
-                    cmin=0,
-                    cmax=100,
-                    colorbar=dict(title="Democratic %", x=1.02)
-                ),
-                text=street_df.apply(lambda x: 
-                    f"Street: {x['street_address']}<br>"
-                    f"County: {x['county_name']}<br>"
-                    f"Total Voters: {x['total_voters']}<br>"
-                    f"Democratic: {x['democratic_pct']}%", axis=1),
-                hovertemplate='%{text}<extra></extra>',
-                name='Democratic %'
-            ),
-            row=1, col=2
-        )
-        
-        fig.update_layout(
-            title="Street-Level Political Concentrations in New Jersey",
-            height=600,
-            mapbox1=dict(
-                style="open-street-map",
-                center=dict(lat=40.0583, lon=-74.4057),
-                zoom=8
-            ),
-            mapbox2=dict(
-                style="open-street-map", 
-                center=dict(lat=40.0583, lon=-74.4057),
-                zoom=8
-            ),
-            showlegend=False
-        )
-        
-        fig.write_html(output_file)
-        logger.info(f"Saved heatmap visualization to {output_file}")
-        return output_file
+        """DEPRECATED: Street-level heatmap removed per user request."""
+        logger.warning("Street-level heatmap visualization has been removed - using individual voter maps only")
+        return None
     
     def create_county_summary_chart(self, df, output_file="county_summary.html"):
         """Create county-level summary charts."""
@@ -297,12 +196,17 @@ class VoterMappingVisualizer:
             
             voter_df = self.get_geocoded_voter_sample(limit=10000)
             if not voter_df.empty:
+                logger.info(f"Creating visualizations with {len(voter_df)} geocoded voters")
                 self.create_folium_map(voter_df, "voter_distribution_map.html")
                 self.create_county_summary_chart(voter_df, "county_party_breakdown.html")
-            
-            street_df = self.get_street_party_summary()
-            if not street_df.empty:
-                self.create_heatmap_visualization(street_df, "street_level_heatmap.html")
+                
+                if len(voter_df) >= 100:  # Only create individual voter visualizations
+                    logger.info("Creating individual voter-based visualizations only")
+                else:
+                    logger.info(f"Skipping advanced visualizations - need at least 100 geocoded voters (have {len(voter_df)})")
+            else:
+                logger.warning("No geocoded voter data available for visualization")
+                return False
             
             logger.info("✅ All visualizations generated successfully!")
             return True
@@ -315,14 +219,41 @@ class VoterMappingVisualizer:
 
 def main():
     visualizer = VoterMappingVisualizer()
+    
+    if visualizer.setup_credentials():
+        try:
+            query = f"""
+            SELECT 
+                COUNT(*) as total_voters,
+                COUNT(latitude) as geocoded_voters,
+                ROUND(COUNT(latitude) * 100.0 / COUNT(*), 2) as geocoded_percentage
+            FROM `proj-roth.voter_data.voters`
+            """
+            
+            result = visualizer.bq_client.query(query).to_dataframe()
+            total = int(result.iloc[0]['total_voters'])
+            geocoded = int(result.iloc[0]['geocoded_voters'])
+            percentage = float(result.iloc[0]['geocoded_percentage'])
+            
+            print(f"📊 Current geocoding progress: {geocoded:,} / {total:,} ({percentage}%)")
+            
+            if geocoded < 50:
+                print(f"⚠️  Warning: Only {geocoded} voters are geocoded. Visualizations will be limited.")
+                print("   Consider waiting for more geocoding progress for better results.")
+            
+        except Exception as e:
+            print(f"❌ Error checking progress: {e}")
+        finally:
+            visualizer.cleanup_credentials()
+    
     success = visualizer.generate_all_visualizations()
     
     if success:
-        print("🎉 Mapping visualizations created successfully!")
+        print("\n🎉 Mapping visualizations created successfully!")
         print("Generated files:")
-        print("  - voter_distribution_map.html (Interactive voter map)")
-        print("  - street_level_heatmap.html (Street-level party heatmap)")
+        print("  - voter_distribution_map.html (Interactive individual voter map)")
         print("  - county_party_breakdown.html (County summary charts)")
+        print("\nOpen these HTML files in your browser to view the interactive visualizations!")
     else:
         print("❌ Failed to generate visualizations")
     

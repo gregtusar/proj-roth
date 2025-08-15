@@ -2,6 +2,24 @@
 
 A comprehensive Python-based framework for analyzing New Jersey voter registration data from GCP storage.
 
+## Repository Structure
+
+```
+proj-roth/
+├── scripts/
+│   ├── geocoding/          # Geocoding pipeline scripts
+│   ├── visualization/      # Mapping and chart generation
+│   ├── analysis/          # Data analysis scripts
+│   ├── testing/           # Test and validation scripts
+│   └── setup/             # Environment setup scripts
+├── docs/                  # Documentation
+├── config/                # Configuration files
+└── outputs/               # Generated outputs
+    ├── maps/              # HTML map files
+    ├── charts/            # PNG chart files
+    └── logs/              # Log files
+```
+
 ## Overview
 
 This repository contains a complete analytical framework for processing and analyzing New Jersey voter file data. The framework includes secure data extraction from Google Cloud Platform, comprehensive demographic and geographic analysis, and automated visualization generation.

@@ -46,7 +46,7 @@ class GeocodingMonitor:
                 COUNT(*) as total_voters,
                 COUNT(latitude) as geocoded_voters,
                 ROUND(COUNT(latitude) * 100.0 / COUNT(*), 2) as geocoded_percentage,
-                COUNT(DISTINCT county) as counties_with_data
+                COUNT(DISTINCT county_name) as counties_with_data
             FROM `proj-roth.voter_data.voters`
             '''
             
@@ -66,12 +66,12 @@ class GeocodingMonitor:
         try:
             query = '''
             SELECT 
-                county,
+                county_name,
                 COUNT(*) as total_voters,
                 COUNT(latitude) as geocoded_voters,
                 ROUND(COUNT(latitude) * 100.0 / COUNT(*), 1) as geocoded_percentage
             FROM `proj-roth.voter_data.voters`
-            GROUP BY county
+            GROUP BY county_name
             ORDER BY geocoded_voters DESC
             LIMIT 10
             '''
@@ -86,13 +86,13 @@ class GeocodingMonitor:
         try:
             query = f'''
             SELECT 
-                party_affiliation,
+                demo_party,
                 COUNT(*) as count,
                 AVG(latitude) as avg_lat,
                 AVG(longitude) as avg_lng
             FROM `proj-roth.voter_data.voters`
             WHERE latitude IS NOT NULL AND longitude IS NOT NULL
-            GROUP BY party_affiliation
+            GROUP BY demo_party
             ORDER BY count DESC
             '''
             
@@ -155,13 +155,13 @@ class GeocodingMonitor:
         county_df = self.get_county_breakdown()
         if county_df is not None and not county_df.empty:
             for _, row in county_df.head(5).iterrows():
-                print(f"  {row['county']}: {row['geocoded_voters']:,} / {row['total_voters']:,} ({row['geocoded_percentage']}%)")
+                print(f"  {row['county_name']}: {row['geocoded_voters']:,} / {row['total_voters']:,} ({row['geocoded_percentage']}%)")
         
         print("\n🎯 Party Distribution (Geocoded Sample):")
         party_df = self.get_party_distribution_sample()
         if party_df is not None and not party_df.empty:
             for _, row in party_df.head(5).iterrows():
-                print(f"  {row['party_affiliation']}: {row['count']:,} voters")
+                print(f"  {row['demo_party']}: {row['count']:,} voters")
         
         print("="*60)
         return stats

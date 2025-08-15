@@ -55,13 +55,13 @@ class VoterMappingVisualizer:
         """Get a sample of geocoded voters for visualization."""
         query = f"""
         SELECT 
-            voter_id,
-            first_name,
-            last_name,
-            party_affiliation,
-            county,
-            municipality,
-            street_address,
+            id,
+            name_first,
+            name_last,
+            demo_party,
+            county_name,
+            addr_residential_city,
+            addr_residential_line1,
             latitude,
             longitude,
             geocoding_source,
@@ -88,7 +88,7 @@ class VoterMappingVisualizer:
         query = f"""
         SELECT 
             street_address,
-            county,
+            county_name,
             municipality,
             latitude,
             longitude,
@@ -135,15 +135,15 @@ class VoterMappingVisualizer:
             if idx > 5000:  # Limit markers for performance
                 break
                 
-            color = party_colors.get(row['party_affiliation'], 'gray')
+            color = party_colors.get(row['demo_party'], 'gray')
             
             folium.CircleMarker(
                 location=[row['latitude'], row['longitude']],
                 radius=3,
-                popup=f"{row['first_name']} {row['last_name']}<br>"
-                      f"Party: {row['party_affiliation']}<br>"
-                      f"Address: {row['street_address']}<br>"
-                      f"County: {row['county']}",
+                popup=f"{row['name_first']} {row['name_last']}<br>"
+                      f"Party: {row['demo_party']}<br>"
+                      f"Address: {row['addr_residential_line1']}<br>"
+                      f"County: {row['county_name']}",
                 color=color,
                 fill=True,
                 fillColor=color,
@@ -194,7 +194,7 @@ class VoterMappingVisualizer:
                 ),
                 text=street_df.apply(lambda x: 
                     f"Street: {x['street_address']}<br>"
-                    f"County: {x['county']}<br>"
+                    f"County: {x['county_name']}<br>"
                     f"Total Voters: {x['total_voters']}<br>"
                     f"Republican: {x['republican_pct']}%", axis=1),
                 hovertemplate='%{text}<extra></extra>',
@@ -218,7 +218,7 @@ class VoterMappingVisualizer:
                 ),
                 text=street_df.apply(lambda x: 
                     f"Street: {x['street_address']}<br>"
-                    f"County: {x['county']}<br>"
+                    f"County: {x['county_name']}<br>"
                     f"Total Voters: {x['total_voters']}<br>"
                     f"Democratic: {x['democratic_pct']}%", axis=1),
                 hovertemplate='%{text}<extra></extra>',
@@ -253,13 +253,13 @@ class VoterMappingVisualizer:
             logger.warning("No data available for county summary")
             return None
         
-        county_summary = df.groupby('county').agg({
-            'party_affiliation': 'count',
+        county_summary = df.groupby('county_name').agg({
+            'demo_party': 'count',
             'latitude': 'first',
             'longitude': 'first'
-        }).rename(columns={'party_affiliation': 'total_voters'}).reset_index()
+        }).rename(columns={'demo_party': 'total_voters'}).reset_index()
         
-        party_by_county = df.groupby(['county', 'party_affiliation']).size().unstack(fill_value=0)
+        party_by_county = df.groupby(['county_name', 'demo_party']).size().unstack(fill_value=0)
         party_by_county = party_by_county.div(party_by_county.sum(axis=1), axis=0) * 100
         
         fig = go.Figure()

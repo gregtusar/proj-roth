@@ -258,21 +258,28 @@ class BigQueryVoterGeocodingPipeline:
     
     def get_voters_needing_geocoding(self, limit: int = 100) -> pd.DataFrame:
         """Get voters that need geocoding from BigQuery."""
-        query = f"""
+        query = """
         SELECT 
             id,
             addr_residential_line1,
             addr_residential_city,
             addr_residential_state,
             addr_residential_zip_code
-        FROM `{self.project_id}.{self.dataset_id}.voters`
+        FROM `@project_id.@dataset_id.voters`
         WHERE latitude IS NULL
         ORDER BY id
-        LIMIT {limit}
+        LIMIT @limit
         """
         
         try:
-            df = self.bq_client.query(query).to_dataframe()
+            job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("project_id", "STRING", self.project_id),
+                    bigquery.ScalarQueryParameter("dataset_id", "STRING", self.dataset_id),
+                    bigquery.ScalarQueryParameter("limit", "INT64", limit),
+                ]
+            )
+            df = self.bq_client.query(query, job_config=job_config).to_dataframe()
             return df
         except Exception as e:
             logger.error(f"Error querying voters needing geocoding: {e}")
@@ -280,8 +287,8 @@ class BigQueryVoterGeocodingPipeline:
     
     def update_voter_geocoding(self, voter_id: str, result: GeocodingResult):
         """Update a single voter's geocoding information in BigQuery."""
-        query = f"""
-        UPDATE `{self.project_id}.{self.dataset_id}.voters`
+        query = """
+        UPDATE `@project_id.@dataset_id.voters`
         SET 
             latitude = @latitude,
             longitude = @longitude,
@@ -294,6 +301,8 @@ class BigQueryVoterGeocodingPipeline:
         
         job_config = bigquery.QueryJobConfig(
             query_parameters=[
+                bigquery.ScalarQueryParameter("project_id", "STRING", self.project_id),
+                bigquery.ScalarQueryParameter("dataset_id", "STRING", self.dataset_id),
                 bigquery.ScalarQueryParameter("voter_id", "STRING", voter_id),
                 bigquery.ScalarQueryParameter("latitude", "FLOAT64", result.latitude),
                 bigquery.ScalarQueryParameter("longitude", "FLOAT64", result.longitude),
@@ -344,8 +353,8 @@ class BigQueryVoterGeocodingPipeline:
     
     def refresh_street_summary(self):
         """Refresh the street-level party summary table."""
-        query = f"""
-        CREATE OR REPLACE TABLE `{self.project_id}.{self.dataset_id}.street_party_summary` AS
+        query = """
+        CREATE OR REPLACE TABLE `@project_id.@dataset_id.street_party_summary` AS
         SELECT 
             addr_residential_street_name as street_name,
             addr_residential_city as city,
@@ -367,7 +376,7 @@ class BigQueryVoterGeocodingPipeline:
             
             CURRENT_TIMESTAMP() as last_updated
             
-        FROM `{self.project_id}.{self.dataset_id}.voters`
+        FROM `@project_id.@dataset_id.voters`
         WHERE addr_residential_street_name IS NOT NULL 
           AND latitude IS NOT NULL 
           AND longitude IS NOT NULL
@@ -376,7 +385,13 @@ class BigQueryVoterGeocodingPipeline:
         """
         
         try:
-            query_job = self.bq_client.query(query)
+            job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("project_id", "STRING", self.project_id),
+                    bigquery.ScalarQueryParameter("dataset_id", "STRING", self.dataset_id),
+                ]
+            )
+            query_job = self.bq_client.query(query, job_config=job_config)
             query_job.result()
             logger.info("Street party summary table refreshed successfully")
         except Exception as e:
@@ -385,7 +400,7 @@ class BigQueryVoterGeocodingPipeline:
     
     def get_geocoding_stats(self) -> Dict:
         """Get statistics on geocoding progress."""
-        query = f"""
+        query = """
         SELECT 
             COUNT(*) as total_voters,
             COUNTIF(latitude IS NOT NULL) as geocoded_voters,
@@ -393,11 +408,17 @@ class BigQueryVoterGeocodingPipeline:
             ROUND(COUNTIF(latitude IS NOT NULL) * 100.0 / COUNT(*), 2) as completion_pct,
             COUNTIF(geocoding_source = 'GOOGLE_MAPS') as google_geocoded,
             COUNTIF(geocoding_source = 'US_CENSUS') as census_geocoded
-        FROM `{self.project_id}.{self.dataset_id}.voters`
+        FROM `@project_id.@dataset_id.voters`
         """
         
         try:
-            result = self.bq_client.query(query).to_dataframe()
+            job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("project_id", "STRING", self.project_id),
+                    bigquery.ScalarQueryParameter("dataset_id", "STRING", self.dataset_id),
+                ]
+            )
+            result = self.bq_client.query(query, job_config=job_config).to_dataframe()
             if not result.empty:
                 row = result.iloc[0]
                 return {

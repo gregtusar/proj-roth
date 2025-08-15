@@ -87,29 +87,57 @@ class BigQuerySetup:
             with open(schema_file, 'r') as f:
                 schema_sql = f.read()
             
+            lines = schema_sql.split('\n')
+            cleaned_lines = []
+            in_comment_block = False
+            
+            for line in lines:
+                line = line.strip()
+                
+                if line.startswith('/*'):
+                    in_comment_block = True
+                    continue
+                if in_comment_block:
+                    if line.endswith('*/'):
+                        in_comment_block = False
+                    continue
+                
+                # Skip single-line comments and empty lines
+                if line.startswith('--') or not line:
+                    continue
+                    
+                cleaned_lines.append(line)
+            
             statements = []
             current_statement = ""
             in_create_table = False
             
-            for line in schema_sql.split('\n'):
-                line = line.strip()
-                
-                if line.startswith('--') or line.startswith('/*') or not line:
-                    continue
-                
+            for line in cleaned_lines:
                 if line.upper().startswith('CREATE OR REPLACE TABLE'):
+                    if current_statement and in_create_table:
+                        statements.append(current_statement)
                     in_create_table = True
                     current_statement = line
                 elif in_create_table:
-                    current_statement += " " + line
-                    if line.endswith(';'):
-                        statements.append(current_statement.rstrip(';'))
+                    if '--' in line:
+                        line = line.split('--')[0].strip()
+                    if line:  # Only add non-empty lines
+                        current_statement += " " + line
+                    if line.endswith(';') or line.upper().startswith('CLUSTER BY'):
+                        if line.endswith(';'):
+                            current_statement = current_statement.rstrip(';')
+                        statements.append(current_statement)
                         current_statement = ""
                         in_create_table = False
             
-            for statement in statements:
+            if current_statement and in_create_table:
+                statements.append(current_statement)
+            
+            for i, statement in enumerate(statements):
                 if 'CREATE OR REPLACE TABLE' in statement:
                     try:
+                        logger.info(f"Executing statement {i+1}: {statement[:100]}...")
+                        logger.info(f"Statement length: {len(statement)} characters")
                         query_job = self.bq_client.query(statement)
                         query_job.result()
                         
@@ -117,7 +145,7 @@ class BigQuerySetup:
                         logger.info(f"✅ Created table: {table_name}")
                     except Exception as e:
                         logger.error(f"❌ Error creating table: {e}")
-                        logger.error(f"Statement: {statement[:100]}...")
+                        logger.error(f"Full statement: {statement}")
                         return False
             
             return True

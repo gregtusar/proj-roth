@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Logs
+*.log
+
+# Output files
+outputs/logs/*.log
+outputs/maps/*.html
+outputs/charts/*.png
+
+# Temporary files
+*.tmp
+.DS_Store
+
+# Credentials (if any get accidentally committed)
+*credentials*.json

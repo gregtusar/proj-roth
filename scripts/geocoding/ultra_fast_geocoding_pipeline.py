@@ -68,66 +68,22 @@ class UltraFastGeocodingPipeline(BigQueryVoterGeocodingPipeline):
         self.global_rate_limiter.acquire()
     
     def batch_update_voters(self, voter_results: List[Tuple[str, GeocodingResult]]):
-        """Update multiple voters in a single BigQuery operation."""
+        """Update multiple voters using individual parameterized updates to avoid SQL concatenation issues."""
         if not voter_results:
             return
         
-        cases_lat = []
-        cases_lng = []
-        cases_accuracy = []
-        cases_source = []
-        cases_address = []
-        voter_ids = []
+        logger.info(f"🔄 Processing {len(voter_results)} voters with individual parameterized updates")
         
+        successful_updates = 0
         for voter_id, result in voter_results:
             if result.latitude is not None:
-                voter_ids.append(f"'{voter_id}'")
-                cases_lat.append(f"WHEN '{voter_id}' THEN {result.latitude}")
-                cases_lng.append(f"WHEN '{voter_id}' THEN {result.longitude}")
-                
-                accuracy_val = (result.accuracy or '').replace("'", "''").replace('"', '""')
-                cases_accuracy.append(f"WHEN '{voter_id}' THEN '{accuracy_val}'")
-                
-                source_val = (result.source or '').replace("'", "''").replace('"', '""')
-                cases_source.append(f"WHEN '{voter_id}' THEN '{source_val}'")
-                
-                standardized_addr = (result.standardized_address or '')
-                standardized_addr = standardized_addr.replace("'", "''").replace('"', '""').replace('\\', '\\\\')
-                standardized_addr = standardized_addr.replace(';', '').replace('--', '').replace('/*', '').replace('*/', '')
-                cases_address.append(f"WHEN '{voter_id}' THEN '{standardized_addr}'")
-        
-        if not voter_ids:
-            return
-        
-        lat_cases = ' '.join(cases_lat) if cases_lat else 'NULL'
-        lng_cases = ' '.join(cases_lng) if cases_lng else 'NULL'
-        accuracy_cases = ' '.join(cases_accuracy) if cases_accuracy else 'NULL'
-        source_cases = ' '.join(cases_source) if cases_source else 'NULL'
-        address_cases = ' '.join(cases_address) if cases_address else 'NULL'
-        
-        query = f"""
-        UPDATE `{self.project_id}.{self.dataset_id}.voters`
-        SET 
-            latitude = CASE id {lat_cases} END,
-            longitude = CASE id {lng_cases} END,
-            geocoding_accuracy = CASE id {accuracy_cases} END,
-            geocoding_source = CASE id {source_cases} END,
-            geocoding_timestamp = CURRENT_TIMESTAMP(),
-            full_address = CASE id {address_cases} END
-        WHERE id IN ({', '.join(voter_ids)})
-        """
-        
-        try:
-            query_job = self.bq_client.query(query)
-            query_job.result()
-            logger.info(f"✅ Batch updated {len(voter_ids)} voters")
-        except Exception as e:
-            logger.error(f"❌ Batch update failed: {e}")
-            for voter_id, result in voter_results:
                 try:
                     self.update_voter_geocoding(voter_id, result)
+                    successful_updates += 1
                 except Exception as individual_error:
                     logger.error(f"❌ Individual update failed for {voter_id}: {individual_error}")
+        
+        logger.info(f"✅ Successfully updated {successful_updates}/{len(voter_results)} voters")
     
     def ultra_fast_geocode_batch(self, batch_size: int = 500, max_workers: int = 25):
         """Ultra-fast batch geocoding with optimized settings."""

@@ -84,26 +84,29 @@ class VoterMappingVisualizer:
             return pd.DataFrame()
     
     def get_street_party_summary(self):
-        """Get street-level party summary data."""
+        """Get street-level party summary data by aggregating individual voter data."""
         query = f"""
         SELECT 
-            street_address,
+            addr_residential_line1 as street_address,
             county_name,
-            municipality,
-            latitude,
-            longitude,
-            total_voters,
-            republican_count,
-            democratic_count,
-            unaffiliated_count,
-            other_count,
-            ROUND(republican_count * 100.0 / total_voters, 1) as republican_pct,
-            ROUND(democratic_count * 100.0 / total_voters, 1) as democratic_pct
-        FROM `{self.project_id}.{self.dataset_id}.street_party_summary`
+            addr_residential_city as municipality,
+            AVG(latitude) as latitude,
+            AVG(longitude) as longitude,
+            COUNT(*) as total_voters,
+            SUM(CASE WHEN demo_party = 'REP' THEN 1 ELSE 0 END) as republican_count,
+            SUM(CASE WHEN demo_party = 'DEM' THEN 1 ELSE 0 END) as democratic_count,
+            SUM(CASE WHEN demo_party = 'UNA' THEN 1 ELSE 0 END) as unaffiliated_count,
+            SUM(CASE WHEN demo_party NOT IN ('REP', 'DEM', 'UNA') THEN 1 ELSE 0 END) as other_count,
+            ROUND(SUM(CASE WHEN demo_party = 'REP' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) as republican_pct,
+            ROUND(SUM(CASE WHEN demo_party = 'DEM' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) as democratic_pct
+        FROM `{self.project_id}.{self.dataset_id}.voters`
         WHERE latitude IS NOT NULL 
         AND longitude IS NOT NULL
-        AND total_voters >= 5  -- Only streets with meaningful voter counts
+        AND addr_residential_line1 IS NOT NULL
+        GROUP BY addr_residential_line1, county_name, addr_residential_city
+        HAVING COUNT(*) >= 5  -- Only streets with meaningful voter counts
         ORDER BY total_voters DESC
+        LIMIT 1000  -- Limit for performance
         """
         
         try:
@@ -297,12 +300,21 @@ class VoterMappingVisualizer:
             
             voter_df = self.get_geocoded_voter_sample(limit=10000)
             if not voter_df.empty:
+                logger.info(f"Creating visualizations with {len(voter_df)} geocoded voters")
                 self.create_folium_map(voter_df, "voter_distribution_map.html")
                 self.create_county_summary_chart(voter_df, "county_party_breakdown.html")
-            
-            street_df = self.get_street_party_summary()
-            if not street_df.empty:
-                self.create_heatmap_visualization(street_df, "street_level_heatmap.html")
+                
+                if len(voter_df) >= 100:  # Only create heatmap if we have sufficient data
+                    street_df = self.get_street_party_summary()
+                    if not street_df.empty:
+                        self.create_heatmap_visualization(street_df, "street_level_heatmap.html")
+                    else:
+                        logger.warning("No street data available for mapping")
+                else:
+                    logger.info(f"Skipping street-level heatmap - need at least 100 geocoded voters (have {len(voter_df)})")
+            else:
+                logger.warning("No geocoded voter data available for visualization")
+                return False
             
             logger.info("✅ All visualizations generated successfully!")
             return True
@@ -315,14 +327,42 @@ class VoterMappingVisualizer:
 
 def main():
     visualizer = VoterMappingVisualizer()
+    
+    if visualizer.setup_credentials():
+        try:
+            query = f"""
+            SELECT 
+                COUNT(*) as total_voters,
+                COUNT(latitude) as geocoded_voters,
+                ROUND(COUNT(latitude) * 100.0 / COUNT(*), 2) as geocoded_percentage
+            FROM `proj-roth.voter_data.voters`
+            """
+            
+            result = visualizer.bq_client.query(query).to_dataframe()
+            total = int(result.iloc[0]['total_voters'])
+            geocoded = int(result.iloc[0]['geocoded_voters'])
+            percentage = float(result.iloc[0]['geocoded_percentage'])
+            
+            print(f"📊 Current geocoding progress: {geocoded:,} / {total:,} ({percentage}%)")
+            
+            if geocoded < 50:
+                print(f"⚠️  Warning: Only {geocoded} voters are geocoded. Visualizations will be limited.")
+                print("   Consider waiting for more geocoding progress for better results.")
+            
+        except Exception as e:
+            print(f"❌ Error checking progress: {e}")
+        finally:
+            visualizer.cleanup_credentials()
+    
     success = visualizer.generate_all_visualizations()
     
     if success:
-        print("🎉 Mapping visualizations created successfully!")
+        print("\n🎉 Mapping visualizations created successfully!")
         print("Generated files:")
         print("  - voter_distribution_map.html (Interactive voter map)")
-        print("  - street_level_heatmap.html (Street-level party heatmap)")
         print("  - county_party_breakdown.html (County summary charts)")
+        print("  - street_level_heatmap.html (Street-level party heatmap, if sufficient data)")
+        print("\nOpen these HTML files in your browser to view the interactive visualizations!")
     else:
         print("❌ Failed to generate visualizations")
     

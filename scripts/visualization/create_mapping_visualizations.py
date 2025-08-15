@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Create mapping visualizations showing political concentrations by street level.
+Create mapping visualizations showing individual voter locations by party affiliation.
 """
 
 import os
@@ -11,6 +11,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from google.cloud import bigquery
+from typing import Dict
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -22,6 +23,7 @@ class VoterMappingVisualizer:
         self.dataset_id = "voter_data"
         self.bq_client = None
         self.creds_file = None
+        self.output_dir = "."
         
     def setup_credentials(self):
         """Set up GCP credentials from environment variable."""
@@ -51,46 +53,46 @@ class VoterMappingVisualizer:
             except:
                 pass
     
-    def get_geocoded_voter_sample(self, limit=10000):
-        """Get a sample of geocoded voters for visualization."""
-        query = f"""
+    def get_street_data(self) -> pd.DataFrame:
+        """Get individual voter data from BigQuery instead of street-level aggregation."""
+        
+        voter_query = f"""
         SELECT 
             id,
-            name_first,
-            name_last,
-            demo_party,
-            county_name,
-            addr_residential_city,
-            addr_residential_line1,
+            addr_residential_street_name as street_name,
+            addr_residential_city as city,
+            county_name as county,
+            addr_residential_zip_code as zip_code,
+            demo_party as party,
             latitude,
             longitude,
             geocoding_source,
             geocoding_accuracy
         FROM `{self.project_id}.{self.dataset_id}.voters`
         WHERE latitude IS NOT NULL 
-        AND longitude IS NOT NULL
-        AND latitude BETWEEN 38.0 AND 42.0  -- NJ bounds
-        AND longitude BETWEEN -76.0 AND -73.0  -- NJ bounds
+          AND longitude IS NOT NULL
+          AND demo_party IN ('REPUBLICAN', 'DEMOCRAT', 'UNAFFILIATED')
         ORDER BY RAND()
-        LIMIT {limit}
+        LIMIT 5000
         """
         
         try:
-            df = self.bq_client.query(query).to_dataframe()
-            logger.info(f"Retrieved {len(df)} geocoded voters for visualization")
-            return df
+            voter_df = self.bq_client.query(voter_query).to_dataframe()
+            logger.info(f"Retrieved {len(voter_df)} individual voter records")
+            
+            if voter_df.empty:
+                logger.warning("No voter data available for mapping")
+                return None
+                
+            return voter_df
+            
         except Exception as e:
-            logger.error(f"Error retrieving geocoded voters: {e}")
-            return pd.DataFrame()
+            logger.error(f"Error querying voter data: {e}")
+            return None
     
-    def get_street_party_summary(self):
-        """DEPRECATED: Street-level aggregation removed per user request."""
-        logger.warning("Street-level aggregation has been removed - using individual voter records only")
-        return pd.DataFrame()
-    
-    def create_folium_map(self, df, output_file="voter_map.html"):
-        """Create an interactive Folium map showing voter concentrations."""
-        if df.empty:
+    def create_interactive_map(self, voter_df: pd.DataFrame) -> str:
+        """Create an interactive map showing individual voter locations by party."""
+        if voter_df is None or voter_df.empty:
             logger.warning("No data available for mapping")
             return None
         
@@ -98,118 +100,221 @@ class VoterMappingVisualizer:
         m = folium.Map(location=nj_center, zoom_start=8)
         
         party_colors = {
-            'REP': 'red',
-            'DEM': 'blue', 
-            'UNA': 'gray',
-            'GRE': 'green',
-            'LIB': 'orange'
+            'REPUBLICAN': 'red',
+            'DEMOCRAT': 'blue', 
+            'UNAFFILIATED': 'gray'
         }
         
-        for idx, row in df.iterrows():
-            if idx > 5000:  # Limit markers for performance
-                break
-                
-            color = party_colors.get(row['demo_party'], 'gray')
+        sample_size = min(2000, len(voter_df))
+        sampled_df = voter_df.sample(n=sample_size) if len(voter_df) > sample_size else voter_df
+        
+        for _, row in sampled_df.iterrows():
+            color = party_colors.get(row['party'], 'gray')
+            
+            popup_text = f"""
+            <b>Voter ID:</b> {row['id']}<br>
+            <b>Party:</b> {row['party']}<br>
+            <b>Address:</b> {row['street_name']}<br>
+            {row['city']}, {row['county']} County<br>
+            <b>Zip:</b> {row['zip_code']}<br>
+            <b>Geocoding:</b> {row['geocoding_source']} ({row['geocoding_accuracy']})
+            """
             
             folium.CircleMarker(
                 location=[row['latitude'], row['longitude']],
                 radius=3,
-                popup=f"{row['name_first']} {row['name_last']}<br>"
-                      f"Party: {row['demo_party']}<br>"
-                      f"Address: {row['addr_residential_line1']}<br>"
-                      f"County: {row['county_name']}",
+                popup=folium.Popup(popup_text, max_width=300),
                 color=color,
-                fill=True,
                 fillColor=color,
-                fillOpacity=0.6
+                fillOpacity=0.6,
+                weight=1
             ).add_to(m)
         
-        legend_html = '''
+        legend_html = f'''
         <div style="position: fixed; 
-                    bottom: 50px; left: 50px; width: 150px; height: 90px; 
+                    bottom: 50px; left: 50px; width: 150px; height: 110px; 
                     background-color: white; border:2px solid grey; z-index:9999; 
                     font-size:14px; padding: 10px">
-        <p><b>Party Affiliation</b></p>
+        <p><b>Individual Voters</b></p>
         <p><i class="fa fa-circle" style="color:red"></i> Republican</p>
         <p><i class="fa fa-circle" style="color:blue"></i> Democrat</p>
         <p><i class="fa fa-circle" style="color:gray"></i> Unaffiliated</p>
+        <p><small>Showing {sample_size:,} voters</small></p>
         </div>
         '''
         m.get_root().html.add_child(folium.Element(legend_html))
         
-        m.save(output_file)
-        logger.info(f"Saved interactive map to {output_file}")
-        return output_file
+        return m
     
-    def create_heatmap_visualization(self, street_df, output_file="party_heatmap.html"):
-        """DEPRECATED: Street-level heatmap removed per user request."""
-        logger.warning("Street-level heatmap visualization has been removed - using individual voter maps only")
-        return None
-    
-    def create_county_summary_chart(self, df, output_file="county_summary.html"):
-        """Create county-level summary charts."""
-        if df.empty:
-            logger.warning("No data available for county summary")
+    def create_county_summary(self, voter_df: pd.DataFrame) -> go.Figure:
+        """Create county-level summary charts from individual voter data."""
+        if voter_df is None or voter_df.empty:
             return None
         
-        county_summary = df.groupby('county_name').agg({
-            'demo_party': 'count',
-            'latitude': 'first',
-            'longitude': 'first'
-        }).rename(columns={'demo_party': 'total_voters'}).reset_index()
+        county_summary = voter_df.groupby(['county', 'party']).size().unstack(fill_value=0).reset_index()
         
-        party_by_county = df.groupby(['county_name', 'demo_party']).size().unstack(fill_value=0)
-        party_by_county = party_by_county.div(party_by_county.sum(axis=1), axis=0) * 100
+        county_summary['total_voters'] = county_summary.sum(axis=1, numeric_only=True)
+        
+        for party in ['REPUBLICAN', 'DEMOCRAT', 'UNAFFILIATED']:
+            if party in county_summary.columns:
+                county_summary[f'{party.lower()}_pct'] = (county_summary[party] / county_summary['total_voters'] * 100).round(1)
+            else:
+                county_summary[f'{party.lower()}_pct'] = 0
+        
+        county_summary = county_summary.sort_values('total_voters', ascending=True)
         
         fig = go.Figure()
         
-        colors = {'REP': 'red', 'DEM': 'blue', 'UNA': 'gray', 'GRE': 'green', 'LIB': 'orange'}
+        if 'REPUBLICAN' in county_summary.columns:
+            fig.add_trace(go.Bar(
+                name='Republican',
+                y=county_summary['county'],
+                x=county_summary['republican_pct'],
+                orientation='h',
+                marker_color='red',
+                text=county_summary['republican_pct'].astype(str) + '%',
+                textposition='inside'
+            ))
         
-        for party in party_by_county.columns:
-            if party in colors:
-                fig.add_trace(go.Bar(
-                    name=party,
-                    x=party_by_county.index,
-                    y=party_by_county[party],
-                    marker_color=colors[party]
-                ))
+        if 'DEMOCRAT' in county_summary.columns:
+            fig.add_trace(go.Bar(
+                name='Democrat', 
+                y=county_summary['county'],
+                x=county_summary['democrat_pct'],
+                orientation='h',
+                marker_color='blue',
+                text=county_summary['democrat_pct'].astype(str) + '%',
+                textposition='inside'
+            ))
+        
+        if 'UNAFFILIATED' in county_summary.columns:
+            fig.add_trace(go.Bar(
+                name='Unaffiliated',
+                y=county_summary['county'], 
+                x=county_summary['unaffiliated_pct'],
+                orientation='h',
+                marker_color='gray',
+                text=county_summary['unaffiliated_pct'].astype(str) + '%',
+                textposition='inside'
+            ))
         
         fig.update_layout(
-            title="Party Affiliation by County (%)",
-            xaxis_title="County",
-            yaxis_title="Percentage",
+            title='Political Party Distribution by County (Individual Voter Data)',
+            xaxis_title='Percentage of Voters',
+            yaxis_title='County',
             barmode='stack',
-            height=500
+            height=600,
+            showlegend=True
         )
         
-        fig.write_html(output_file)
-        logger.info(f"Saved county summary to {output_file}")
-        return output_file
+        return fig
+    
+    def analyze_geographic_patterns(self, voter_df: pd.DataFrame) -> Dict:
+        """Analyze geographic patterns in the individual voter data."""
+        if voter_df is None or voter_df.empty:
+            return {}
+        
+        try:
+            analysis = {
+                'total_counties': len(voter_df['county'].unique()),
+                'total_cities': len(voter_df['city'].unique()),
+                'party_distribution': voter_df['party'].value_counts().to_dict(),
+                'geocoding_sources': voter_df['geocoding_source'].value_counts().to_dict(),
+                'accuracy_distribution': voter_df['geocoding_accuracy'].value_counts().to_dict()
+            }
+            
+            city_party_counts = voter_df.groupby(['city', 'county', 'party']).size().reset_index(name='voter_count')
+            
+            republican_cities = city_party_counts[city_party_counts['party'] == 'REPUBLICAN'].nlargest(5, 'voter_count')
+            democrat_cities = city_party_counts[city_party_counts['party'] == 'DEMOCRAT'].nlargest(5, 'voter_count')
+            
+            analysis['top_republican_cities'] = republican_cities[['city', 'county', 'voter_count']].to_dict('records')
+            analysis['top_democrat_cities'] = democrat_cities[['city', 'county', 'voter_count']].to_dict('records')
+            
+            return analysis
+            
+        except Exception as e:
+            logger.error(f"Error analyzing geographic patterns: {e}")
+            return {}
+    
+    def create_summary_report(self, voter_df: pd.DataFrame, geo_analysis: Dict) -> Dict:
+        """Create a summary report of the mapping analysis from individual voter data."""
+        if voter_df is None or voter_df.empty:
+            return {}
+        
+        try:
+            party_counts = voter_df['party'].value_counts()
+            
+            summary = {
+                'data_summary': {
+                    'total_voters_mapped': len(voter_df),
+                    'counties_covered': len(voter_df['county'].unique()),
+                    'cities_covered': len(voter_df['city'].unique()),
+                    'unique_streets': len(voter_df['street_name'].unique())
+                },
+                'party_breakdown': {
+                    'total_republican': int(party_counts.get('REPUBLICAN', 0)),
+                    'total_democrat': int(party_counts.get('DEMOCRAT', 0)),
+                    'total_unaffiliated': int(party_counts.get('UNAFFILIATED', 0))
+                },
+                'geographic_analysis': geo_analysis,
+                'top_counties_by_voters': voter_df['county'].value_counts().head(5).to_dict(),
+                'geocoding_quality': {
+                    'google_maps': int(voter_df[voter_df['geocoding_source'] == 'GOOGLE_MAPS'].shape[0]),
+                    'us_census': int(voter_df[voter_df['geocoding_source'] == 'US_CENSUS'].shape[0])
+                }
+            }
+            
+            total_mapped = summary['data_summary']['total_voters_mapped']
+            if total_mapped > 0:
+                summary['party_percentages'] = {
+                    'republican_pct': round(summary['party_breakdown']['total_republican'] / total_mapped * 100, 2),
+                    'democrat_pct': round(summary['party_breakdown']['total_democrat'] / total_mapped * 100, 2),
+                    'unaffiliated_pct': round(summary['party_breakdown']['total_unaffiliated'] / total_mapped * 100, 2)
+                }
+            
+            return summary
+            
+        except Exception as e:
+            logger.error(f"Error generating summary report: {e}")
+            return {}
     
     def generate_all_visualizations(self):
-        """Generate all mapping visualizations."""
+        """Generate all mapping visualizations using individual voter data."""
         if not self.setup_credentials():
+            logger.error("❌ Failed to set up credentials. Make sure GCP_CREDENTIALS environment variable is set.")
             return False
         
         try:
-            logger.info("🗺️  Generating mapping visualizations...")
+            logger.info("🗺️  Starting BigQuery mapping visualization generation...")
             
-            voter_df = self.get_geocoded_voter_sample(limit=10000)
-            if not voter_df.empty:
-                logger.info(f"Creating visualizations with {len(voter_df)} geocoded voters")
-                self.create_folium_map(voter_df, "voter_distribution_map.html")
-                self.create_county_summary_chart(voter_df, "county_party_breakdown.html")
-                
-                if len(voter_df) >= 100:  # Only create individual voter visualizations
-                    logger.info("Creating individual voter-based visualizations only")
-                else:
-                    logger.info(f"Skipping advanced visualizations - need at least 100 geocoded voters (have {len(voter_df)})")
-            else:
-                logger.warning("No geocoded voter data available for visualization")
+            voter_df = self.get_voter_data(limit=10000)
+            if voter_df is None or voter_df.empty:
+                logger.error("No voter data available - cannot generate visualizations")
                 return False
             
+            logger.info("📍 Creating interactive voter map...")
+            map_obj = self.create_interactive_map(voter_df)
+            if map_obj:
+                map_path = os.path.join(self.output_dir, 'voter_map.html')
+                map_obj.save(map_path)
+                logger.info(f"✅ Interactive map saved to {map_path}")
+            
+            logger.info("📊 Creating county summary charts...")
+            county_fig = self.create_county_summary(voter_df)
+            if county_fig:
+                county_path = os.path.join(self.output_dir, 'county_summary.html')
+                county_fig.write_html(county_path)
+                logger.info(f"✅ County summary saved to {county_path}")
+            
+            logger.info("🌍 Generating geographic analysis...")
+            geo_analysis = self.analyze_geographic_patterns(voter_df)
+            
+            logger.info("📋 Creating summary report...")
+            summary = self.create_summary_report(voter_df, geo_analysis)
+            
             logger.info("✅ All visualizations generated successfully!")
-            return True
+            return summary
             
         except Exception as e:
             logger.error(f"❌ Error generating visualizations: {e}")
@@ -220,39 +325,42 @@ class VoterMappingVisualizer:
 def main():
     visualizer = VoterMappingVisualizer()
     
-    if visualizer.setup_credentials():
-        try:
-            query = f"""
-            SELECT 
-                COUNT(*) as total_voters,
-                COUNT(latitude) as geocoded_voters,
-                ROUND(COUNT(latitude) * 100.0 / COUNT(*), 2) as geocoded_percentage
-            FROM `proj-roth.voter_data.voters`
-            """
-            
-            result = visualizer.bq_client.query(query).to_dataframe()
-            total = int(result.iloc[0]['total_voters'])
-            geocoded = int(result.iloc[0]['geocoded_voters'])
-            percentage = float(result.iloc[0]['geocoded_percentage'])
-            
-            print(f"📊 Current geocoding progress: {geocoded:,} / {total:,} ({percentage}%)")
-            
-            if geocoded < 50:
-                print(f"⚠️  Warning: Only {geocoded} voters are geocoded. Visualizations will be limited.")
-                print("   Consider waiting for more geocoding progress for better results.")
-            
-        except Exception as e:
-            print(f"❌ Error checking progress: {e}")
-        finally:
-            visualizer.cleanup_credentials()
+    if not visualizer.generate_all_visualizations():
+        print("❌ Failed to generate visualizations. Check logs for details.")
+        return False
+    
+    try:
+        query = f"""
+        SELECT 
+            COUNT(*) as total_voters,
+            COUNT(latitude) as geocoded_voters,
+            ROUND(COUNT(latitude) * 100.0 / COUNT(*), 2) as geocoded_percentage
+        FROM `proj-roth.voter_data.voters`
+        """
+        
+        result = visualizer.bq_client.query(query).to_dataframe()
+        total = int(result.iloc[0]['total_voters'])
+        geocoded = int(result.iloc[0]['geocoded_voters'])
+        percentage = float(result.iloc[0]['geocoded_percentage'])
+        
+        print(f"📊 Current geocoding progress: {geocoded:,} / {total:,} ({percentage}%)")
+        
+        if geocoded < 50:
+            print(f"⚠️  Warning: Only {geocoded} voters are geocoded. Visualizations will be limited.")
+            print("   Consider waiting for more geocoding progress for better results.")
+        
+    except Exception as e:
+        print(f"❌ Error checking progress: {e}")
+    finally:
+        visualizer.cleanup_credentials()
     
     success = visualizer.generate_all_visualizations()
     
     if success:
         print("\n🎉 Mapping visualizations created successfully!")
         print("Generated files:")
-        print("  - voter_distribution_map.html (Interactive individual voter map)")
-        print("  - county_party_breakdown.html (County summary charts)")
+        print("  - voter_map.html (Interactive individual voter map)")
+        print("  - county_summary.html (County summary charts)")
         print("\nOpen these HTML files in your browser to view the interactive visualizations!")
     else:
         print("❌ Failed to generate visualizations")

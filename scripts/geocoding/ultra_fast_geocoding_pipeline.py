@@ -14,7 +14,7 @@ import time
 import logging
 import threading
 from queue import Queue
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 import pandas as pd
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -55,7 +55,7 @@ class UltraFastGeocodingPipeline(BigQueryVoterGeocodingPipeline):
     """Ultra-fast geocoding pipeline with optimized performance."""
     
     def __init__(self, project_id: str = 'proj-roth', dataset_id: str = 'voter_data', 
-                 google_api_key: str = None):
+                 google_api_key: Optional[str] = None):
         super().__init__(project_id, dataset_id, google_api_key)
         
         self.requests_per_second = 49
@@ -68,7 +68,7 @@ class UltraFastGeocodingPipeline(BigQueryVoterGeocodingPipeline):
         self.global_rate_limiter.acquire()
     
     def batch_update_voters(self, voter_results: List[Tuple[str, GeocodingResult]]):
-        """Update multiple voters using individual parameterized updates to avoid SQL concatenation issues."""
+        """Update multiple voters using individual parameterized updates to completely avoid SQL concatenation."""
         if not voter_results:
             return
         

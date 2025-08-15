@@ -8,6 +8,8 @@ import os
 import sys
 import time
 import logging
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from bigquery_geocoding_pipeline import BigQueryVoterGeocodingPipeline
 
 logging.basicConfig(

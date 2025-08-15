@@ -3,6 +3,7 @@ import numpy as np
 import time
 import json
 import os
+import tempfile
 from typing import Optional, Tuple, Dict, List
 import googlemaps
 from google.cloud import bigquery
@@ -36,7 +37,9 @@ class BigQueryVoterGeocodingPipeline:
         self.dataset_id = dataset_id
         self.google_api_key = google_api_key
         self.gmaps_client = None
+        self.creds_file_path = None
         
+        self._setup_credentials()
         self.bq_client = bigquery.Client(project=project_id)
         
         if google_api_key:
@@ -44,6 +47,32 @@ class BigQueryVoterGeocodingPipeline:
         
         self.requests_per_second = 10  # Adjust based on API limits
         self.last_request_time = 0
+    
+    def _setup_credentials(self):
+        """Set up GCP credentials from environment variable."""
+        credentials_json = os.getenv('GCP_CREDENTIALS')
+        if not credentials_json:
+            logger.warning("No GCP_CREDENTIALS found, using default credentials")
+            return
+        
+        try:
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+                f.write(credentials_json)
+                self.creds_file_path = f.name
+            
+            os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = self.creds_file_path
+            logger.info("✅ Successfully set up GCP credentials")
+        except Exception as e:
+            logger.error(f"❌ Error setting up credentials: {e}")
+    
+    def cleanup_credentials(self):
+        """Clean up temporary credentials file."""
+        if self.creds_file_path and os.path.exists(self.creds_file_path):
+            try:
+                os.unlink(self.creds_file_path)
+                logger.info("Cleaned up temporary credentials file")
+            except Exception as e:
+                logger.warning(f"Could not clean up credentials file: {e}")
         
     def create_dataset_if_not_exists(self):
         """Create BigQuery dataset if it doesn't exist."""
@@ -257,22 +286,15 @@ class BigQueryVoterGeocodingPipeline:
     
     def update_voter_geocoding(self, voter_id: str, result: GeocodingResult):
         """Update a single voter's geocoding information in BigQuery."""
-        geography_sql = "NULL"
-        if result.latitude and result.longitude:
-            geography_sql = f"ST_GEOGPOINT({result.longitude}, {result.latitude})"
-        
         query = f"""
         UPDATE `{self.project_id}.{self.dataset_id}.voters`
         SET 
             latitude = @latitude,
             longitude = @longitude,
-            location = {geography_sql},
             geocoding_accuracy = @accuracy,
             geocoding_source = @source,
-            geocoding_confidence = @confidence,
-            standardized_address = @standardized_address,
-            geocoding_date = CURRENT_TIMESTAMP(),
-            updated_at = CURRENT_TIMESTAMP()
+            geocoding_timestamp = CURRENT_TIMESTAMP(),
+            full_address = @full_address
         WHERE id = @voter_id
         """
         
@@ -283,8 +305,7 @@ class BigQueryVoterGeocodingPipeline:
                 bigquery.ScalarQueryParameter("longitude", "FLOAT64", result.longitude),
                 bigquery.ScalarQueryParameter("accuracy", "STRING", result.accuracy),
                 bigquery.ScalarQueryParameter("source", "STRING", result.source),
-                bigquery.ScalarQueryParameter("confidence", "FLOAT64", result.confidence),
-                bigquery.ScalarQueryParameter("standardized_address", "STRING", result.standardized_address),
+                bigquery.ScalarQueryParameter("full_address", "STRING", result.standardized_address),
             ]
         )
         
@@ -347,15 +368,15 @@ class BigQueryVoterGeocodingPipeline:
             ROUND(COUNTIF(demo_party = 'DEMOCRAT') * 100.0 / COUNT(*), 2) as democrat_pct,
             ROUND(COUNTIF(demo_party = 'UNAFFILIATED') * 100.0 / COUNT(*), 2) as unaffiliated_pct,
             
-            ST_CENTROID(ST_UNION_AGG(location)) as street_center_location,
-            ST_X(ST_CENTROID(ST_UNION_AGG(location))) as street_center_longitude,
-            ST_Y(ST_CENTROID(ST_UNION_AGG(location))) as street_center_latitude,
+            AVG(latitude) as street_center_latitude,
+            AVG(longitude) as street_center_longitude,
             
             CURRENT_TIMESTAMP() as last_updated
             
         FROM `{self.project_id}.{self.dataset_id}.voters`
         WHERE addr_residential_street_name IS NOT NULL 
-          AND location IS NOT NULL
+          AND latitude IS NOT NULL 
+          AND longitude IS NOT NULL
         GROUP BY addr_residential_street_name, addr_residential_city, county_name, addr_residential_zip_code
         HAVING COUNT(*) >= 3
         """
@@ -377,8 +398,7 @@ class BigQueryVoterGeocodingPipeline:
             COUNTIF(latitude IS NULL) as remaining_voters,
             ROUND(COUNTIF(latitude IS NOT NULL) * 100.0 / COUNT(*), 2) as completion_pct,
             COUNTIF(geocoding_source = 'GOOGLE_MAPS') as google_geocoded,
-            COUNTIF(geocoding_source = 'US_CENSUS') as census_geocoded,
-            AVG(geocoding_confidence) as avg_confidence
+            COUNTIF(geocoding_source = 'US_CENSUS') as census_geocoded
         FROM `{self.project_id}.{self.dataset_id}.voters`
         """
         
@@ -392,8 +412,7 @@ class BigQueryVoterGeocodingPipeline:
                     'remaining_voters': int(row['remaining_voters']),
                     'completion_percentage': float(row['completion_pct']),
                     'google_geocoded': int(row['google_geocoded']),
-                    'census_geocoded': int(row['census_geocoded']),
-                    'average_confidence': float(row['avg_confidence']) if row['avg_confidence'] else 0.0
+                    'census_geocoded': int(row['census_geocoded'])
                 }
             else:
                 return {}
@@ -412,24 +431,36 @@ def main():
     
     pipeline.create_dataset_if_not_exists()
     
-    df = pipeline.load_voter_data_from_csv('/home/ubuntu/export-20250729.csv')
-    pipeline.import_voters_to_bigquery(df)
+    logger.info("Skipping CSV import - data already exists in BigQuery")
     
-    while True:
+    logger.info("Starting geocoding process...")
+    batch_count = 0
+    max_batches = 50  # Limit to prevent infinite loop during testing
+    
+    while batch_count < max_batches:
         stats = pipeline.get_geocoding_stats()
         if stats:
-            logger.info(f"Geocoding progress: {stats['completion_percentage']}% complete")
+            logger.info(f"Geocoding progress: {stats.get('completion_percentage', 0)}% complete")
+            logger.info(f"Remaining voters: {stats.get('remaining_voters', 0)}")
             
-            if stats['remaining_voters'] == 0:
+            if stats.get('remaining_voters', 0) == 0:
                 logger.info("Geocoding completed!")
                 break
         
-        pipeline.geocode_voters_batch(batch_size=100)
+        logger.info(f"Processing batch {batch_count + 1}...")
+        pipeline.geocode_voters_batch(batch_size=50)  # Smaller batches for testing
+        batch_count += 1
         
-        time.sleep(1)
+        time.sleep(2)  # Longer delay to respect rate limits
     
+    if batch_count >= max_batches:
+        logger.info(f"Reached maximum batch limit ({max_batches}). Geocoding may not be complete.")
+    
+    logger.info("Refreshing street-level summary data...")
     pipeline.refresh_street_summary()
     logger.info("Pipeline completed successfully!")
+    
+    pipeline.cleanup_credentials()
 
 if __name__ == "__main__":
     main()

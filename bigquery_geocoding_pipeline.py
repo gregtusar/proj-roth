@@ -45,7 +45,7 @@ class BigQueryVoterGeocodingPipeline:
         if google_api_key:
             self.gmaps_client = googlemaps.Client(key=google_api_key)
         
-        self.requests_per_second = 10  # Adjust based on API limits
+        self.requests_per_second = 45  # Increased from 10 to 45 (safe margin under 50/sec limit)
         self.last_request_time = 0
     
     def _setup_credentials(self):
@@ -194,8 +194,11 @@ class BigQueryVoterGeocodingPipeline:
                 standardized_address=None, error=str(e)
             )
     
-    def geocode_address(self, address: str, fallback_to_census: bool = True) -> GeocodingResult:
+    def geocode_address(self, address: str, fallback_to_census: bool = None) -> GeocodingResult:
         """Geocode an address with fallback options."""
+        if fallback_to_census is None:
+            fallback_to_census = not bool(self.gmaps_client)
+        
         if self.gmaps_client:
             result = self.geocode_with_google(address)
             if result.latitude is not None:
@@ -316,7 +319,7 @@ class BigQueryVoterGeocodingPipeline:
             logger.error(f"Error updating voter {voter_id}: {e}")
             raise
     
-    def geocode_voters_batch(self, batch_size: int = 100, max_workers: int = 5):
+    def geocode_voters_batch(self, batch_size: int = 200, max_workers: int = 15):
         """Geocode voters in batches with parallel processing."""
         voters_df = self.get_voters_needing_geocoding(batch_size)
         
@@ -448,10 +451,10 @@ def main():
                 break
         
         logger.info(f"Processing batch {batch_count + 1}...")
-        pipeline.geocode_voters_batch(batch_size=50)  # Smaller batches for testing
+        pipeline.geocode_voters_batch(batch_size=200, max_workers=15)  # Increased from 50/5
         batch_count += 1
         
-        time.sleep(2)  # Longer delay to respect rate limits
+        time.sleep(0.5)  # Reduced from 2 seconds to 0.5 seconds
     
     if batch_count >= max_batches:
         logger.info(f"Reached maximum batch limit ({max_batches}). Geocoding may not be complete.")

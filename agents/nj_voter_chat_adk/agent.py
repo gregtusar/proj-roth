@@ -1,13 +1,6 @@
 from typing import Any, Dict
-try:
-    from adk import Agent, Tool
-except Exception:
-    Agent = object
-    class Tool:  # type: ignore
-        name = ""
-        description = ""
-        def run(self, **kwargs):  # type: ignore
-            return {}
+from google.adk.agents import Agent
+from google.adk.tools import Tool
 
 from .config import MODEL, SYSTEM_PROMPT
 from .bigquery_tool import BigQueryReadOnlyTool
@@ -21,18 +14,6 @@ class BQToolAdapter(Tool):
         sql = kwargs.get("sql") or kwargs.get("query") or ""
         return _bq_tool.run(sql)
 
-class NJVoterChatAgent(Agent):  # type: ignore
+class NJVoterChatAgent(Agent):
     def __init__(self):
-        try:
-            super().__init__(model=MODEL, system_instruction=SYSTEM_PROMPT, tools=[BQToolAdapter()])  # type: ignore
-        except Exception:
-            self._fallback = True
-
-    def chat(self, prompt: str):
-        try:
-            return super().chat(prompt)  # type: ignore
-        except Exception:
-            result = {"text": "ADK not available in this environment."}
-            class Resp:
-                def __init__(self, t): self.text = t; self.tool_output = {}
-            return Resp(result["text"])
+        super().__init__(model=MODEL, system_instruction=SYSTEM_PROMPT, tools=[BQToolAdapter()])

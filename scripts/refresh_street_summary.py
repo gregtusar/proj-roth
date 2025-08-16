@@ -34,7 +34,29 @@ class StreetSummaryRefresher:
         logger.info("Starting street_party_summary table refresh...")
         
         query = f"""
-        CREATE OR REPLACE TABLE `{self.project_id}.{self.dataset_id}.street_party_summary` AS
+        CREATE OR REPLACE TABLE `{self.project_id}.{self.dataset_id}.street_party_summary` (
+            street_name STRING,
+            city STRING,
+            county STRING,
+            zip_code INT64,
+            
+            republican_count INT64,
+            democrat_count INT64,
+            unaffiliated_count INT64,
+            other_party_count INT64,
+            total_voters INT64,
+            
+            republican_pct FLOAT64,
+            democrat_pct FLOAT64,
+            unaffiliated_pct FLOAT64,
+            
+            street_center_latitude FLOAT64,
+            street_center_longitude FLOAT64,
+            
+            last_updated TIMESTAMP
+        )
+        CLUSTER BY county
+        AS
         SELECT 
             addr_residential_street_name as street_name,
             addr_residential_city as city,

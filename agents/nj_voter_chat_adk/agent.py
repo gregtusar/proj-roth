@@ -18,3 +18,14 @@ class BQToolAdapter:
 class NJVoterChatAgent(Agent):
     def __init__(self):
         super().__init__(name="nj_voter_chat", model=MODEL, tools=[BQToolAdapter()])
+
+    def chat(self, prompt: str):
+        if hasattr(self, "__call__"):
+            return self(prompt)
+        if hasattr(self, "invoke"):
+            return self.invoke(prompt)
+        if hasattr(self, "run"):
+            return self.run(prompt)
+        if hasattr(self, "respond"):
+            return self.respond(prompt)
+        raise AttributeError("Agent does not support chat; no compatible invoke method found.")

@@ -13,6 +13,7 @@ import sys
 import time
 import logging
 import threading
+import random
 from queue import Queue
 from typing import List, Dict, Tuple, Optional
 import pandas as pd
@@ -68,7 +69,7 @@ class UltraFastGeocodingPipeline(BigQueryVoterGeocodingPipeline):
         self.global_rate_limiter.acquire()
     
     def batch_update_voters(self, voter_results: List[Tuple[str, GeocodingResult]]):
-        """Update multiple voters using individual parameterized updates to completely avoid SQL concatenation."""
+        """Update multiple voters using individual parameterized updates with retry logic for concurrency."""
         if not voter_results:
             return
         
@@ -77,13 +78,34 @@ class UltraFastGeocodingPipeline(BigQueryVoterGeocodingPipeline):
         successful_updates = 0
         for voter_id, result in voter_results:
             if result.latitude is not None:
-                try:
-                    self.update_voter_geocoding(voter_id, result)
+                if self._update_voter_with_retry(voter_id, result):
                     successful_updates += 1
-                except Exception as individual_error:
-                    logger.error(f"❌ Individual update failed for {voter_id}: {individual_error}")
         
         logger.info(f"✅ Successfully updated {successful_updates}/{len(voter_results)} voters")
+    
+    def _update_voter_with_retry(self, voter_id: str, result: GeocodingResult, max_retries: int = 3) -> bool:
+        """Update a single voter with exponential backoff retry for concurrency issues."""
+        for attempt in range(max_retries + 1):
+            try:
+                self.update_voter_geocoding(voter_id, result)
+                return True
+            except Exception as e:
+                error_msg = str(e).lower()
+                
+                if "concurrent update" in error_msg or "serialize access" in error_msg:
+                    if attempt < max_retries:
+                        delay = (2 ** attempt) + random.uniform(0, 1)
+                        logger.warning(f"⚠️ Concurrency conflict for {voter_id}, retrying in {delay:.2f}s (attempt {attempt + 1}/{max_retries + 1})")
+                        time.sleep(delay)
+                        continue
+                    else:
+                        logger.error(f"❌ Max retries exceeded for {voter_id} due to concurrency: {e}")
+                        return False
+                else:
+                    logger.error(f"❌ Individual update failed for {voter_id}: {e}")
+                    return False
+        
+        return False
     
     def ultra_fast_geocode_batch(self, batch_size: int = 500, max_workers: int = 25):
         """Ultra-fast batch geocoding with optimized settings."""

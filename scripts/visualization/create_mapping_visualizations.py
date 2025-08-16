@@ -288,7 +288,7 @@ class VoterMappingVisualizer:
         try:
             logger.info("🗺️  Starting BigQuery mapping visualization generation...")
             
-            voter_df = self.get_voter_data(limit=10000)
+            voter_df = self.get_street_data()
             if voter_df is None or voter_df.empty:
                 logger.error("No voter data available - cannot generate visualizations")
                 return False

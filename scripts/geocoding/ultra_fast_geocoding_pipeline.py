@@ -59,7 +59,7 @@ class UltraFastGeocodingPipeline(BigQueryVoterGeocodingPipeline):
                  google_api_key: Optional[str] = None):
         super().__init__(project_id, dataset_id, google_api_key)
         
-        self.requests_per_second = 49
+        self.requests_per_second = 50
         self.global_rate_limiter = GlobalRateLimiter(self.requests_per_second)
         
         logger.info(f"🚀 Ultra-fast pipeline initialized: {self.requests_per_second} req/sec")
@@ -107,7 +107,7 @@ class UltraFastGeocodingPipeline(BigQueryVoterGeocodingPipeline):
         
         return False
     
-    def ultra_fast_geocode_batch(self, batch_size: int = 500, max_workers: int = 25):
+    def ultra_fast_geocode_batch(self, batch_size: int = 1000, max_workers: int = 40):
         """Ultra-fast batch geocoding with optimized settings."""
         voters_df = self.get_voters_needing_geocoding(batch_size)
         
@@ -150,7 +150,7 @@ class UltraFastGeocodingPipeline(BigQueryVoterGeocodingPipeline):
                     successful_geocodes += 1
                     logger.info(f"✅ {voter_id}: {result.latitude}, {result.longitude}")
                 
-                if len(batch_results) >= 50:
+                if len(batch_results) >= 100:
                     self.batch_update_voters(batch_results)
                     batch_results = []
             
@@ -168,7 +168,7 @@ def main():
         return False
     
     logger.info("🚀 Starting ULTRA-FAST geocoding pipeline")
-    logger.info("📊 Configuration: 49 req/sec, batch_size=500, max_workers=25, batch BigQuery updates")
+    logger.info("📊 Configuration: 50 req/sec, batch_size=1000, max_workers=40, optimized for maximum throughput")
     
     pipeline = UltraFastGeocodingPipeline(
         project_id='proj-roth',
@@ -199,10 +199,9 @@ def main():
                     break
             
             logger.info(f"🔄 Processing ultra-fast batch {batch_count + 1}...")
-            pipeline.ultra_fast_geocode_batch(batch_size=500, max_workers=25)
+            pipeline.ultra_fast_geocode_batch(batch_size=1000, max_workers=40)
             batch_count += 1
             
-            time.sleep(0.1)
         
         if batch_count >= 2000:
             logger.info(f"⏸️  Reached batch limit ({batch_count}). Continue with another run.")

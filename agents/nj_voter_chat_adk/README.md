@@ -14,6 +14,7 @@ This agent uses Gemini via the Agent Development Kit (ADK) and a read-only BigQu
 python -m venv .venv
 source .venv/bin/activate
 pip install -r agents/nj_voter_chat_adk/requirements.txt
+# or: pip install google-adk
 export GOOGLE_CLOUD_PROJECT=proj-roth
 export GOOGLE_CLOUD_REGION=us-central1
 ```
@@ -27,6 +28,22 @@ python -m agents.nj_voter_chat_adk.app_cli
 ```
 streamlit run agents/nj_voter_chat_adk/app_streamlit.py
 ```
+
+## Deploy to Cloud Run (public URL)
+Prereqs:
+- You have permissions in project proj-roth and the service account agent-runner@proj-roth.iam.gserviceaccount.com exists.
+- gcloud is installed and authenticated.
+
+One-liner:
+```
+PROJECT_ID=proj-roth REGION=us-central1 bash scripts/deploy_nj_voter_chat.sh
+```
+
+This will:
+- Build a Docker image from agents/nj_voter_chat_adk/Dockerfile
+- Push it to Artifact Registry us-central1
+- Deploy Cloud Run service nj-voter-chat with unauthenticated access
+- Print the public HTTPS URL
 
 ## Guardrails
 - SELECT-only SQL

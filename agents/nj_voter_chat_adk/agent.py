@@ -1,7 +1,7 @@
 from typing import Any, Dict
 from google.adk.agents import Agent
 
-from .config import MODEL, SYSTEM_PROMPT
+from .config import MODEL
 from .bigquery_tool import BigQueryReadOnlyTool
 
 _bq_tool = BigQueryReadOnlyTool()
@@ -17,4 +17,4 @@ class BQToolAdapter:
 
 class NJVoterChatAgent(Agent):
     def __init__(self):
-        super().__init__(name="nj_voter_chat", model=MODEL, system_instructions=SYSTEM_PROMPT, tools=[BQToolAdapter()])
+        super().__init__(name="nj_voter_chat", model=MODEL, tools=[BQToolAdapter()])

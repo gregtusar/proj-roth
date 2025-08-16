@@ -85,7 +85,7 @@ class UltraFastGeocodingPipeline(BigQueryVoterGeocodingPipeline):
         
         try:
             temp_table_id = f"temp_geocoding_updates_{int(time.time() * 1000)}"
-            temp_table_ref = f"`{self.project_id}.{self.dataset_id}.{temp_table_id}`"
+            temp_table_ref = f"{self.project_id}.{self.dataset_id}.{temp_table_id}"
             
             rows_to_insert = []
             for voter_id, result in valid_results:
@@ -123,7 +123,7 @@ class UltraFastGeocodingPipeline(BigQueryVoterGeocodingPipeline):
             
             merge_query = f"""
             MERGE `{self.project_id}.{self.dataset_id}.voters` AS target
-            USING {temp_table_ref} AS source
+            USING `{temp_table_ref}` AS source
             ON target.id = source.voter_id
             WHEN MATCHED THEN
               UPDATE SET

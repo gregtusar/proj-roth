@@ -1,0 +1,8 @@
+adk-python
+google-cloud-bigquery>=3.25.0
+google-auth>=2.30.0
+google-auth-oauthlib>=1.2.0
+google-api-core>=2.19.0
+python-dotenv>=1.0.1
+streamlit>=1.36.0
+pytest>=8.2.0

@@ -19,6 +19,7 @@ from typing import List, Dict, Tuple, Optional
 import pandas as pd
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from google.cloud import bigquery
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from bigquery_geocoding_pipeline import BigQueryVoterGeocodingPipeline, GeocodingResult
@@ -69,19 +70,87 @@ class UltraFastGeocodingPipeline(BigQueryVoterGeocodingPipeline):
         self.global_rate_limiter.acquire()
     
     def batch_update_voters(self, voter_results: List[Tuple[str, GeocodingResult]]):
-        """Update multiple voters using individual parameterized updates with retry logic for concurrency."""
+        """Update multiple voters using BigQuery bulk operations for maximum performance."""
         if not voter_results:
             return
         
-        logger.info(f"🔄 Processing {len(voter_results)} voters with individual parameterized updates")
+        valid_results = [(voter_id, result) for voter_id, result in voter_results 
+                        if result.latitude is not None]
         
-        successful_updates = 0
-        for voter_id, result in voter_results:
-            if result.latitude is not None:
+        if not valid_results:
+            logger.info("No valid geocoding results to update")
+            return
+        
+        logger.info(f"🚀 Bulk updating {len(valid_results)} voters using BigQuery bulk operations")
+        
+        try:
+            temp_table_id = f"temp_geocoding_updates_{int(time.time() * 1000)}"
+            temp_table_ref = f"`{self.project_id}.{self.dataset_id}.{temp_table_id}`"
+            
+            rows_to_insert = []
+            for voter_id, result in valid_results:
+                rows_to_insert.append({
+                    'voter_id': voter_id,
+                    'latitude': result.latitude,
+                    'longitude': result.longitude,
+                    'geocoding_accuracy': result.accuracy or '',
+                    'geocoding_source': result.source,
+                    'geocoding_timestamp': 'CURRENT_TIMESTAMP()',
+                    'full_address': result.standardized_address or ''
+                })
+            
+            from google.cloud import bigquery
+            schema = [
+                bigquery.SchemaField("voter_id", "STRING"),
+                bigquery.SchemaField("latitude", "FLOAT64"),
+                bigquery.SchemaField("longitude", "FLOAT64"),
+                bigquery.SchemaField("geocoding_accuracy", "STRING"),
+                bigquery.SchemaField("geocoding_source", "STRING"),
+                bigquery.SchemaField("geocoding_timestamp", "STRING"),
+                bigquery.SchemaField("full_address", "STRING"),
+            ]
+            
+            temp_table = bigquery.Table(temp_table_ref, schema=schema)
+            temp_table = self.bq_client.create_table(temp_table)
+            logger.info(f"📊 Created temporary table: {temp_table_id}")
+            
+            errors = self.bq_client.insert_rows_json(temp_table, rows_to_insert)
+            if errors:
+                logger.error(f"❌ Failed to insert into temp table: {errors}")
+                return
+            
+            logger.info(f"📥 Inserted {len(rows_to_insert)} rows into temporary table")
+            
+            merge_query = f"""
+            MERGE `{self.project_id}.{self.dataset_id}.voters` AS target
+            USING {temp_table_ref} AS source
+            ON target.id = source.voter_id
+            WHEN MATCHED THEN
+              UPDATE SET
+                latitude = source.latitude,
+                longitude = source.longitude,
+                geocoding_accuracy = source.geocoding_accuracy,
+                geocoding_source = source.geocoding_source,
+                geocoding_timestamp = CURRENT_TIMESTAMP(),
+                full_address = source.full_address
+            """
+            
+            job = self.bq_client.query(merge_query)
+            job.result()  # Wait for completion
+            
+            logger.info(f"✅ Bulk updated {len(valid_results)} voters successfully")
+            
+            self.bq_client.delete_table(temp_table)
+            logger.info(f"🗑️ Cleaned up temporary table: {temp_table_id}")
+            
+        except Exception as e:
+            logger.error(f"❌ Bulk update failed: {e}")
+            logger.info("🔄 Falling back to individual updates...")
+            successful_updates = 0
+            for voter_id, result in valid_results:
                 if self._update_voter_with_retry(voter_id, result):
                     successful_updates += 1
-        
-        logger.info(f"✅ Successfully updated {successful_updates}/{len(voter_results)} voters")
+            logger.info(f"✅ Fallback completed: {successful_updates}/{len(valid_results)} voters updated")
     
     def _update_voter_with_retry(self, voter_id: str, result: GeocodingResult, max_retries: int = 3) -> bool:
         """Update a single voter with exponential backoff retry for concurrency issues."""
@@ -150,7 +219,7 @@ class UltraFastGeocodingPipeline(BigQueryVoterGeocodingPipeline):
                     successful_geocodes += 1
                     logger.info(f"✅ {voter_id}: {result.latitude}, {result.longitude}")
                 
-                if len(batch_results) >= 100:
+                if len(batch_results) >= 200:
                     self.batch_update_voters(batch_results)
                     batch_results = []
             

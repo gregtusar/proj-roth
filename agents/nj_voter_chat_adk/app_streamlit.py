@@ -1,5 +1,5 @@
 import streamlit as st
-from .agent import NJVoterChatAgent
+from agents.nj_voter_chat_adk.agent import NJVoterChatAgent
 
 st.set_page_config(page_title="NJ Voter Chat (ADK)", layout="wide")
 if "agent" not in st.session_state:

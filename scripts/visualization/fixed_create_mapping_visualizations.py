@@ -60,7 +60,7 @@ class VoterMappingVisualizer:
     def get_voter_data(self, limit=10000):
         """Retrieve individual voter data from BigQuery."""
         try:
-            query = f"""
+            query = """
             SELECT 
                 id,
                 first_name,
@@ -72,14 +72,22 @@ class VoterMappingVisualizer:
                 longitude,
                 geocoding_source,
                 geocoding_accuracy
-            FROM `{self.project_id}.{self.dataset_id}.voters`
+            FROM `@project_id.@dataset_id.voters`
             WHERE latitude IS NOT NULL 
             AND longitude IS NOT NULL
-            LIMIT {limit}
+            LIMIT @limit
             """
             
+            job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("project_id", "STRING", self.project_id),
+                    bigquery.ScalarQueryParameter("dataset_id", "STRING", self.dataset_id),
+                    bigquery.ScalarQueryParameter("limit", "INT64", limit),
+                ]
+            )
+            
             logger.info(f"🔍 Querying voter data (limit: {limit:,})")
-            df = self.bq_client.query(query).to_dataframe()
+            df = self.bq_client.query(query, job_config=job_config).to_dataframe()
             
             if df.empty:
                 logger.warning("No geocoded voter data found")

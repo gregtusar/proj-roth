@@ -34,7 +34,9 @@ class StreetSummaryRefresher:
         logger.info("Starting street_party_summary table refresh...")
         
         query = f"""
-        CREATE OR REPLACE TABLE `{self.project_id}.{self.dataset_id}.street_party_summary` AS
+        CREATE OR REPLACE TABLE `{self.project_id}.{self.dataset_id}.street_party_summary` 
+        CLUSTER BY county
+        AS
         SELECT 
             addr_residential_street_name as street_name,
             addr_residential_city as city,

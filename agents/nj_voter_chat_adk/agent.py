@@ -1,7 +1,7 @@
 from typing import Any, Dict
 from google.adk.agents import Agent
 
-from .config import MODEL, SYSTEM_PROMPT
+from .config import MODEL
 from .bigquery_tool import BigQueryReadOnlyTool
 
 _bq_tool = BigQueryReadOnlyTool()

@@ -1,5 +1,18 @@
 import streamlit as st
 from agents.nj_voter_chat_adk.agent import NJVoterChatAgent
+def _agent_invoke(agent, prompt: str):
+    if hasattr(agent, "chat"):
+        return agent.chat(prompt)
+    if hasattr(agent, "__call__"):
+        return agent(prompt)
+    if hasattr(agent, "invoke"):
+        return agent.invoke(prompt)
+    if hasattr(agent, "run"):
+        return agent.run(prompt)
+    if hasattr(agent, "respond"):
+        return agent.respond(prompt)
+    raise AttributeError("Agent does not support invocation")
+
 
 st.set_page_config(page_title="NJ Voter Chat (ADK)", layout="wide")
 if "agent" not in st.session_state:
@@ -18,7 +31,7 @@ if prompt:
     st.session_state.history.append(("user", prompt))
     with st.chat_message("user"):
         st.markdown(prompt)
-    resp = st.session_state.agent.chat(prompt)
+    resp = _agent_invoke(st.session_state.agent, prompt)
     answer = getattr(resp, "text", "")
     st.session_state.history.append(("assistant", answer))
     with st.chat_message("assistant"):

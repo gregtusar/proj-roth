@@ -126,18 +126,37 @@ class UltraSimpleLinearGeocoder(BigQueryVoterGeocodingPipeline):
 
 def main():
     """Entry point for ultra-simple linear geocoding."""
+    google_api_key = os.getenv('GOOGLE_MAPS_API_KEY')
+    if not google_api_key:
+        logger.error("❌ GOOGLE_MAPS_API_KEY environment variable not set!")
+        logger.error("Please set your Google Maps API key:")
+        logger.error("export GOOGLE_MAPS_API_KEY='your_api_key_here'")
+        logger.error("See docs/README_google_maps_setup.md for setup instructions")
+        return 1
+    
+    gcp_credentials = os.getenv('GCP_CREDENTIALS')
+    if not gcp_credentials:
+        logger.error("❌ GCP_CREDENTIALS environment variable not set!")
+        logger.error("Please set your GCP service account credentials:")
+        logger.error("export GCP_CREDENTIALS='your_service_account_json_here'")
+        logger.error("See docs/README.md for setup instructions")
+        return 1
+    
+    logger.info("✅ Environment variables validated successfully")
+    logger.info(f"📊 Google Maps API key: {google_api_key[:10]}... ({len(google_api_key)} chars)")
+    
     try:
-        geocoder = UltraSimpleLinearGeocoder()
+        geocoder = UltraSimpleLinearGeocoder(google_api_key=google_api_key)
         
         logger.info("🧪 Testing with small batch of 50 voters...")
         results = geocoder.run_linear_geocoding(max_voters=50)
         
         if results['total_geocoded'] > 0:
             logger.info("✅ Test successful! Linear geocoding is working.")
-            
             logger.info("💡 To process more voters, increase max_voters parameter in run_linear_geocoding()")
         else:
-            logger.warning("⚠️ No voters were geocoded. Check API key and data availability.")
+            logger.warning("⚠️ No voters were geocoded. Check API key validity and data availability.")
+            logger.warning("💡 Run diagnose_geocoding_auth.py for detailed diagnostics")
         
         return 0
     except Exception as e:

@@ -21,17 +21,33 @@ class NJVoterChatAgent(Agent):
         super().__init__(name="nj_voter_chat", model=MODEL, tools=[BQToolAdapter()])
 
     def chat(self, prompt: str):
-        if hasattr(self, "run_async"):
-            try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = None
-            if loop and loop.is_running():
-                return asyncio.ensure_future(self.run_async(prompt))
-            else:
-                return asyncio.run(self.run_async(prompt))
         if hasattr(self, "run_live"):
             return self.run_live(prompt)
+        if hasattr(self, "run_async"):
+            async def _consume():
+                last = None
+                agen = self.run_async(prompt)
+                async for chunk in agen:
+                    last = chunk
+                return last
+            try:
+                loop = None
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = None
+                if loop and loop.is_running():
+                    new_loop = asyncio.new_event_loop()
+                    try:
+                        asyncio.set_event_loop(new_loop)
+                        return new_loop.run_until_complete(_consume())
+                    finally:
+                        new_loop.close()
+                        asyncio.set_event_loop(loop)
+                else:
+                    return asyncio.run(_consume())
+            except Exception as e:
+                raise e
         if hasattr(self, "__call__"):
             return self(prompt)
         if hasattr(self, "invoke"):

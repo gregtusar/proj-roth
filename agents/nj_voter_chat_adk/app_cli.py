@@ -1,5 +1,5 @@
 import json
-from .agent import NJVoterChatAgent
+from agents.nj_voter_chat_adk.agent import NJVoterChatAgent
 
 def main():
     agent = NJVoterChatAgent()

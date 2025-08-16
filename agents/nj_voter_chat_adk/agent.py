@@ -17,4 +17,4 @@ class BQToolAdapter:
 
 class NJVoterChatAgent(Agent):
     def __init__(self):
-        super().__init__(name="nj_voter_chat", model=MODEL, system_instructions=SYSTEM_PROMPT, tools=[BQToolAdapter()])
+        super().__init__(name="nj_voter_chat", model=MODEL, tools=[BQToolAdapter()])

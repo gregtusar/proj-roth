@@ -118,4 +118,29 @@ Centroid of voters by party and county:
 
 - To change guardrails, edit the agent’s system instructions in Agent Builder.
 - To restrict data further, create and allowlist views.
+## ADK Alternative (Python)
+
+If Console-based Agent Builder is unavailable, use the Python Agent Development Kit (ADK).
+
+Location:
+- agents/nj_voter_chat_adk/
+
+Run locally:
+- python -m venv .venv && source .venv/bin/activate
+- pip install -r agents/nj_voter_chat_adk/requirements.txt
+- gcloud auth activate-service-account --key-file /path/to/key.json
+- gcloud config set project proj-roth
+- export GOOGLE_CLOUD_PROJECT=proj-roth
+- export GOOGLE_CLOUD_REGION=us-central1
+- streamlit run agents/nj_voter_chat_adk/app_streamlit.py
+- Or: python -m agents.nj_voter_chat_adk.app_cli
+
+Guardrails:
+- SELECT-only enforced
+- Allowlist: proj-roth.voter_data.{voters,street_party_summary}
+- Max rows 10k, 60s timeout
+
+Verification:
+- Ask the four prompts listed above and confirm refusal on prohibited DDL/DML.
+
 - To rotate credentials, update the service account bindings; no code changes are required.

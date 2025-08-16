@@ -60,7 +60,7 @@ class VoterMappingVisualizer:
     def get_voter_data(self, limit=10000):
         """Retrieve individual voter data from BigQuery."""
         try:
-            query = """
+            query = f"""
             SELECT 
                 id,
                 first_name,
@@ -72,7 +72,7 @@ class VoterMappingVisualizer:
                 longitude,
                 geocoding_source,
                 geocoding_accuracy
-            FROM `@project_id.@dataset_id.voters`
+            FROM `{self.project_id}.{self.dataset_id}.voters`
             WHERE latitude IS NOT NULL 
             AND longitude IS NOT NULL
             LIMIT @limit
@@ -80,8 +80,6 @@ class VoterMappingVisualizer:
             
             job_config = bigquery.QueryJobConfig(
                 query_parameters=[
-                    bigquery.ScalarQueryParameter("project_id", "STRING", self.project_id),
-                    bigquery.ScalarQueryParameter("dataset_id", "STRING", self.dataset_id),
                     bigquery.ScalarQueryParameter("limit", "INT64", limit),
                 ]
             )

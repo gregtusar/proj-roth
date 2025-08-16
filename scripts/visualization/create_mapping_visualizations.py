@@ -56,7 +56,7 @@ class VoterMappingVisualizer:
     def get_street_data(self) -> pd.DataFrame:
         """Get individual voter data from BigQuery instead of street-level aggregation."""
         
-        voter_query = """
+        voter_query = f"""
         SELECT 
             id,
             addr_residential_street_name as street_name,
@@ -68,7 +68,7 @@ class VoterMappingVisualizer:
             longitude,
             geocoding_source,
             geocoding_accuracy
-        FROM `@project_id.@dataset_id.voters`
+        FROM `{self.project_id}.{self.dataset_id}.voters`
         WHERE latitude IS NOT NULL 
           AND longitude IS NOT NULL
           AND demo_party IN ('REPUBLICAN', 'DEMOCRAT', 'UNAFFILIATED')
@@ -76,15 +76,8 @@ class VoterMappingVisualizer:
         LIMIT 5000
         """
         
-        job_config = bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ScalarQueryParameter("project_id", "STRING", self.project_id),
-                bigquery.ScalarQueryParameter("dataset_id", "STRING", self.dataset_id),
-            ]
-        )
-        
         try:
-            voter_df = self.bq_client.query(voter_query, job_config=job_config).to_dataframe()
+            voter_df = self.bq_client.query(voter_query).to_dataframe()
             logger.info(f"Retrieved {len(voter_df)} individual voter records")
             
             if voter_df.empty:
@@ -337,22 +330,15 @@ def main():
         return False
     
     try:
-        query = """
+        query = f"""
         SELECT 
             COUNT(*) as total_voters,
             COUNT(latitude) as geocoded_voters,
             ROUND(COUNT(latitude) * 100.0 / COUNT(*), 2) as geocoded_percentage
-        FROM `@project_id.@dataset_id.voters`
+        FROM `proj-roth.voter_data.voters`
         """
         
-        job_config = bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ScalarQueryParameter("project_id", "STRING", "proj-roth"),
-                bigquery.ScalarQueryParameter("dataset_id", "STRING", "voter_data"),
-            ]
-        )
-        
-        result = visualizer.bq_client.query(query, job_config=job_config).to_dataframe()
+        result = visualizer.bq_client.query(query).to_dataframe()
         total = int(result.iloc[0]['total_voters'])
         geocoded = int(result.iloc[0]['geocoded_voters'])
         percentage = float(result.iloc[0]['geocoded_percentage'])

@@ -1,13 +1,12 @@
 from typing import Any, Dict
 from google.adk.agents import Agent
-from google.adk.tools import Tool
 
 from .config import MODEL, SYSTEM_PROMPT
 from .bigquery_tool import BigQueryReadOnlyTool
 
 _bq_tool = BigQueryReadOnlyTool()
 
-class BQToolAdapter(Tool):
+class BQToolAdapter:
     name = _bq_tool.name
     description = _bq_tool.description
     def run(self, **kwargs) -> Dict[str, Any]:

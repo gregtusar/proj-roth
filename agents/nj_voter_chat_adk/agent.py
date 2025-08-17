@@ -2,6 +2,7 @@ from typing import Any, Dict
 import asyncio
 import inspect
 import time
+import os
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 
@@ -28,7 +29,9 @@ class NJVoterChatAgent(Agent):
         os.environ["GOOGLE_CLOUD_PROJECT"] = PROJECT_ID
         os.environ["GOOGLE_CLOUD_LOCATION"] = REGION
         
+        print(f"[DEBUG] Initializing agent with instruction: {SYSTEM_PROMPT[:100]}...")
         super().__init__(name="nj_voter_chat", model=MODEL, tools=[bigquery_select], instruction=SYSTEM_PROMPT)
+        print(f"[DEBUG] Agent initialized successfully with instruction parameter")
         self._initialize_services()
     
     def _initialize_services(self):
@@ -90,16 +93,25 @@ class NJVoterChatAgent(Agent):
             else:
                 print(f"[DEBUG] Reusing existing session: {self._session_id}")
             
-            message_content = types.Content(parts=[types.Part(text=prompt)])
+            if os.getenv("ADK_DEBUG_FALLBACK", "false").lower() == "true":
+                combined_prompt = f"{SYSTEM_PROMPT}\n\nUser: {prompt}"
+                message_content = types.Content(parts=[types.Part(text=combined_prompt)])
+                print(f"[DEBUG] Using fallback combined prompt: {combined_prompt[:200]}...")
+            else:
+                message_content = types.Content(parts=[types.Part(text=prompt)])
+                print(f"[DEBUG] User prompt being sent: {prompt[:200]}...")
             
-            print(f"[DEBUG] User prompt being sent: {prompt[:200]}...")
+            print(f"[DEBUG] Message content structure: {message_content}")
+            print(f"[DEBUG] Session ID: {self._session_id}, User ID: {self._user_id}")
             
+            print(f"[DEBUG] About to call runner.run_async with RunConfig")
             agen = self._runner.run_async(
                 user_id=self._user_id,
                 session_id=self._session_id,
                 new_message=message_content,
                 run_config=RunConfig()
             )
+            print(f"[DEBUG] Runner.run_async returned: {type(agen)}")
             
             if inspect.isasyncgen(agen):
                 result = _run_asyncio(_consume_async_gen(agen))
@@ -107,14 +119,17 @@ class NJVoterChatAgent(Agent):
                 result = agen
             
             if hasattr(result, 'content') and hasattr(result.content, 'parts'):
+                print(f"[DEBUG] Result has content with {len(result.content.parts)} parts")
                 text_parts = []
-                for part in result.content.parts:
+                for i, part in enumerate(result.content.parts):
+                    print(f"[DEBUG] Part {i}: has_text={hasattr(part, 'text')}, text_length={len(part.text) if hasattr(part, 'text') and part.text else 0}")
                     if hasattr(part, 'text') and part.text:
                         text_parts.append(part.text)
                 
                 if text_parts:
                     final_response = '\n'.join(text_parts)
                     print(f"[DEBUG] Extracted text response: {final_response[:200]}...")
+                    print(f"[DEBUG] Response indicates system instruction awareness: {'data assistant' in final_response.lower() or 'bigquery' in final_response.lower()}")
                     return final_response
                 else:
                     print(f"[WARNING] No text content found in response parts: {result.content.parts}")

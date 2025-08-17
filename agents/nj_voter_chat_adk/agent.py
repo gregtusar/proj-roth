@@ -10,16 +10,16 @@ from .bigquery_tool import BigQueryReadOnlyTool
 
 _bq_tool = BigQueryReadOnlyTool()
 
-class BQToolAdapter:
-    name = _bq_tool.name
-    description = _bq_tool.description
-    __name__ = _bq_tool.name
+def bigquery_select(sql: str) -> Dict[str, Any]:
+    """Executes read-only SELECT queries on approved BigQuery tables.
     
-    def run(self, **kwargs) -> Dict[str, Any]:
-        sql = kwargs.get("sql") or kwargs.get("query") or ""
-        return _bq_tool.run(sql)
-    def __call__(self, **kwargs) -> Dict[str, Any]:
-        return self.run(**kwargs)
+    Args:
+        sql (str): The SQL query to execute. Must be a SELECT query against approved tables.
+        
+    Returns:
+        Dict[str, Any]: Query results including rows, row_count, truncated flag, elapsed time, and original SQL.
+    """
+    return _bq_tool.run(sql)
 
 class NJVoterChatAgent(Agent):
     def __init__(self):
@@ -28,7 +28,7 @@ class NJVoterChatAgent(Agent):
         os.environ["GOOGLE_CLOUD_PROJECT"] = PROJECT_ID
         os.environ["GOOGLE_CLOUD_LOCATION"] = REGION
         
-        super().__init__(name="nj_voter_chat", model=MODEL, tools=[BQToolAdapter()])
+        super().__init__(name="nj_voter_chat", model=MODEL, tools=[bigquery_select])
         self._initialize_services()
     
     def _initialize_services(self):

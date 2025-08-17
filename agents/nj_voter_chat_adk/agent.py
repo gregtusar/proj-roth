@@ -4,7 +4,6 @@ import inspect
 import time
 from google.adk.agents import Agent
 from google.adk.runners import Runner
-from google.adk.agents.invocation_context import InvocationContext
 
 from .config import MODEL
 from .bigquery_tool import BigQueryReadOnlyTool

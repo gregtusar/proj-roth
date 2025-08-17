@@ -12,15 +12,30 @@ from .bigquery_tool import BigQueryReadOnlyTool
 _bq_tool = BigQueryReadOnlyTool()
 
 def bigquery_select(sql: str) -> Dict[str, Any]:
-    """Executes read-only SELECT queries on approved BigQuery tables.
+    """Executes read-only SELECT queries on approved BigQuery tables with smart field mapping.
     
     Args:
         sql (str): The SQL query to execute. Must be a SELECT query against approved tables.
+                  Common field names like 'voter_id', 'party', 'address' are automatically mapped
+                  to the correct schema field names.
         
     Returns:
-        Dict[str, Any]: Query results including rows, row_count, truncated flag, elapsed time, and original SQL.
+        Dict[str, Any]: Query results including rows, row_count, truncated flag, elapsed time, 
+                       original SQL, and mapped SQL. If an error occurs, returns error information
+                       instead of raising an exception.
     """
-    return _bq_tool.run(sql)
+    try:
+        result = _bq_tool.run(sql)
+        print(f"[DEBUG] BigQuery tool returned: {type(result)}, keys: {result.keys() if isinstance(result, dict) else 'N/A'}")
+        return result
+    except Exception as e:
+        print(f"[ERROR] BigQuery tool execution failed: {e}")
+        return {
+            "error": f"BigQuery tool execution failed: {str(e)}",
+            "sql": sql,
+            "rows": [],
+            "row_count": 0
+        }
 
 class NJVoterChatAgent(Agent):
     def __init__(self):
@@ -150,6 +165,12 @@ class NJVoterChatAgent(Agent):
             
         except Exception as e:
             print(f"[ERROR] ADK Runner invocation failed: {e}")
+            
+            error_str = str(e)
+            if any(keyword in error_str.lower() for keyword in ['bigquery', 'unrecognized name', 'invalid query', 'query failed']):
+                print(f"[INFO] Detected BigQuery-related error, returning user-friendly message")
+                return f"I encountered an issue with the database query: {error_str}. Please try rephrasing your question or check the field names you're using. Common field names include: id, demo_party, addr_residential_city, county_name, latitude, longitude."
+            
             raise RuntimeError(
                 f"Unable to invoke ADK agent using proper Runner patterns: {e}. "
                 "This indicates a fundamental issue with ADK integration. "

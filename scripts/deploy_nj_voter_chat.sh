@@ -22,9 +22,10 @@ fi
 
 gcloud auth configure-docker "${REGION}-docker.pkg.dev" -q
 
-IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest"
+COMMIT_HASH=$(git rev-parse --short HEAD)
+IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${COMMIT_HASH}-$(date +%s)"
 
-gcloud builds submit --tag "${IMAGE_URI}" --file agents/nj_voter_chat_adk/Dockerfile .
+gcloud builds submit --tag "${IMAGE_URI}" --file agents/nj_voter_chat_adk/Dockerfile --no-cache .
 
 gcloud run deploy "${SERVICE_NAME}" \
   --image "${IMAGE_URI}" \

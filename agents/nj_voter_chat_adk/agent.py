@@ -98,34 +98,23 @@ class NJVoterChatAgent(Agent):
                 message_content = types.Content(parts=[types.Part(text=combined_prompt)])
                 print(f"[DEBUG] Using fallback combined prompt: {combined_prompt[:200]}...")
             else:
-                message_content = {
-                    "role": "user",
-                    "parts": [{"text": prompt}]
-                }
-                print(f"[DEBUG] User prompt being sent with fixed structure: {prompt[:200]}...")
+                message_content = types.Content(
+                    role="user",
+                    parts=[types.Part(text=prompt)]
+                )
+                print(f"[DEBUG] User prompt being sent with proper types.Content: {prompt[:200]}...")
             
             print(f"[DEBUG] Message content structure: {message_content}")
             print(f"[DEBUG] Session ID: {self._session_id}, User ID: {self._user_id}")
             
-            print(f"[DEBUG] About to call runner.run_async with RunConfig")
-            
+            print(f"[DEBUG] About to call runner.run_async with proper types.Content")
             run_config = RunConfig()
-            if hasattr(run_config, 'request'):
-                run_config.request = message_content
-                print(f"[DEBUG] Using RunConfig.request field for message content")
-                agen = self._runner.run_async(
-                    user_id=self._user_id,
-                    session_id=self._session_id,
-                    run_config=run_config
-                )
-            else:
-                print(f"[DEBUG] Using original new_message parameter with fixed structure")
-                agen = self._runner.run_async(
-                    user_id=self._user_id,
-                    session_id=self._session_id,
-                    new_message=message_content,
-                    run_config=run_config
-                )
+            agen = self._runner.run_async(
+                user_id=self._user_id,
+                session_id=self._session_id,
+                new_message=message_content,
+                run_config=run_config
+            )
             print(f"[DEBUG] Runner.run_async returned: {type(agen)}")
             
             if inspect.isasyncgen(agen):

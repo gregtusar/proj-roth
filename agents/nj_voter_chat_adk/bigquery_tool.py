@@ -86,7 +86,8 @@ class BigQueryReadOnlyTool:
                     break
                 rows.append(dict(r))
             
-            truncated = query_job.total_rows is not None and query_job.total_rows > len(rows)
+            total_rows = getattr(query_job, 'total_rows', None)
+            truncated = total_rows is not None and total_rows > len(rows)
             return {
                 "rows": rows, 
                 "row_count": len(rows), 

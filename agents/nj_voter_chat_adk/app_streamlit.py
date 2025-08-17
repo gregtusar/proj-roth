@@ -34,15 +34,15 @@ nj_theme_css = """
     background-color: #FFFFFF;
 }
 
-/* Jersey Blue headers and accents */
+/* Black text for headers */
 h1, h2, h3 {
-    color: #0066CC !important;
+    color: #000000 !important;
     font-weight: 600;
 }
 
 /* Custom title styling */
 .main-title {
-    color: #0066CC;
+    color: #000000;
     text-align: center;
     font-size: 2.5rem;
     font-weight: 700;

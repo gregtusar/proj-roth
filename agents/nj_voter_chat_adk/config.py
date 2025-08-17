@@ -37,8 +37,7 @@ Always choose the most appropriate tool(s) for the question. Use both when it ad
 BQ_LOCATION = os.getenv("BQ_LOCATION", "US")
 
 # Google Search API Configuration
-GOOGLE_SEARCH_API_KEY = os.getenv("GOOGLE_SEARCH_API_KEY")
-GOOGLE_SEARCH_ENGINE_ID = os.getenv("GOOGLE_SEARCH_ENGINE_ID")
+# API credentials are loaded from secrets by GoogleSearchTool
 SEARCH_CACHE_TTL = int(os.getenv("SEARCH_CACHE_TTL", "3600"))  # 1 hour default
 SEARCH_MAX_RESULTS = int(os.getenv("SEARCH_MAX_RESULTS", "5"))
 SEARCH_RATE_LIMIT = int(os.getenv("SEARCH_RATE_LIMIT", "10"))  # per minute

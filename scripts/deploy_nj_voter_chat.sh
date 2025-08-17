@@ -25,7 +25,10 @@ gcloud auth configure-docker "${REGION}-docker.pkg.dev" -q
 COMMIT_HASH=$(git rev-parse --short HEAD)
 IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${COMMIT_HASH}-$(date +%s)"
 
-gcloud builds submit --tag "${IMAGE_URI}" --file agents/nj_voter_chat_adk/Dockerfile --no-cache .
+if ! gcloud builds submit --tag "${IMAGE_URI}" agents/nj_voter_chat_adk/; then
+    echo "ERROR: Docker image build failed"
+    exit 1
+fi
 
 gcloud run deploy "${SERVICE_NAME}" \
   --image "${IMAGE_URI}" \

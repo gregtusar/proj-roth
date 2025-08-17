@@ -49,7 +49,6 @@ class NJVoterChatAgent(Agent):
 
         try:
             print("[DEBUG] NJVoterChatAgent.chat -> using proper ADK Runner invocation")
-            from google.adk.sessions.session import Session
             from google.adk.sessions.in_memory_session_service import InMemorySessionService
             from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
             from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
@@ -71,12 +70,12 @@ class NJVoterChatAgent(Agent):
             
             user_id = "streamlit_user"
             session_id = f"session_{int(time.time())}"
-            session = Session(
-                id=session_id,
+            
+            session = _run_asyncio(session_service.create_session(
                 app_name="nj_voter_chat",
-                user_id=user_id
-            )
-            asyncio.run(session_service.create_session(session))
+                user_id=user_id,
+                session_id=session_id
+            ))
             
             message_content = types.Content(parts=[types.Part(text=prompt)])
             

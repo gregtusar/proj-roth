@@ -45,21 +45,50 @@ class NJVoterChatAgent(Agent):
                 last = chunk
             return last
 
+        def _call_with_variants(method, prompt_text: str):
+            attempts = []
+            attempts.append(lambda: method(prompt_text))
+            attempts.append(lambda: method(None, prompt_text))
+            attempts.append(lambda: method(input=prompt_text))
+            attempts.append(lambda: method(prompt=prompt_text))
+            attempts.append(lambda: method(text=prompt_text))
+            attempts.append(lambda: method(message=prompt_text))
+            attempts.append(lambda: method(user_input=prompt_text))
+            last_err = None
+            for i, attempt in enumerate(attempts, 1):
+                try:
+                    print(f"[DEBUG] Trying agent method call variant #{i}")
+                    return attempt()
+                except TypeError as te:
+                    last_err = te
+                    continue
+                except AttributeError as ae:
+                    last_err = ae
+                    break
+            if last_err:
+                raise last_err
+            raise RuntimeError("No viable method call variant succeeded")
+
         if hasattr(self, "run_live"):
             print("[DEBUG] NJVoterChatAgent.chat -> using run_live")
-            res = self.run_live(user_input=prompt)
-            if inspect.isasyncgen(res):
-                try:
-                    return _run_asyncio(_consume_async_gen(res))
-                except Exception as e:
-                    print("[ERROR] NJVoterChatAgent.chat run_live asyncgen consume failed:", repr(e))
-                    raise
-            return res
+            try:
+                res = _call_with_variants(self.run_live, prompt)
+            except Exception as e:
+                print("[WARN] run_live variants failed; falling back to run_async if available:", repr(e))
+                res = None
+            if res is not None:
+                if inspect.isasyncgen(res):
+                    try:
+                        return _run_asyncio(_consume_async_gen(res))
+                    except Exception as e:
+                        print("[ERROR] NJVoterChatAgent.chat run_live asyncgen consume failed:", repr(e))
+                        raise
+                return res
 
         if hasattr(self, "run_async"):
-            print("[DEBUG] NJVoterChatAgent.chat -> using run_async (async generator)")
+            print("[DEBUG] NJVoterChatAgent.chat -> using run_async (may be async generator)")
             try:
-                agen = self.run_async(user_input=prompt)
+                agen = _call_with_variants(self.run_async, prompt)
                 if inspect.isasyncgen(agen):
                     return _run_asyncio(_consume_async_gen(agen))
                 return agen

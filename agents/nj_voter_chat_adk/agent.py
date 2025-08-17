@@ -6,8 +6,8 @@ import os
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 
-from config import MODEL, PROJECT_ID, REGION, SYSTEM_PROMPT
-from bigquery_tool import BigQueryReadOnlyTool
+from .config import MODEL, PROJECT_ID, REGION, SYSTEM_PROMPT
+from .bigquery_tool import BigQueryReadOnlyTool
 
 _bq_tool = BigQueryReadOnlyTool()
 
@@ -98,8 +98,11 @@ class NJVoterChatAgent(Agent):
                 message_content = types.Content(parts=[types.Part(text=combined_prompt)])
                 print(f"[DEBUG] Using fallback combined prompt: {combined_prompt[:200]}...")
             else:
-                message_content = types.Content(parts=[types.Part(text=prompt)])
-                print(f"[DEBUG] User prompt being sent: {prompt[:200]}...")
+                message_content = {
+                    "role": "user",
+                    "parts": [{"text": prompt}]
+                }
+                print(f"[DEBUG] User prompt being sent with fixed structure: {prompt[:200]}...")
             
             print(f"[DEBUG] Message content structure: {message_content}")
             print(f"[DEBUG] Session ID: {self._session_id}, User ID: {self._user_id}")
@@ -116,7 +119,7 @@ class NJVoterChatAgent(Agent):
                     run_config=run_config
                 )
             else:
-                print(f"[DEBUG] Using original new_message parameter")
+                print(f"[DEBUG] Using original new_message parameter with fixed structure")
                 agen = self._runner.run_async(
                     user_id=self._user_id,
                     session_id=self._session_id,
@@ -157,3 +160,42 @@ class NJVoterChatAgent(Agent):
                 "This indicates a fundamental issue with ADK integration. "
                 "Please check ADK installation and dependencies."
             )
+
+    def __call__(self, prompt: str):
+        """Direct Agent invocation bypassing Runner - matches travel-concierge pattern"""
+        print(f"[DEBUG] NJVoterChatAgent.__call__ -> direct agent invocation")
+        print(f"[DEBUG] User prompt: {prompt[:200]}...")
+        
+        try:
+            from google.genai import types
+            message = types.Content(
+                role="user",
+                parts=[types.Part(text=prompt)]
+            )
+            
+            result = super().generate_content([message])
+            
+            if hasattr(result, 'text') and result.text:
+                print(f"[DEBUG] Direct agent response: {result.text[:200]}...")
+                return result.text
+            elif hasattr(result, 'content') and hasattr(result.content, 'parts'):
+                text_parts = []
+                for part in result.content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        text_parts.append(part.text)
+                if text_parts:
+                    response = '\n'.join(text_parts)
+                    print(f"[DEBUG] Direct agent response: {response[:200]}...")
+                    return response
+            
+            print(f"[WARNING] Unexpected direct agent response structure: {type(result)}")
+            return str(result)
+            
+        except Exception as e:
+            print(f"[ERROR] Direct agent invocation failed: {e}")
+            print(f"[DEBUG] Falling back to Runner approach")
+            return self.chat(prompt)
+    
+    def invoke(self, prompt: str):
+        """Alternative invocation method"""
+        return self.__call__(prompt)

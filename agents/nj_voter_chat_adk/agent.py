@@ -2,6 +2,8 @@ from typing import Any, Dict
 import asyncio
 import inspect
 from google.adk.agents import Agent
+from google.adk.runners import Runner
+from google.adk.agents.invocation_context import InvocationContext
 
 from .config import MODEL
 from .bigquery_tool import BigQueryReadOnlyTool
@@ -45,52 +47,36 @@ class NJVoterChatAgent(Agent):
                 last = chunk
             return last
 
-        def _call_with_variants(method, prompt_text: str):
-            variants = [
-                ("(None, prompt)", lambda: method(None, prompt_text)),
-                ("input=prompt", lambda: method(input=prompt_text)),
-                ("prompt=prompt", lambda: method(prompt=prompt_text)),
-            ]
-            last_err = None
-            for i, (name, attempt) in enumerate(variants, 1):
-                try:
-                    print(f"[DEBUG] Trying agent method call variant #{i}: {name}")
-                    return attempt()
-                except TypeError as te:
-                    last_err = te
-                    print(f"[DEBUG] Variant #{i} failed with TypeError: {te}")
-                    continue
-                except AttributeError as ae:
-                    last_err = ae
-                    print(f"[DEBUG] Variant #{i} failed with AttributeError: {ae}")
-                    break
-            if last_err:
-                raise last_err
-            raise RuntimeError("No viable method call variant succeeded")
-
-        if hasattr(self, "run_live"):
-            print("[DEBUG] NJVoterChatAgent.chat -> using run_live")
-            try:
-                res = _call_with_variants(self.run_live, prompt)
-            except Exception as e:
-                print("[WARN] run_live variants failed; falling back to run_async if available:", repr(e))
-                res = None
-            if res is not None:
-                if inspect.isasyncgen(res):
-                    try:
-                        return _run_asyncio(_consume_async_gen(res))
-                    except Exception as e:
-                        print("[ERROR] NJVoterChatAgent.chat run_live asyncgen consume failed:", repr(e))
-                        raise
-                return res
-
-
-        if hasattr(self, "__call__"):
-            return self(prompt)
-        if hasattr(self, "invoke"):
-            return self.invoke(prompt)
-        if hasattr(self, "run"):
-            return self.run(prompt)
-        if hasattr(self, "respond"):
-            return self.respond(prompt)
-        raise AttributeError("Agent does not support chat; no compatible invoke method found.")
+        try:
+            print("[DEBUG] NJVoterChatAgent.chat -> using Runner.run_async for proper ADK invocation")
+            runner = Runner(agent=self)
+            agen = runner.run_async(prompt)
+            if inspect.isasyncgen(agen):
+                return _run_asyncio(_consume_async_gen(agen))
+            return agen
+        except Exception as e:
+            print(f"[ERROR] Runner.run_async failed: {e}")
+            
+        try:
+            print("[DEBUG] NJVoterChatAgent.chat -> fallback to direct run_async with proper InvocationContext")
+            from google.adk.agents.session import Session
+            import uuid
+            
+            session = Session()
+            context = InvocationContext(
+                agent=self,
+                session=session,
+                invocation_id=str(uuid.uuid4()),
+                input=prompt
+            )
+            agen = self.run_async(context)
+            if inspect.isasyncgen(agen):
+                return _run_asyncio(_consume_async_gen(agen))
+            return agen
+        except Exception as e:
+            print(f"[ERROR] Direct run_async with InvocationContext failed: {e}")
+            raise RuntimeError(
+                f"Unable to invoke ADK agent: {e}. "
+                "This agent requires proper ADK framework invocation patterns. "
+                "Consider using 'adk web' or 'adk run' commands instead of direct method calls."
+            )

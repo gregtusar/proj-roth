@@ -6,12 +6,13 @@ import os
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 
-from .config import MODEL, PROJECT_ID, REGION, SYSTEM_PROMPT, GOOGLE_SEARCH_API_KEY, GOOGLE_SEARCH_ENGINE_ID
+from .config import MODEL, PROJECT_ID, REGION, SYSTEM_PROMPT
 from .bigquery_tool import BigQueryReadOnlyTool
 from .google_search_tool import GoogleSearchTool
 
 _bq_tool = BigQueryReadOnlyTool()
-_search_tool = GoogleSearchTool(api_key=GOOGLE_SEARCH_API_KEY, search_engine_id=GOOGLE_SEARCH_ENGINE_ID)
+# GoogleSearchTool will automatically read from secrets
+_search_tool = GoogleSearchTool()
 
 def bigquery_select(sql: str) -> Dict[str, Any]:
     """Executes read-only SELECT queries on approved BigQuery tables with smart field mapping.

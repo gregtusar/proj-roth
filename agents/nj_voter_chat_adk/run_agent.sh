@@ -1,9 +1,7 @@
 #!/bin/bash
 
 # Run the NJ Voter Chat agent with Google Search enabled
-
-# Load environment variables
-source "$(dirname "$0")/.env"
+# Credentials are loaded from secrets/ directory automatically
 
 # Navigate to project root
 cd "$(dirname "$0")/../.."

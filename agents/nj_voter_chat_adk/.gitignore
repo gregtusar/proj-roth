@@ -1,0 +1,24 @@
+# Secrets - NEVER commit these
+secrets/
+.secrets/
+*.secret
+api-key
+search-engine-id
+
+# Environment files with potential secrets
+.env
+.env.local
+.env.*.local
+
+# Cache and temporary files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.cache/

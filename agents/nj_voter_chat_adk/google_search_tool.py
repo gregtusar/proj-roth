@@ -14,6 +14,35 @@ class GoogleSearchTool:
     name = "google_search"
     description = "Search Google for current information about NJ politics, elections, and voter-related topics."
     
+    def _read_secret(self, secret_name: str) -> Optional[str]:
+        """Read a secret from a file.
+        
+        Args:
+            secret_name: Name of the secret file (e.g., 'api-key', 'search-engine-id')
+            
+        Returns:
+            The secret value or None if not found
+        """
+        secret_paths = [
+            f"/run/secrets/{secret_name}",  # Docker/Kubernetes style
+            f"/etc/secrets/{secret_name}",  # System secrets
+            os.path.expanduser(f"~/.secrets/{secret_name}"),  # User home secrets
+            os.path.join(os.path.dirname(__file__), "secrets", secret_name),  # Local secrets folder
+        ]
+        
+        for path in secret_paths:
+            if os.path.exists(path):
+                try:
+                    with open(path, 'r') as f:
+                        value = f.read().strip()
+                        if value:
+                            print(f"[DEBUG] Loaded {secret_name} from {path}")
+                            return value
+                except Exception as e:
+                    print(f"[WARNING] Could not read secret from {path}: {e}")
+        
+        return None
+    
     def __init__(self, api_key: Optional[str] = None, search_engine_id: Optional[str] = None):
         """Initialize the Google Search tool.
         
@@ -21,8 +50,9 @@ class GoogleSearchTool:
             api_key: Google Custom Search API key
             search_engine_id: Custom Search Engine ID
         """
-        self.api_key = api_key or os.getenv("GOOGLE_SEARCH_API_KEY")
-        self.search_engine_id = search_engine_id or os.getenv("GOOGLE_SEARCH_ENGINE_ID")
+        # Try to read from secrets files first, then environment variables
+        self.api_key = api_key or self._read_secret("api-key") or os.getenv("GOOGLE_SEARCH_API_KEY")
+        self.search_engine_id = search_engine_id or self._read_secret("search-engine-id") or os.getenv("GOOGLE_SEARCH_ENGINE_ID")
         
         if not self.api_key or not self.search_engine_id:
             print("[WARNING] Google Search API credentials not configured. Search functionality will be limited.")

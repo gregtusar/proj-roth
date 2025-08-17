@@ -100,8 +100,24 @@ class NJVoterChatAgent(Agent):
             )
             
             if inspect.isasyncgen(agen):
-                return _run_asyncio(_consume_async_gen(agen))
-            return agen
+                result = _run_asyncio(_consume_async_gen(agen))
+            else:
+                result = agen
+            
+            if hasattr(result, 'content') and hasattr(result.content, 'parts'):
+                text_parts = []
+                for part in result.content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        text_parts.append(part.text)
+                
+                if text_parts:
+                    return '\n'.join(text_parts)
+                else:
+                    print(f"[WARNING] No text content found in response parts: {result.content.parts}")
+                    return "No response content available."
+            
+            print(f"[WARNING] Unexpected response structure: {type(result)}")
+            return str(result)
             
         except Exception as e:
             print(f"[ERROR] ADK Runner invocation failed: {e}")

@@ -1,5 +1,12 @@
 import streamlit as st
-from .agent import NJVoterChatAgent
+import sys
+import os
+
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from agents.nj_voter_chat_adk.agent import NJVoterChatAgent
 def _agent_invoke(agent, prompt: str):
     if hasattr(agent, "chat"):
         return agent.chat(prompt)

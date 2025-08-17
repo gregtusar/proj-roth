@@ -51,7 +51,6 @@ class NJVoterChatAgent(Agent):
                 ("input=prompt", lambda: method(input=prompt_text)),
                 ("prompt=prompt", lambda: method(prompt=prompt_text)),
                 ("text=prompt", lambda: method(text=prompt_text)),
-                ("message=prompt", lambda: method(message=prompt_text)),
             ]
             last_err = None
             for i, (name, attempt) in enumerate(variants, 1):

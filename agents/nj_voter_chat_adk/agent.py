@@ -6,8 +6,8 @@ import os
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 
-from .config import MODEL, PROJECT_ID, REGION, SYSTEM_PROMPT
-from .bigquery_tool import BigQueryReadOnlyTool
+from config import MODEL, PROJECT_ID, REGION, SYSTEM_PROMPT
+from bigquery_tool import BigQueryReadOnlyTool
 
 _bq_tool = BigQueryReadOnlyTool()
 
@@ -105,12 +105,24 @@ class NJVoterChatAgent(Agent):
             print(f"[DEBUG] Session ID: {self._session_id}, User ID: {self._user_id}")
             
             print(f"[DEBUG] About to call runner.run_async with RunConfig")
-            agen = self._runner.run_async(
-                user_id=self._user_id,
-                session_id=self._session_id,
-                new_message=message_content,
-                run_config=RunConfig()
-            )
+            
+            run_config = RunConfig()
+            if hasattr(run_config, 'request'):
+                run_config.request = message_content
+                print(f"[DEBUG] Using RunConfig.request field for message content")
+                agen = self._runner.run_async(
+                    user_id=self._user_id,
+                    session_id=self._session_id,
+                    run_config=run_config
+                )
+            else:
+                print(f"[DEBUG] Using original new_message parameter")
+                agen = self._runner.run_async(
+                    user_id=self._user_id,
+                    session_id=self._session_id,
+                    new_message=message_content,
+                    run_config=run_config
+                )
             print(f"[DEBUG] Runner.run_async returned: {type(agen)}")
             
             if inspect.isasyncgen(agen):

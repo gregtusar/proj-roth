@@ -1,5 +1,5 @@
 import streamlit as st
-from agents.nj_voter_chat_adk.agent import NJVoterChatAgent
+from agent import NJVoterChatAgent
 def _agent_invoke(agent, prompt: str):
     if hasattr(agent, "chat"):
         return agent.chat(prompt)

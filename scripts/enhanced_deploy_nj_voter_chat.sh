@@ -232,6 +232,8 @@ setup_artifact_registry() {
 }
 
 build_and_push_image() {
+    local commit_hash=$(git rev-parse --short HEAD)
+    local unique_image_uri="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${commit_hash}-$(date +%s)"
     local image_uri="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest"
     local tagged_image_uri="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${ENVIRONMENT}-$(date +%Y%m%d-%H%M%S)"
     
@@ -241,24 +243,28 @@ build_and_push_image() {
         return
     fi
     
-    log_info "Building and pushing Docker image..."
+    log_info "Building and pushing Docker image with unique tag..."
     
     if [[ "${DRY_RUN}" == "true" ]]; then
-        log_info "[DRY RUN] Would build image with tag: ${image_uri}"
+        log_info "[DRY RUN] Would build image with unique tag: ${unique_image_uri}"
+        log_info "[DRY RUN] Would also tag as: ${image_uri}"
         log_info "[DRY RUN] Would also tag as: ${tagged_image_uri}"
-        echo "${image_uri}"
+        echo "${unique_image_uri}"
         return
     fi
     
     gcloud builds submit \
+        --tag "${unique_image_uri}" \
         --tag "${image_uri}" \
         --tag "${tagged_image_uri}" \
-        --file agents/nj_voter_chat_adk/Dockerfile .
+        --file agents/nj_voter_chat_adk/Dockerfile \
+        --no-cache .
     
-    log_success "Image built and pushed: ${image_uri}"
+    log_success "Image built and pushed: ${unique_image_uri}"
+    log_info "Also tagged as: ${image_uri}"
     log_info "Also tagged as: ${tagged_image_uri}"
     
-    echo "${image_uri}"
+    echo "${unique_image_uri}"
 }
 
 get_current_revision() {
@@ -286,6 +292,7 @@ deploy_service() {
         log_info "  Memory: ${MEMORY}"
         log_info "  CPU: ${CPU}"
         log_info "  Timeout: ${TIMEOUT}s"
+        log_info "[DRY RUN] Would migrate 100% traffic to new revision"
         return
     fi
     
@@ -301,7 +308,21 @@ deploy_service() {
         --timeout "${TIMEOUT}" \
         --set-env-vars "GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_REGION=${REGION},ENVIRONMENT=${ENVIRONMENT}" \
         --labels "environment=${ENVIRONMENT},managed-by=enhanced-deploy-script" \
-        --revision-suffix "${ENVIRONMENT}-$(date +%Y%m%d-%H%M%S)"
+        --revision-suffix "${ENVIRONMENT}-$(date +%Y%m%d-%H%M%S)" \
+        --no-traffic
+    
+    local latest_revision
+    latest_revision=$(gcloud run services describe "${SERVICE_NAME}" \
+        --region "${REGION}" \
+        --format='value(status.latestCreatedRevisionName)')
+    
+    if [[ -n "${latest_revision}" ]]; then
+        log_info "Migrating traffic to new revision: ${latest_revision}"
+        gcloud run services update-traffic "${SERVICE_NAME}" \
+            --to-revisions "${latest_revision}=100" \
+            --region "${REGION}"
+        log_success "Traffic migrated to new revision"
+    fi
     
     log_success "Service deployed successfully"
 }

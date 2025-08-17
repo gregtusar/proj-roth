@@ -22,8 +22,10 @@ class NJVoterChatAgent(Agent):
 
     def chat(self, prompt: str):
         if hasattr(self, "run_live"):
+            print("[DEBUG] NJVoterChatAgent.chat -> using run_live")
             return self.run_live(prompt)
         if hasattr(self, "run_async"):
+            print("[DEBUG] NJVoterChatAgent.chat -> using run_async (async generator)")
             async def _consume():
                 last = None
                 agen = self.run_async(prompt)
@@ -47,7 +49,8 @@ class NJVoterChatAgent(Agent):
                 else:
                     return asyncio.run(_consume())
             except Exception as e:
-                raise e
+                print("[ERROR] NJVoterChatAgent.chat run_async failed:", repr(e))
+                raise
         if hasattr(self, "__call__"):
             return self(prompt)
         if hasattr(self, "invoke"):

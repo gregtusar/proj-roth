@@ -8,7 +8,7 @@ ALLOWED_TABLES = {
     f"{PROJECT_ID}.{DATASET}.street_party_summary",
 }
 MAX_ROWS = int(os.getenv("BQ_MAX_ROWS", "10000"))
-QUERY_TIMEOUT_SECONDS = int(os.getenv("BQ_QUERY_TIMEOUT_SECONDS", "60"))
+QUERY_TIMEOUT_SECONDS = int(os.getenv("BQ_QUERY_TIMEOUT_SECONDS", "300"))
 MODEL = os.getenv("ADK_MODEL", "gemini-2.5-pro")
 SYSTEM_PROMPT = os.getenv(
     "ADK_SYSTEM_PROMPT",
@@ -73,6 +73,67 @@ QUERY EXAMPLES:
 - Count by party in Union County: SELECT demo_party, COUNT(*) FROM voter_data.voters WHERE county_name = 'UNION' GROUP BY demo_party
 - High-turnout Democrats: SELECT * FROM voter_data.voters WHERE demo_party = 'DEMOCRAT' AND participation_general_2020 = TRUE AND participation_general_2022 = TRUE
 - Streets with most Democrats: SELECT * FROM voter_data.street_party_summary WHERE county = 'UNION' ORDER BY democrat_count DESC LIMIT 10
+
+GEOSPATIAL QUERIES (using BigQuery Geography functions):
+- Find voters within 1 mile of a point (e.g., Summit train station at -74.3574, 40.7155):
+  SELECT * FROM voter_data.voters 
+  WHERE latitude IS NOT NULL 
+  AND ST_DISTANCE(ST_GEOGPOINT(longitude, latitude), ST_GEOGPOINT(-74.3574, 40.7155)) < 1609.34
+  
+- Count Democrats within 2 miles of location:
+  SELECT COUNT(*) as nearby_democrats
+  FROM voter_data.voters
+  WHERE demo_party = 'DEMOCRAT'
+  AND latitude IS NOT NULL
+  AND ST_DISTANCE(ST_GEOGPOINT(longitude, latitude), ST_GEOGPOINT(-74.3574, 40.7155)) < 3218.69
+  
+- Find voters by distance rings:
+  SELECT 
+    CASE 
+      WHEN distance_meters < 804.67 THEN '0-0.5 miles'
+      WHEN distance_meters < 1609.34 THEN '0.5-1 mile'
+      WHEN distance_meters < 3218.69 THEN '1-2 miles'
+      ELSE '2+ miles'
+    END as distance_ring,
+    COUNT(*) as voter_count,
+    SUM(CASE WHEN demo_party = 'DEMOCRAT' THEN 1 ELSE 0 END) as democrats
+  FROM (
+    SELECT demo_party,
+           ST_DISTANCE(ST_GEOGPOINT(longitude, latitude), 
+                       ST_GEOGPOINT(-74.3574, 40.7155)) as distance_meters
+    FROM voter_data.voters
+    WHERE latitude IS NOT NULL AND county_name = 'UNION'
+  )
+  GROUP BY distance_ring
+  ORDER BY distance_ring
+
+- Find nearest voters to a location:
+  SELECT name_first, name_last, addr_residential_street_name,
+         ROUND(ST_DISTANCE(ST_GEOGPOINT(longitude, latitude), 
+                          ST_GEOGPOINT(-74.3574, 40.7155)) / 1609.34, 2) as miles_away
+  FROM voter_data.voters
+  WHERE latitude IS NOT NULL AND demo_party = 'DEMOCRAT'
+  ORDER BY ST_DISTANCE(ST_GEOGPOINT(longitude, latitude), ST_GEOGPOINT(-74.3574, 40.7155))
+  LIMIT 100
+
+- Calculate voter density by area:
+  SELECT addr_residential_city,
+         COUNT(*) as total_voters,
+         COUNT(*) / ST_AREA(ST_CONVEXHULL(ST_UNION_AGG(ST_GEOGPOINT(longitude, latitude)))) * 1000000 as voters_per_sq_km
+  FROM voter_data.voters
+  WHERE latitude IS NOT NULL AND county_name = 'UNION'
+  GROUP BY addr_residential_city
+  HAVING COUNT(*) > 100
+
+BIGQUERY GEOGRAPHY FUNCTIONS:
+- ST_GEOGPOINT(longitude, latitude): Create a geographic point
+- ST_DISTANCE(point1, point2): Distance between points in meters
+- ST_DWITHIN(point1, point2, meters): Check if within distance
+- ST_BUFFER(point, meters): Create circular area around point
+- ST_CONTAINS(polygon, point): Check if point is in polygon
+- ST_AREA(polygon): Area in square meters
+- ST_LENGTH(line): Length in meters
+- Distance conversions: 1 mile = 1609.34 meters, 1 km = 1000 meters
 
 IMPORTANT:
 - Party values are UPPERCASE: 'DEMOCRAT' not 'Democrat' or 'democratic'

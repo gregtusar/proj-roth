@@ -5,7 +5,7 @@ import time
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 
-from .config import MODEL
+from .config import MODEL, PROJECT_ID, REGION
 from .bigquery_tool import BigQueryReadOnlyTool
 
 _bq_tool = BigQueryReadOnlyTool()
@@ -23,6 +23,11 @@ class BQToolAdapter:
 
 class NJVoterChatAgent(Agent):
     def __init__(self):
+        import os
+        os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "TRUE"
+        os.environ["GOOGLE_CLOUD_PROJECT"] = PROJECT_ID
+        os.environ["GOOGLE_CLOUD_LOCATION"] = REGION
+        
         super().__init__(name="nj_voter_chat", model=MODEL, tools=[BQToolAdapter()])
         self._initialize_services()
     

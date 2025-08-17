@@ -1,5 +1,6 @@
 from typing import Any, Dict
 import asyncio
+import inspect
 from google.adk.agents import Agent
 
 from .config import MODEL
@@ -21,36 +22,51 @@ class NJVoterChatAgent(Agent):
         super().__init__(name="nj_voter_chat", model=MODEL, tools=[BQToolAdapter()])
 
     def chat(self, prompt: str):
+        def _run_asyncio(coro):
+            loop = None
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = None
+            if loop and loop.is_running():
+                new_loop = asyncio.new_event_loop()
+                try:
+                    asyncio.set_event_loop(new_loop)
+                    return new_loop.run_until_complete(coro)
+                finally:
+                    new_loop.close()
+                    asyncio.set_event_loop(loop)
+            else:
+                return asyncio.run(coro)
+
+        async def _consume_async_gen(agen):
+            last = None
+            async for chunk in agen:
+                last = chunk
+            return last
+
         if hasattr(self, "run_live"):
             print("[DEBUG] NJVoterChatAgent.chat -> using run_live")
-            return self.run_live(prompt)
+            res = self.run_live(prompt)
+            if inspect.isasyncgen(res):
+                try:
+                    return _run_asyncio(_consume_async_gen(res))
+                except Exception as e:
+                    print("[ERROR] NJVoterChatAgent.chat run_live asyncgen consume failed:", repr(e))
+                    raise
+            return res
+
         if hasattr(self, "run_async"):
             print("[DEBUG] NJVoterChatAgent.chat -> using run_async (async generator)")
-            async def _consume():
-                last = None
-                agen = self.run_async(prompt)
-                async for chunk in agen:
-                    last = chunk
-                return last
             try:
-                loop = None
-                try:
-                    loop = asyncio.get_event_loop()
-                except RuntimeError:
-                    loop = None
-                if loop and loop.is_running():
-                    new_loop = asyncio.new_event_loop()
-                    try:
-                        asyncio.set_event_loop(new_loop)
-                        return new_loop.run_until_complete(_consume())
-                    finally:
-                        new_loop.close()
-                        asyncio.set_event_loop(loop)
-                else:
-                    return asyncio.run(_consume())
+                agen = self.run_async(prompt)
+                if inspect.isasyncgen(agen):
+                    return _run_asyncio(_consume_async_gen(agen))
+                return agen
             except Exception as e:
                 print("[ERROR] NJVoterChatAgent.chat run_async failed:", repr(e))
                 raise
+
         if hasattr(self, "__call__"):
             return self(prompt)
         if hasattr(self, "invoke"):

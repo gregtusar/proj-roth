@@ -8,7 +8,7 @@ from .policy import is_select_only, tables_within_allowlist
 
 class BigQueryReadOnlyTool:
     name = "bigquery_select"
-    description = "Executes read-only SELECT queries on approved tables with smart field mapping."
+    description = "Executes read-only SELECT queries on approved tables with smart field mapping. IMPORTANT: demo_party field values must be exactly 'REPUBLICAN', 'DEMOCRAT', or 'UNAFFILIATED' (case-sensitive)."
 
     FIELD_MAPPINGS = {
         'voter_id': 'id',
@@ -31,6 +31,17 @@ class BigQueryReadOnlyTool:
         'first_name': 'name_first',
         'last_name': 'name_last',
         'middle_name': 'name_middle',
+        "'Democratic'": "'DEMOCRAT'",
+        "'Democrats'": "'DEMOCRAT'",
+        "'democrat'": "'DEMOCRAT'",
+        "'democratic'": "'DEMOCRAT'",
+        "'Republican'": "'REPUBLICAN'",
+        "'Republicans'": "'REPUBLICAN'",
+        "'republican'": "'REPUBLICAN'",
+        "'Unaffiliated'": "'UNAFFILIATED'",
+        "'unaffiliated'": "'UNAFFILIATED'",
+        "'Independent'": "'UNAFFILIATED'",
+        "'independent'": "'UNAFFILIATED'",
     }
 
     def __init__(self, project_id: str = PROJECT_ID, location: str = BQ_LOCATION):
@@ -50,9 +61,16 @@ class BigQueryReadOnlyTool:
     def _apply_field_mappings(self, sql: str) -> str:
         mapped_sql = sql
         
-        for user_field, actual_field in self.FIELD_MAPPINGS.items():
+        field_mappings = {k: v for k, v in self.FIELD_MAPPINGS.items() if not k.startswith("'")}
+        for user_field, actual_field in field_mappings.items():
             pattern = r'\b' + re.escape(user_field) + r'\b'
             mapped_sql = re.sub(pattern, actual_field, mapped_sql, flags=re.IGNORECASE)
+        
+        value_mappings = {k: v for k, v in self.FIELD_MAPPINGS.items() if k.startswith("'")}
+        for user_value, actual_value in value_mappings.items():
+            user_value_unquoted = user_value.strip("'")
+            pattern = r"'" + re.escape(user_value_unquoted) + r"'"
+            mapped_sql = re.sub(pattern, actual_value, mapped_sql, flags=re.IGNORECASE)
         
         return mapped_sql
 

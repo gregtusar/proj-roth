@@ -6,10 +6,12 @@ import os
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 
-from .config import MODEL, PROJECT_ID, REGION, SYSTEM_PROMPT
+from .config import MODEL, PROJECT_ID, REGION, SYSTEM_PROMPT, GOOGLE_SEARCH_API_KEY, GOOGLE_SEARCH_ENGINE_ID
 from .bigquery_tool import BigQueryReadOnlyTool
+from .google_search_tool import GoogleSearchTool
 
 _bq_tool = BigQueryReadOnlyTool()
+_search_tool = GoogleSearchTool(api_key=GOOGLE_SEARCH_API_KEY, search_engine_id=GOOGLE_SEARCH_ENGINE_ID)
 
 def bigquery_select(sql: str) -> Dict[str, Any]:
     """Executes read-only SELECT queries on approved BigQuery tables with smart field mapping.
@@ -37,6 +39,30 @@ def bigquery_select(sql: str) -> Dict[str, Any]:
             "row_count": 0
         }
 
+def google_search(query: str, num_results: int = 5) -> Dict[str, Any]:
+    """Search Google for current information about NJ politics, elections, and voter-related topics.
+    
+    Args:
+        query (str): The search query. Will automatically add NJ context if not present.
+        num_results (int): Number of results to return (max 10, default 5).
+    
+    Returns:
+        Dict[str, Any]: Search results including title, snippet, and link for each result.
+                       Returns error information if search fails or API is not configured.
+    """
+    try:
+        # Use the NJ-specific search method to ensure NJ context
+        result = _search_tool.search_nj_specific(query, num_results)
+        print(f"[DEBUG] Google search returned {result.get('result_count', 0)} results for query: {query[:100]}")
+        return result
+    except Exception as e:
+        print(f"[ERROR] Google search failed: {e}")
+        return {
+            "error": f"Google search failed: {str(e)}",
+            "query": query,
+            "results": []
+        }
+
 class NJVoterChatAgent(Agent):
     def __init__(self):
         import os
@@ -45,8 +71,8 @@ class NJVoterChatAgent(Agent):
         os.environ["GOOGLE_CLOUD_LOCATION"] = REGION
         
         print(f"[DEBUG] Initializing agent with instruction: {SYSTEM_PROMPT[:100]}...")
-        super().__init__(name="nj_voter_chat", model=MODEL, tools=[bigquery_select], instruction=SYSTEM_PROMPT)
-        print(f"[DEBUG] Agent initialized successfully with instruction parameter")
+        super().__init__(name="nj_voter_chat", model=MODEL, tools=[bigquery_select, google_search], instruction=SYSTEM_PROMPT)
+        print(f"[DEBUG] Agent initialized successfully with instruction parameter and tools: bigquery_select, google_search")
         self._initialize_services()
     
     def _initialize_services(self):

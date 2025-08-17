@@ -31,12 +31,31 @@ if prompt:
     st.session_state.history.append(("user", prompt))
     with st.chat_message("user"):
         st.markdown(prompt)
-    resp = _agent_invoke(st.session_state.agent, prompt)
-    answer = getattr(resp, "text", "")
-    st.session_state.history.append(("assistant", answer))
-    with st.chat_message("assistant"):
-        st.markdown(answer)
-        tool_payload = getattr(resp, "tool_output", None) or {}
+    try:
+        resp = _agent_invoke(st.session_state.agent, prompt)
+        print("[DEBUG] Response type:", type(resp))
+        if resp is not None:
+            try:
+                print("[DEBUG] Response dir():", [a for a in dir(resp) if not a.startswith("_")][:50])
+                if hasattr(resp, "__dict__"):
+                    print("[DEBUG] Response __dict__ (truncated):", {k: str(v)[:200] for k, v in resp.__dict__.items()})
+            except Exception as _e:
+                print("[DEBUG] Failed to introspect resp:", repr(_e))
+        answer = getattr(resp, "text", "") if resp is not None else ""
+        tool_payload = getattr(resp, "tool_output", None) if resp is not None else None
+        if tool_payload is None:
+            tool_payload = {}
         rows = tool_payload.get("rows")
-        if rows:
-            st.dataframe(rows)
+        if not answer:
+            answer = "(No assistant text returned. See logs for details.)"
+        st.session_state.history.append(("assistant", answer))
+        with st.chat_message("assistant"):
+            st.markdown(answer)
+            if rows:
+                st.dataframe(rows)
+    except Exception as e:
+        st.session_state.history.append(("assistant", f"Error: {e}"))
+        with st.chat_message("assistant"):
+            st.exception(e)
+        import traceback
+        print("[ERROR] Exception during agent invocation:\n", traceback.format_exc())

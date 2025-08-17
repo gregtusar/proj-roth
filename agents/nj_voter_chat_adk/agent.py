@@ -5,7 +5,7 @@ import time
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 
-from .config import MODEL, PROJECT_ID, REGION
+from .config import MODEL, PROJECT_ID, REGION, SYSTEM_PROMPT
 from .bigquery_tool import BigQueryReadOnlyTool
 
 _bq_tool = BigQueryReadOnlyTool()
@@ -28,7 +28,7 @@ class NJVoterChatAgent(Agent):
         os.environ["GOOGLE_CLOUD_PROJECT"] = PROJECT_ID
         os.environ["GOOGLE_CLOUD_LOCATION"] = REGION
         
-        super().__init__(name="nj_voter_chat", model=MODEL, tools=[BQToolAdapter()])
+        super().__init__(name="nj_voter_chat", model=MODEL, tools=[BQToolAdapter()], system_instruction=SYSTEM_PROMPT)
         self._initialize_services()
     
     def _initialize_services(self):

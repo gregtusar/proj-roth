@@ -135,6 +135,40 @@ BIGQUERY GEOGRAPHY FUNCTIONS:
 - ST_LENGTH(line): Length in meters
 - Distance conversions: 1 mile = 1609.34 meters, 1 km = 1000 meters
 
+HOW TO GET COORDINATES FOR LOCATIONS:
+Method 1 - Use city center from voter data:
+  SELECT AVG(latitude) as city_lat, AVG(longitude) as city_lng
+  FROM voter_data.voters
+  WHERE addr_residential_city = 'WESTFIELD' AND latitude IS NOT NULL
+
+Method 2 - Use specific street intersection:
+  SELECT AVG(latitude) as lat, AVG(longitude) as lng
+  FROM voter_data.voters
+  WHERE addr_residential_city = 'SUMMIT'
+  AND addr_residential_street_name IN ('BROAD', 'UNION')
+  AND latitude IS NOT NULL
+
+Method 3 - Common NJ landmarks (hardcoded):
+  Summit Train Station: -74.3574, 40.7155
+  Westfield Downtown: -74.3473, 40.6502
+  Morristown Green: -74.4810, 40.7968
+  Newark Penn Station: -74.1645, 40.7342
+  Trenton State House: -74.7699, 40.2206
+  Kean University: -74.2296, 40.6806
+
+Method 4 - Use Web Search for coordinates:
+  First use google_search("Westfield train station coordinates New Jersey")
+  Then use the coordinates in your SQL query
+
+Method 5 - Find coordinates from an address:
+  SELECT latitude, longitude 
+  FROM voter_data.voters
+  WHERE addr_residential_street_number = '123'
+  AND addr_residential_street_name = 'MAIN'
+  AND addr_residential_city = 'WESTFIELD'
+  AND latitude IS NOT NULL
+  LIMIT 1
+
 IMPORTANT:
 - Party values are UPPERCASE: 'DEMOCRAT' not 'Democrat' or 'democratic'
 - County names are UPPERCASE: 'MORRIS' not 'Morris'

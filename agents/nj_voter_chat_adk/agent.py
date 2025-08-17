@@ -28,7 +28,7 @@ class NJVoterChatAgent(Agent):
         os.environ["GOOGLE_CLOUD_PROJECT"] = PROJECT_ID
         os.environ["GOOGLE_CLOUD_LOCATION"] = REGION
         
-        super().__init__(name="nj_voter_chat", model=MODEL, tools=[bigquery_select])
+        super().__init__(name="nj_voter_chat", model=MODEL, tools=[bigquery_select], instruction=SYSTEM_PROMPT)
         self._initialize_services()
     
     def _initialize_services(self):
@@ -90,10 +90,9 @@ class NJVoterChatAgent(Agent):
             else:
                 print(f"[DEBUG] Reusing existing session: {self._session_id}")
             
-            full_prompt = f"{SYSTEM_PROMPT}\n\nUser: {prompt}"
-            message_content = types.Content(parts=[types.Part(text=full_prompt)])
+            message_content = types.Content(parts=[types.Part(text=prompt)])
             
-            print(f"[DEBUG] Full prompt being sent: {full_prompt[:200]}...")
+            print(f"[DEBUG] User prompt being sent: {prompt[:200]}...")
             
             agen = self._runner.run_async(
                 user_id=self._user_id,

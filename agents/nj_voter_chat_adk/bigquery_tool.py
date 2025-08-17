@@ -8,7 +8,7 @@ from .policy import is_select_only, tables_within_allowlist
 
 class BigQueryReadOnlyTool:
     name = "bigquery_select"
-    description = "Executes read-only SELECT queries on approved tables with smart field mapping. IMPORTANT: demo_party field values must be exactly 'REPUBLICAN', 'DEMOCRAT', or 'UNAFFILIATED' (case-sensitive)."
+    description = "Executes read-only SELECT queries on approved tables with smart field mapping and geospatial support. Supports BigQuery Geography functions like ST_DISTANCE, ST_GEOGPOINT for location-based queries. IMPORTANT: demo_party field values must be exactly 'REPUBLICAN', 'DEMOCRAT', or 'UNAFFILIATED' (case-sensitive)."
 
     FIELD_MAPPINGS = {
         'voter_id': 'id',
@@ -31,6 +31,15 @@ class BigQueryReadOnlyTool:
         'first_name': 'name_first',
         'last_name': 'name_last',
         'middle_name': 'name_middle',
+        # Geospatial function mappings
+        'distance': 'ST_DISTANCE',
+        'point': 'ST_GEOGPOINT',
+        'within': 'ST_DWITHIN',
+        'buffer': 'ST_BUFFER',
+        'contains': 'ST_CONTAINS',
+        'area': 'ST_AREA',
+        'length': 'ST_LENGTH',
+        # Party value mappings
         "'Democratic'": "'DEMOCRAT'",
         "'Democrats'": "'DEMOCRAT'",
         "'democrat'": "'DEMOCRAT'",

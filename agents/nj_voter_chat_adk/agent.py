@@ -47,7 +47,7 @@ class NJVoterChatAgent(Agent):
 
         if hasattr(self, "run_live"):
             print("[DEBUG] NJVoterChatAgent.chat -> using run_live")
-            res = self.run_live(prompt)
+            res = self.run_live(user_input=prompt)
             if inspect.isasyncgen(res):
                 try:
                     return _run_asyncio(_consume_async_gen(res))
@@ -59,7 +59,7 @@ class NJVoterChatAgent(Agent):
         if hasattr(self, "run_async"):
             print("[DEBUG] NJVoterChatAgent.chat -> using run_async (async generator)")
             try:
-                agen = self.run_async(prompt)
+                agen = self.run_async(user_input=prompt)
                 if inspect.isasyncgen(agen):
                     return _run_asyncio(_consume_async_gen(agen))
                 return agen

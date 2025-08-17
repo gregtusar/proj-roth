@@ -253,18 +253,25 @@ build_and_push_image() {
         return
     fi
     
-    gcloud builds submit \
+    if ! gcloud builds submit \
         --tag "${unique_image_uri}" \
         --tag "${image_uri}" \
         --tag "${tagged_image_uri}" \
-        --file agents/nj_voter_chat_adk/Dockerfile \
-        --no-cache .
+        agents/nj_voter_chat_adk/; then
+        log_error "Docker image build failed"
+        exit 1
+    fi
     
-    log_success "Image built and pushed: ${unique_image_uri}"
-    log_info "Also tagged as: ${image_uri}"
-    log_info "Also tagged as: ${tagged_image_uri}"
-    
-    echo "${unique_image_uri}"
+    if [[ $? -eq 0 ]]; then
+        log_success "Image built and pushed: ${unique_image_uri}"
+        log_info "Also tagged as: ${image_uri}"
+        log_info "Also tagged as: ${tagged_image_uri}"
+        echo "${unique_image_uri}"
+    else
+        log_error "Failed to build and push image"
+        echo ""
+        return 1
+    fi
 }
 
 get_current_revision() {
@@ -409,6 +416,11 @@ main() {
     
     local image_uri
     image_uri=$(build_and_push_image)
+    
+    if [[ -z "${image_uri}" ]] || [[ "${image_uri}" == "" ]]; then
+        log_error "Image build failed, cannot proceed with deployment"
+        exit 1
+    fi
     
     if deploy_service "${image_uri}" "${current_revision}"; then
         log_success "Deployment completed successfully"

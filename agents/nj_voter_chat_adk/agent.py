@@ -13,6 +13,8 @@ _bq_tool = BigQueryReadOnlyTool()
 class BQToolAdapter:
     name = _bq_tool.name
     description = _bq_tool.description
+    __name__ = _bq_tool.name
+    
     def run(self, **kwargs) -> Dict[str, Any]:
         sql = kwargs.get("sql") or kwargs.get("query") or ""
         return _bq_tool.run(sql)
@@ -22,6 +24,26 @@ class BQToolAdapter:
 class NJVoterChatAgent(Agent):
     def __init__(self):
         super().__init__(name="nj_voter_chat", model=MODEL, tools=[BQToolAdapter()])
+        self._initialize_services()
+    
+    def _initialize_services(self):
+        from google.adk.sessions.in_memory_session_service import InMemorySessionService
+        from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+        from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
+        from google.adk.runners import Runner
+        
+        self._session_service = InMemorySessionService()
+        self._memory_service = InMemoryMemoryService()
+        self._artifact_service = InMemoryArtifactService()
+        self._runner = Runner(
+            app_name="nj_voter_chat",
+            agent=self,
+            session_service=self._session_service,
+            memory_service=self._memory_service,
+            artifact_service=self._artifact_service
+        )
+        self._user_id = "streamlit_user"
+        self._session_id = None
 
     def chat(self, prompt: str):
         def _run_asyncio(coro):
@@ -49,39 +71,25 @@ class NJVoterChatAgent(Agent):
 
         try:
             print("[DEBUG] NJVoterChatAgent.chat -> using proper ADK Runner invocation")
-            from google.adk.sessions.session import Session
-            from google.adk.sessions.in_memory_session_service import InMemorySessionService
-            from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-            from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
             from google.adk.agents.run_config import RunConfig
             from google.genai import types
-            import uuid
             
-            session_service = InMemorySessionService()
-            memory_service = InMemoryMemoryService()
-            artifact_service = InMemoryArtifactService()
-            
-            runner = Runner(
-                app_name="nj_voter_chat",
-                agent=self,
-                session_service=session_service,
-                memory_service=memory_service,
-                artifact_service=artifact_service
-            )
-            
-            user_id = "streamlit_user"
-            session_id = f"session_{int(time.time())}"
-            session = session_service.create_session(
-                app_name="nj_voter_chat",
-                user_id=user_id,
-                session_id=session_id
-            )
+            if not self._session_id:
+                self._session_id = f"session_{int(time.time())}"
+                session = _run_asyncio(self._session_service.create_session(
+                    app_name="nj_voter_chat",
+                    user_id=self._user_id,
+                    session_id=self._session_id
+                ))
+                print(f"[DEBUG] Created new session: {self._session_id}")
+            else:
+                print(f"[DEBUG] Reusing existing session: {self._session_id}")
             
             message_content = types.Content(parts=[types.Part(text=prompt)])
             
-            agen = runner.run_async(
-                user_id=user_id,
-                session_id=session_id,
+            agen = self._runner.run_async(
+                user_id=self._user_id,
+                session_id=self._session_id,
                 new_message=message_content,
                 run_config=RunConfig()
             )

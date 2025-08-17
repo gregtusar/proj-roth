@@ -93,16 +93,11 @@ class NJVoterChatAgent(Agent):
             else:
                 print(f"[DEBUG] Reusing existing session: {self._session_id}")
             
-            if os.getenv("ADK_DEBUG_FALLBACK", "false").lower() == "true":
-                combined_prompt = f"{SYSTEM_PROMPT}\n\nUser: {prompt}"
-                message_content = types.Content(parts=[types.Part(text=combined_prompt)])
-                print(f"[DEBUG] Using fallback combined prompt: {combined_prompt[:200]}...")
-            else:
-                message_content = {
-                    "role": "user",
-                    "parts": [{"text": prompt}]
-                }
-                print(f"[DEBUG] User prompt being sent with fixed structure: {prompt[:200]}...")
+            message_content = types.Content(
+                role="user",
+                parts=[types.Part(text=prompt)]
+            )
+            print(f"[DEBUG] User prompt being sent with proper ADK message format: {prompt[:200]}...")
             
             print(f"[DEBUG] Message content structure: {message_content}")
             print(f"[DEBUG] Session ID: {self._session_id}, User ID: {self._user_id}")

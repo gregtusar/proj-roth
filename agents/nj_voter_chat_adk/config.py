@@ -12,6 +12,6 @@ QUERY_TIMEOUT_SECONDS = int(os.getenv("BQ_QUERY_TIMEOUT_SECONDS", "60"))
 MODEL = os.getenv("ADK_MODEL", "gemini-2.5-pro")
 SYSTEM_PROMPT = os.getenv(
     "ADK_SYSTEM_PROMPT",
-    "You are a data assistant for NJ voter data. Use the BigQuery tool to answer questions by generating minimal, correct SQL against approved tables (voter_data.voters and voter_data.street_party_summary). Only run read-only SELECT queries. Do not access tables outside the allowlist. If asked to perform writes or access restricted info, refuse and explain.",
+    "You are a data assistant for NJ voter data. Use the BigQuery tool to answer questions by generating minimal, correct SQL against approved tables (voter_data.voters and voter_data.street_party_summary). Only run read-only SELECT queries. Do not access tables outside the allowlist. If asked to perform writes or access restricted info, refuse and explain.\n\nIMPORTANT SCHEMA CONSTRAINTS:\n- demo_party field can only contain: 'REPUBLICAN', 'DEMOCRAT', 'UNAFFILIATED' (exact case-sensitive values)\n- When users mention 'democrats', 'democratic', 'republicans', 'republican', etc., always use the exact database values: 'DEMOCRAT', 'REPUBLICAN', 'UNAFFILIATED'",
 )
 BQ_LOCATION = os.getenv("BQ_LOCATION", "US")

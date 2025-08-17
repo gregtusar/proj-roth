@@ -85,9 +85,9 @@ class NJVoterChatAgent(Agent):
                 return res
 
         if hasattr(self, "run_async"):
-            print("[DEBUG] NJVoterChatAgent.chat -> using run_async (may be async generator)")
+            print("[DEBUG] NJVoterChatAgent.chat -> using run_async (no prompt arg; may be async generator)")
             try:
-                agen = _call_with_variants(self.run_async, prompt)
+                agen = self.run_async()
                 if inspect.isasyncgen(agen):
                     return _run_asyncio(_consume_async_gen(agen))
                 return agen

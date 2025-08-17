@@ -5,7 +5,7 @@ import time
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 
-from .config import MODEL, PROJECT_ID, REGION
+from .config import MODEL, PROJECT_ID, REGION, SYSTEM_PROMPT
 from .bigquery_tool import BigQueryReadOnlyTool
 
 _bq_tool = BigQueryReadOnlyTool()
@@ -90,7 +90,10 @@ class NJVoterChatAgent(Agent):
             else:
                 print(f"[DEBUG] Reusing existing session: {self._session_id}")
             
-            message_content = types.Content(parts=[types.Part(text=prompt)])
+            full_prompt = f"{SYSTEM_PROMPT}\n\nUser: {prompt}"
+            message_content = types.Content(parts=[types.Part(text=full_prompt)])
+            
+            print(f"[DEBUG] Full prompt being sent: {full_prompt[:200]}...")
             
             agen = self._runner.run_async(
                 user_id=self._user_id,
@@ -111,7 +114,9 @@ class NJVoterChatAgent(Agent):
                         text_parts.append(part.text)
                 
                 if text_parts:
-                    return '\n'.join(text_parts)
+                    final_response = '\n'.join(text_parts)
+                    print(f"[DEBUG] Extracted text response: {final_response[:200]}...")
+                    return final_response
                 else:
                     print(f"[WARNING] No text content found in response parts: {result.content.parts}")
                     return "No response content available."

@@ -62,6 +62,17 @@ h1, h2, h3 {
     border-left: 4px solid #0066CC;
     border-radius: 8px;
     margin: 0.5rem 0;
+    color: #000000 !important;
+}
+
+/* Ensure all chat message content is black */
+.stChatMessage p, .stChatMessage div, .stChatMessage span {
+    color: #000000 !important;
+}
+
+/* Make sure markdown content in chat messages is black */
+.stChatMessage .stMarkdown {
+    color: #000000 !important;
 }
 
 /* Input styling */

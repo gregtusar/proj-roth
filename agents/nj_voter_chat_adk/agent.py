@@ -46,22 +46,25 @@ class NJVoterChatAgent(Agent):
             return last
 
         def _call_with_variants(method, prompt_text: str):
-            attempts = []
-            attempts.append(lambda: method(None, prompt_text))
-            attempts.append(lambda: method(input=prompt_text))
-            attempts.append(lambda: method(prompt=prompt_text))
-            attempts.append(lambda: method(text=prompt_text))
-            attempts.append(lambda: method(message=prompt_text))
+            variants = [
+                ("(None, prompt)", lambda: method(None, prompt_text)),
+                ("input=prompt", lambda: method(input=prompt_text)),
+                ("prompt=prompt", lambda: method(prompt=prompt_text)),
+                ("text=prompt", lambda: method(text=prompt_text)),
+                ("message=prompt", lambda: method(message=prompt_text)),
+            ]
             last_err = None
-            for i, attempt in enumerate(attempts, 1):
+            for i, (name, attempt) in enumerate(variants, 1):
                 try:
-                    print(f"[DEBUG] Trying agent method call variant #{i}")
+                    print(f"[DEBUG] Trying agent method call variant #{i}: {name}")
                     return attempt()
                 except TypeError as te:
                     last_err = te
+                    print(f"[DEBUG] Variant #{i} failed with TypeError: {te}")
                     continue
                 except AttributeError as ae:
                     last_err = ae
+                    print(f"[DEBUG] Variant #{i} failed with AttributeError: {ae}")
                     break
             if last_err:
                 raise last_err

@@ -2,8 +2,8 @@ from typing import Any, Dict
 import time
 from google.cloud import bigquery
 from google.api_core.client_options import ClientOptions
-from .config import PROJECT_ID, BQ_LOCATION, ALLOWED_TABLES, MAX_ROWS, QUERY_TIMEOUT_SECONDS
-from .policy import is_select_only, tables_within_allowlist
+from config import PROJECT_ID, BQ_LOCATION, ALLOWED_TABLES, MAX_ROWS, QUERY_TIMEOUT_SECONDS
+from policy import is_select_only, tables_within_allowlist
 
 class BigQueryReadOnlyTool:
     name = "bigquery_select"

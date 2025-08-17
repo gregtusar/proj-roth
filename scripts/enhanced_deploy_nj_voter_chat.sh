@@ -195,20 +195,32 @@ setup_artifact_registry() {
         return
     fi
     
+    local repo_exists=false
     if gcloud artifacts repositories describe "${REPO_NAME}" --location="${REGION}" >/dev/null 2>&1; then
+        repo_exists=true
         log_info "Artifact Registry repository already exists"
-    else
+    fi
+    
+    if [[ "${repo_exists}" == "false" ]]; then
         log_info "Creating Artifact Registry repository..."
-        if gcloud artifacts repositories create "${REPO_NAME}" \
+        
+        local create_output
+        create_output=$(gcloud artifacts repositories create "${REPO_NAME}" \
             --repository-format=docker \
             --location="${REGION}" \
-            --description="NJ Voter Chat images for ${ENVIRONMENT}" >/dev/null 2>&1; then
+            --description="NJ Voter Chat images for ${ENVIRONMENT}" 2>&1)
+        local create_exit_code=$?
+        
+        if [[ ${create_exit_code} -eq 0 ]]; then
             log_success "Artifact Registry repository created"
+        elif echo "${create_output}" | grep -q "ALREADY_EXISTS"; then
+            log_warning "Repository already exists (created by another process) - continuing"
         else
             if gcloud artifacts repositories describe "${REPO_NAME}" --location="${REGION}" >/dev/null 2>&1; then
-                log_warning "Repository creation failed but repository exists (likely created by another process) - continuing"
+                log_warning "Repository creation reported failure but repository exists - continuing"
             else
-                log_error "Failed to create Artifact Registry repository and it doesn't exist"
+                log_error "Failed to create Artifact Registry repository: ${create_output}"
+                log_error "Please check your permissions and try again"
                 exit 1
             fi
         fi

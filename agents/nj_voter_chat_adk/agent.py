@@ -71,12 +71,11 @@ class NJVoterChatAgent(Agent):
             
             user_id = "streamlit_user"
             session_id = f"session_{int(time.time())}"
-            session = Session(
-                id=session_id,
+            session = session_service.create_session(
                 app_name="nj_voter_chat",
-                user_id=user_id
+                user_id=user_id,
+                session_id=session_id
             )
-            asyncio.run(session_service.create_session(session))
             
             message_content = types.Content(parts=[types.Part(text=prompt)])
             

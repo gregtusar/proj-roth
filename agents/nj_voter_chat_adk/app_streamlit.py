@@ -41,11 +41,25 @@ if prompt:
                     print("[DEBUG] Response __dict__ (truncated):", {k: str(v)[:200] for k, v in resp.__dict__.items()})
             except Exception as _e:
                 print("[DEBUG] Failed to introspect resp:", repr(_e))
-        answer = getattr(resp, "text", "") if resp is not None else ""
-        tool_payload = getattr(resp, "tool_output", None) if resp is not None else None
-        if tool_payload is None:
-            tool_payload = {}
-        rows = tool_payload.get("rows")
+        answer = ""
+        rows = None
+        if isinstance(resp, str):
+            answer = resp
+        elif resp is not None:
+            if hasattr(resp, "text") and isinstance(getattr(resp, "text"), str):
+                answer = getattr(resp, "text")
+            elif hasattr(resp, "output_text") and isinstance(getattr(resp, "output_text"), str):
+                answer = getattr(resp, "output_text")
+            elif hasattr(resp, "content"):
+                try:
+                    answer = str(getattr(resp, "content"))
+                except Exception:
+                    pass
+            tool_payload = getattr(resp, "tool_output", None)
+            if tool_payload is None and hasattr(resp, "data"):
+                tool_payload = getattr(resp, "data")
+            if isinstance(tool_payload, dict):
+                rows = tool_payload.get("rows")
         if not answer:
             answer = "(No assistant text returned. See logs for details.)"
         st.session_state.history.append(("assistant", answer))

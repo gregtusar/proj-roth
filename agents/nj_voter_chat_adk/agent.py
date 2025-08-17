@@ -47,7 +47,6 @@ class NJVoterChatAgent(Agent):
 
         def _call_with_variants(method, prompt_text: str):
             attempts = []
-            attempts.append(lambda: method(prompt_text))
             attempts.append(lambda: method(None, prompt_text))
             attempts.append(lambda: method(input=prompt_text))
             attempts.append(lambda: method(prompt=prompt_text))

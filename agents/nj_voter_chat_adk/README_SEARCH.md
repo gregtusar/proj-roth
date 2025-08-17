@@ -5,9 +5,30 @@ The NJ Voter Chat agent now has Google Search capability in addition to BigQuery
 
 ## Configuration
 
-The following credentials are configured in `.env`:
-- **API Key**: `AIzaSyAgF90DnYRfBlTAppH3Unv2vK5yrav5Pzw`
-- **Search Engine ID**: `91907e5365c574113`
+Credentials are stored securely as secrets in the `secrets/` directory:
+- `secrets/api-key` - Google API Key
+- `secrets/search-engine-id` - Search Engine ID
+
+### Setting Up Secrets
+
+Run the setup script to configure your secrets:
+```bash
+./setup_secrets.sh
+```
+
+Or manually create the files:
+```bash
+mkdir -p secrets
+echo "your-api-key" > secrets/api-key
+echo "your-search-engine-id" > secrets/search-engine-id
+chmod 600 secrets/*
+```
+
+The tool will automatically look for secrets in these locations:
+1. `./secrets/` (local directory)
+2. `~/.secrets/` (user home)
+3. `/etc/secrets/` (system-wide)
+4. `/run/secrets/` (Docker/Kubernetes)
 
 ## Usage
 

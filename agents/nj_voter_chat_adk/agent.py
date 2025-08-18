@@ -9,10 +9,13 @@ from google.adk.runners import Runner
 from .config import MODEL, PROJECT_ID, REGION, SYSTEM_PROMPT
 from .bigquery_tool import BigQueryReadOnlyTool
 from .google_search_tool import GoogleSearchTool
+from .geocoding_tool import GeocodingTool
 
 _bq_tool = BigQueryReadOnlyTool()
 # GoogleSearchTool will automatically read from secrets
 _search_tool = GoogleSearchTool()
+# GeocodingTool will use Google Maps API
+_geocoding_tool = GeocodingTool()
 
 def bigquery_select(sql: str) -> Dict[str, Any]:
     """Executes read-only SELECT queries on approved BigQuery tables with smart field mapping.
@@ -38,6 +41,34 @@ def bigquery_select(sql: str) -> Dict[str, Any]:
             "sql": sql,
             "rows": [],
             "row_count": 0
+        }
+
+def geocode_address(address: str) -> Dict[str, Any]:
+    """Convert an address to latitude/longitude coordinates using Google Maps.
+    
+    Args:
+        address (str): The address to geocode. Can be a full address, business name, 
+                      or landmark (e.g., "123 Main St, Summit, NJ" or "Summit train station").
+                      If no state is specified, New Jersey will be assumed.
+    
+    Returns:
+        Dict[str, Any]: Contains latitude, longitude, and formatted_address if successful,
+                       or error information if geocoding fails. Useful for finding exact
+                       locations to use in geospatial BigQuery queries.
+    
+    Example:
+        >>> geocode_address("Summit train station")
+        {"latitude": 40.7155, "longitude": -74.3574, "formatted_address": "Summit Station, Summit, NJ 07901, USA"}
+    """
+    try:
+        result = _geocoding_tool.geocode(address)
+        print(f"[DEBUG] Geocoding result for '{address}': {result}")
+        return result
+    except Exception as e:
+        print(f"[ERROR] Geocoding failed: {e}")
+        return {
+            "error": f"Geocoding failed: {str(e)}",
+            "address": address
         }
 
 def google_search(query: str, num_results: int = 5) -> Dict[str, Any]:
@@ -72,8 +103,8 @@ class NJVoterChatAgent(Agent):
         os.environ["GOOGLE_CLOUD_LOCATION"] = REGION
         
         print(f"[DEBUG] Initializing agent with instruction: {SYSTEM_PROMPT[:100]}...")
-        super().__init__(name="nj_voter_chat", model=MODEL, tools=[bigquery_select, google_search], instruction=SYSTEM_PROMPT)
-        print(f"[DEBUG] Agent initialized successfully with instruction parameter and tools: bigquery_select, google_search")
+        super().__init__(name="nj_voter_chat", model=MODEL, tools=[bigquery_select, google_search, geocode_address], instruction=SYSTEM_PROMPT)
+        print(f"[DEBUG] Agent initialized successfully with instruction parameter and tools: bigquery_select, google_search, geocode_address")
         self._initialize_services()
     
     def _initialize_services(self):

@@ -1,0 +1,32 @@
+steps:
+  # Debug: Check current directory
+  - name: 'ubuntu'
+    args: ['pwd']
+  
+  # Debug: List root directory
+  - name: 'ubuntu'
+    args: ['ls', '-la']
+  
+  # Debug: Check if agents directory exists
+  - name: 'ubuntu'
+    args: ['ls', '-la', 'agents/']
+  
+  # Debug: Check nj_voter_chat_adk directory
+  - name: 'ubuntu'
+    args: ['ls', '-la', 'agents/nj_voter_chat_adk/']
+  
+  # Debug: Check if requirements.txt exists
+  - name: 'ubuntu'
+    args: ['stat', 'agents/nj_voter_chat_adk/requirements.txt']
+  
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '-t'
+      - '${_IMAGE_URI}'
+      - '-f'
+      - 'agents/nj_voter_chat_adk/Dockerfile'
+      - '.'
+images:
+  - '${_IMAGE_URI}'

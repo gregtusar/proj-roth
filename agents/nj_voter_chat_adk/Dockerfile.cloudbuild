@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+RUN apt-get update -y && apt-get install -y --no-install-recommends \
+    build-essential curl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create the expected directory structure
+RUN mkdir -p /app/agents/nj_voter_chat_adk
+
+# Copy requirements and install dependencies
+COPY requirements.txt /app/agents/nj_voter_chat_adk/requirements.txt
+RUN pip install --no-cache-dir -r /app/agents/nj_voter_chat_adk/requirements.txt
+
+# Copy all files to the correct location
+COPY . /app/agents/nj_voter_chat_adk/
+
+# Create __init__.py for the agents module
+RUN touch /app/agents/__init__.py
+
+ENV PYTHONPATH=/app
+
+# Cloud Run provides $PORT (defaults to 8080)
+ENV PORT=8080
+
+EXPOSE 8080
+
+CMD ["bash", "-lc", "streamlit run agents/nj_voter_chat_adk/app_streamlit.py --server.port $PORT --server.address 0.0.0.0"]

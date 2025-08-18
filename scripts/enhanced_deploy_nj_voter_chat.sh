@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+echo "[DEBUG] Script started in directory: $(pwd)"
+
+# Ensure we're in the project root directory
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+echo "[DEBUG] SCRIPT_DIR: $SCRIPT_DIR"
+echo "[DEBUG] PROJECT_ROOT: $PROJECT_ROOT"
+
+cd "$PROJECT_ROOT"
+echo "[DEBUG] Changed to directory: $(pwd)"
+echo "[DEBUG] Verifying we're in the right place:"
+ls -la agents/nj_voter_chat_adk/requirements.txt 2>/dev/null && echo "[DEBUG] ✓ Found requirements.txt" || echo "[DEBUG] ✗ requirements.txt not found!"
+
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -253,25 +267,60 @@ build_and_push_image() {
         return
     fi
     
-    if ! gcloud builds submit \
-        --tag "${unique_image_uri}" \
-        --tag "${image_uri}" \
-        --tag "${tagged_image_uri}" \
-        agents/nj_voter_chat_adk/; then
-        log_error "Docker image build failed"
-        exit 1
-    fi
+    # IMPORTANT: Force working from project root with absolute path
+    local original_dir=$(pwd)
+    cd /Users/gregorytusar/proj-roth
     
-    if [[ $? -eq 0 ]]; then
+    log_info "Building Docker image: ${unique_image_uri}"
+    log_info "Working directory: $(pwd)"
+    
+    # Create simple cloudbuild config (proven to work in test)
+    local temp_config="/tmp/cloudbuild_$(date +%s).yaml"
+    cat > "${temp_config}" <<'ENDCONFIG'
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '-t'
+      - '${_IMAGE_URI}'
+      - '-t'
+      - '${_LATEST_URI}'
+      - '-t'
+      - '${_TAGGED_URI}'
+      - '-f'
+      - 'agents/nj_voter_chat_adk/Dockerfile'
+      - '.'
+images:
+  - '${_IMAGE_URI}'
+  - '${_LATEST_URI}'
+  - '${_TAGGED_URI}'
+ENDCONFIG
+    
+    log_info "Running build from /Users/gregorytusar/proj-roth"
+    
+    # Run the build with explicit absolute path (proven to work)
+    gcloud builds submit \
+        --config="${temp_config}" \
+        --substitutions="_IMAGE_URI=${unique_image_uri},_LATEST_URI=${image_uri},_TAGGED_URI=${tagged_image_uri}" \
+        /Users/gregorytusar/proj-roth \
+        --timeout=1200
+    
+    local build_result=$?
+    
+    # Clean up
+    rm -f "${temp_config}"
+    cd "${original_dir}"
+    
+    if [[ ${build_result} -eq 0 ]]; then
         log_success "Image built and pushed: ${unique_image_uri}"
         log_info "Also tagged as: ${image_uri}"
         log_info "Also tagged as: ${tagged_image_uri}"
-        echo "${unique_image_uri}"
     else
-        log_error "Failed to build and push image"
-        echo ""
+        log_error "Build failed"
         return 1
     fi
+    
+    echo "${unique_image_uri}"
 }
 
 get_current_revision() {
@@ -290,6 +339,7 @@ deploy_service() {
     local current_revision="$2"
     
     log_info "Deploying to Cloud Run..."
+    log_info "Using image: ${image_uri}"
     
     if [[ "${DRY_RUN}" == "true" ]]; then
         log_info "[DRY RUN] Would deploy service ${SERVICE_NAME} with:"
@@ -313,7 +363,7 @@ deploy_service() {
         --memory "${MEMORY}" \
         --cpu "${CPU}" \
         --timeout "${TIMEOUT}" \
-        --set-env-vars "GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_REGION=${REGION},ENVIRONMENT=${ENVIRONMENT}" \
+        --set-env-vars "GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_REGION=${REGION},ENVIRONMENT=${ENVIRONMENT},GOOGLE_SEARCH_API_KEY=AIzaSyAgF90DnYRfBlTAppH3Unv2vK5yrav5Pzw,GOOGLE_SEARCH_ENGINE_ID=91907e5365c574113,BQ_QUERY_TIMEOUT_SECONDS=300,BQ_MAX_ROWS=1000000,GOOGLE_MAPS_API_KEY=AIzaSyAgF90DnYRfBlTAppH3Unv2vK5yrav5Pzw" \
         --labels "environment=${ENVIRONMENT},managed-by=enhanced-deploy-script" \
         --revision-suffix "${ENVIRONMENT}-$(date +%Y%m%d-%H%M%S)" \
         --no-traffic
@@ -417,8 +467,10 @@ main() {
     local image_uri
     image_uri=$(build_and_push_image)
     
-    if [[ -z "${image_uri}" ]] || [[ "${image_uri}" == "" ]]; then
-        log_error "Image build failed, cannot proceed with deployment"
+    log_info "Build returned image URI: ${image_uri}"
+    
+    if [[ -z "${image_uri}" ]]; then
+        log_error "Failed to get image URI from build"
         exit 1
     fi
     

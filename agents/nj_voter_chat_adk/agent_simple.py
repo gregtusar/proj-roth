@@ -54,9 +54,13 @@ class NJVoterChatAgent:
         self._initialize_services()
     
     def _initialize_services(self):
-        genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-        self._model = genai.GenerativeModel(
-            model_name=self.model.replace("gemini-", "gemini-pro") if "gemini" in self.model else "gemini-pro",
+        # Use Vertex AI with service account authentication instead of API key
+        import vertexai
+        from vertexai.generative_models import GenerativeModel
+        
+        vertexai.init(project=PROJECT_ID, location=REGION)
+        self._model = GenerativeModel(
+            model_name=self.model,
             system_instruction=self.system_prompt
         )
         self._session_id = None

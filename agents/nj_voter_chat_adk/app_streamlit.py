@@ -22,8 +22,8 @@ def _agent_invoke(agent, prompt: str):
 
 
 st.set_page_config(
-    page_title="NJ Voter Chat (ADK)", 
-    page_icon="🏛️",
+    page_title="Greywolf Analytics", 
+    page_icon="🐺",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -34,6 +34,37 @@ nj_theme_css = """
     background-color: #FFFFFF;
 }
 
+/* Fixed header styling */
+.fixed-header {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    background-color: #FFFFFF;
+    z-index: 999;
+    padding: 1.5rem 0 0.5rem 0;
+    border-bottom: 2px solid #E3F2FD;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.header-content {
+    text-align: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.logo-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.logo-container img {
+    width: 80px;
+    height: 80px;
+}
+
 /* Black text for headers */
 h1, h2, h3 {
     color: #000000 !important;
@@ -42,18 +73,18 @@ h1, h2, h3 {
 
 /* Custom title styling */
 .main-title {
-    color: #000000;
+    color: #2C5282;
     text-align: center;
-    font-size: 2.5rem;
+    font-size: 1.8rem;
     font-weight: 700;
-    margin-bottom: 0.5rem;
+    margin: 0;
 }
 
-.subtitle {
-    color: #666666;
-    text-align: center;
-    font-style: italic;
-    margin-bottom: 2rem;
+/* Add padding to main content to account for fixed header and footer */
+.main-content {
+    padding-top: 250px;
+    padding-bottom: 100px;
+    min-height: calc(100vh - 350px);
 }
 
 /* Chat message styling */
@@ -75,7 +106,19 @@ h1, h2, h3 {
     color: #000000 !important;
 }
 
-/* Input styling */
+/* Input styling - fixed at bottom */
+.stChatInput {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #FFFFFF;
+    padding: 1rem;
+    border-top: 2px solid #E3F2FD;
+    box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+    z-index: 998;
+}
+
 .stChatInput > div > div > input {
     border: 2px solid #E3F2FD;
     border-radius: 8px;
@@ -85,6 +128,7 @@ h1, h2, h3 {
     border-color: #0066CC;
     box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
 }
+
 
 /* Loading spinner styling */
 .stSpinner {
@@ -119,8 +163,32 @@ if "agent" not in st.session_state:
 if "history" not in st.session_state:
     st.session_state.history = []
 
-st.markdown('<h1 class="main-title">🏛️ New Jersey Voter Data Chat</h1>', unsafe_allow_html=True)
-st.markdown('<p class="subtitle">Powered by Google Gemini & BigQuery • Garden State Analytics</p>', unsafe_allow_html=True)
+# Create fixed header with logo and title
+import base64
+from pathlib import Path
+
+# Load and encode the logo
+logo_path = Path(__file__).parent / "greywolf_logo.png"
+if logo_path.exists():
+    with open(logo_path, "rb") as f:
+        logo_data = base64.b64encode(f.read()).decode()
+    logo_html = f'<img src="data:image/png;base64,{logo_data}" alt="Greywolf Logo">'
+else:
+    logo_html = '🐺'  # Fallback if logo not found
+
+header_html = f"""
+<div class="fixed-header">
+    <div class="header-content">
+        <div class="logo-container">
+            {logo_html}
+        </div>
+        <h1 class="main-title">Greywolf Analytics, LLC</h1>
+    </div>
+</div>
+<div class="main-content">
+"""
+
+st.markdown(header_html, unsafe_allow_html=True)
 
 for role, content in st.session_state.history:
     with st.chat_message(role):
@@ -174,3 +242,6 @@ if prompt:
             st.exception(e)
         import traceback
         print("[ERROR] Exception during agent invocation:\n", traceback.format_exc())
+
+# Close the main-content div
+st.markdown("</div>", unsafe_allow_html=True)

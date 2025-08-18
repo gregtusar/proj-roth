@@ -51,6 +51,13 @@ class BigQueryReadOnlyTool:
         "'unaffiliated'": "'UNAFFILIATED'",
         "'Independent'": "'UNAFFILIATED'",
         "'independent'": "'UNAFFILIATED'",
+        # Congressional district mappings
+        "'NJ-07'": "'NJ CONGRESSIONAL DISTRICT 07'",
+        "'NJ-7'": "'NJ CONGRESSIONAL DISTRICT 07'",
+        "'NJ07'": "'NJ CONGRESSIONAL DISTRICT 07'",
+        "'District 7'": "'NJ CONGRESSIONAL DISTRICT 07'",
+        "'7th District'": "'NJ CONGRESSIONAL DISTRICT 07'",
+        "'7th Congressional District'": "'NJ CONGRESSIONAL DISTRICT 07'",
     }
 
     def __init__(self, project_id: str = PROJECT_ID, location: str = BQ_LOCATION):

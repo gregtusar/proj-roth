@@ -10,6 +10,7 @@ if project_root not in sys.path:
 from agents.nj_voter_chat_adk import suppress_warnings
 
 from agents.nj_voter_chat_adk.agent import NJVoterChatAgent
+from agents.nj_voter_chat_adk.auth import check_authentication, GoogleAuthenticator
 def _agent_invoke(agent, prompt: str):
     if hasattr(agent, "chat"):
         return agent.chat(prompt)
@@ -30,6 +31,12 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
+# Check authentication before proceeding
+if not check_authentication():
+    # Redirect to login page
+    st.switch_page("login.py")
+    st.stop()
 nj_theme_css = """
 <style>
 /* Light mode background */
@@ -88,6 +95,27 @@ h1, h2, h3 {
     padding-top: 250px;
     padding-bottom: 100px;
     min-height: calc(100vh - 350px);
+}
+
+/* User info styling */
+.user-info {
+    position: fixed;
+    top: 10px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.user-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
 }
 
 /* Chat message styling */
@@ -165,6 +193,28 @@ if "agent" not in st.session_state:
     st.session_state.agent = NJVoterChatAgent()
 if "history" not in st.session_state:
     st.session_state.history = []
+
+# User info and logout button in top right
+if "user_info" in st.session_state:
+    user_info = st.session_state["user_info"]
+    user_email = user_info.get("email", "")
+    user_name = user_info.get("full_name", user_email)
+    user_picture = user_info.get("picture_url", "")
+    
+    # Display user info in top right
+    st.markdown(f"""
+        <div class="user-info">
+            {f'<img src="{user_picture}" class="user-avatar" alt="User" />' if user_picture else ''}
+            <span>{user_name}</span>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Add logout button in sidebar
+    with st.sidebar:
+        if st.button("🚪 Logout", type="secondary", use_container_width=True):
+            auth = GoogleAuthenticator()
+            auth.logout()
+            st.rerun()
 
 # Create fixed header with logo and title
 import base64

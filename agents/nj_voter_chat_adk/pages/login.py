@@ -2,10 +2,12 @@
 Login page for NJ Voter Chat with Google OAuth
 """
 import streamlit as st
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from auth import GoogleAuthenticator, check_authentication
 import logging
 from PIL import Image
-import os
 
 logger = logging.getLogger(__name__)
 

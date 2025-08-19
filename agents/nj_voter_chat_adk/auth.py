@@ -22,7 +22,11 @@ class GoogleAuthenticator:
     def __init__(self):
         self.client_id = self._get_client_id()
         self.client_secret = self._get_client_secret()
-        self.redirect_uri = os.getenv("OAUTH_REDIRECT_URI", "http://localhost:8501")
+        # Use the actual Cloud Run URL or localhost for development
+        default_uri = "https://nj-voter-chat-nwv4o72vjq-uc.a.run.app"
+        if os.getenv("PORT") != "8080":  # Local development
+            default_uri = "http://localhost:8501"
+        self.redirect_uri = os.getenv("OAUTH_REDIRECT_URI", default_uri)
         self.bigquery_client = bigquery.Client(project="proj-roth")
         self.jwt_secret = self._get_jwt_secret()
         self.token_expiry_days = 7

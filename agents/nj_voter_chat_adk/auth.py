@@ -32,7 +32,7 @@ class GoogleAuthenticator:
         client_id = os.getenv("GOOGLE_OAUTH_CLIENT_ID")
         if not client_id:
             try:
-                from .secret_manager import SecretManagerClient
+                from agents.nj_voter_chat_adk.secret_manager import SecretManagerClient
                 sm_client = SecretManagerClient()
                 client_id = sm_client.get_secret("google-oauth-client-id")
             except Exception as e:
@@ -44,7 +44,7 @@ class GoogleAuthenticator:
         client_secret = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET")
         if not client_secret:
             try:
-                from .secret_manager import SecretManagerClient
+                from agents.nj_voter_chat_adk.secret_manager import SecretManagerClient
                 sm_client = SecretManagerClient()
                 client_secret = sm_client.get_secret("google-oauth-client-secret")
             except Exception as e:
@@ -56,7 +56,7 @@ class GoogleAuthenticator:
         jwt_secret = os.getenv("JWT_SECRET_KEY")
         if not jwt_secret:
             try:
-                from .secret_manager import SecretManagerClient
+                from agents.nj_voter_chat_adk.secret_manager import SecretManagerClient
                 sm_client = SecretManagerClient()
                 jwt_secret = sm_client.get_secret("jwt-secret-key")
             except Exception as e:

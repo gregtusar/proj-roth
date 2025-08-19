@@ -21,8 +21,7 @@ CREATE TABLE IF NOT EXISTS `proj-roth.voter_data.authorized_users` (
 PARTITION BY DATE(created_at)
 CLUSTER BY email;
 
--- Create index on user_id for faster lookups
-CREATE INDEX IF NOT EXISTS idx_user_id ON `proj-roth.voter_data.authorized_users`(user_id);
+-- Note: BigQuery automatically optimizes queries, explicit indexes are not needed/supported
 
 -- Initial admin user (replace with your email)
 -- INSERT INTO `proj-roth.voter_data.authorized_users` (

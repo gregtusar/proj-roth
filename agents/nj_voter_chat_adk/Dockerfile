@@ -10,11 +10,15 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     build-essential curl ca-certificates git \
     && rm -rf /var/lib/apt/lists/*
 
-COPY agents/nj_voter_chat_adk/requirements.txt /app/agents/nj_voter_chat_adk/requirements.txt
+# Copy requirements and install dependencies
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir --verbose -r /app/requirements.txt
 
-RUN pip install --no-cache-dir --verbose -r /app/agents/nj_voter_chat_adk/requirements.txt
+# Copy all agent files
+COPY . /app/agents/nj_voter_chat_adk/
 
-COPY agents/ /app/agents/
+# Set up parent directory structure for imports
+RUN mkdir -p /app/agents && touch /app/agents/__init__.py
 
 ENV PYTHONPATH=/app
 ENV PORT=8080

@@ -34,8 +34,9 @@ st.set_page_config(
 
 # Check authentication before proceeding
 if not check_authentication():
-    # Redirect to login page
-    st.switch_page("login.py")
+    # Show login interface
+    from agents.nj_voter_chat_adk.pages.login import show_login_page
+    show_login_page()
     st.stop()
 nj_theme_css = """
 <style>

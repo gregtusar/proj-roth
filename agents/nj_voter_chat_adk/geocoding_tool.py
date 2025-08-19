@@ -5,6 +5,8 @@ from urllib.parse import quote_plus
 import time
 import hashlib
 from datetime import datetime
+from .debug_config import debug_print, error_print
+from .secret_manager import load_secret
 
 
 class GeocodingTool:
@@ -19,10 +21,22 @@ class GeocodingTool:
         Args:
             api_key: Google Maps API key
         """
-        self.api_key = api_key or os.getenv("GOOGLE_MAPS_API_KEY")
+        # Try multiple sources for API key:
+        # 1. Provided argument
+        # 2. Google Secret Manager (try multiple possible names)
+        # 3. Environment variable
+        # 4. Local secret files
         
+        self.api_key = (
+            api_key or 
+            load_secret("google-maps-api-key", "GOOGLE_MAPS_API_KEY") or
+            load_secret("maps-api-key", "GOOGLE_MAPS_API_KEY") or
+            load_secret("api-key", "GOOGLE_MAPS_API_KEY") or  # Generic api-key might be Maps
+            os.getenv("GOOGLE_MAPS_API_KEY")
+        )
+        
+        # Also try reading from local secret files as fallback
         if not self.api_key:
-            # Try to read from secrets file
             secret_paths = [
                 f"/run/secrets/maps-api-key",
                 os.path.join(os.path.dirname(__file__), "secrets", "maps-api-key"),
@@ -33,6 +47,7 @@ class GeocodingTool:
                         with open(path, 'r') as f:
                             self.api_key = f.read().strip()
                             if self.api_key:
+                                debug_print(f"[DEBUG] Loaded Maps API key from {path}")
                                 break
                     except:
                         pass
@@ -61,7 +76,7 @@ class GeocodingTool:
             cached = self._cache[cache_key]
             age = (datetime.now() - cached["timestamp"]).total_seconds()
             if age < self._cache_ttl:
-                print(f"[DEBUG] Geocoding cache hit (age: {age:.0f}s)")
+                debug_print(f"[DEBUG] Geocoding cache hit (age: {age:.0f}s)")
                 return {
                     "latitude": cached["lat"],
                     "longitude": cached["lng"],
@@ -138,7 +153,7 @@ class GeocodingTool:
             else:
                 params["bounds"] = bounds
             
-            print(f"[DEBUG] Geocoding address: {address}")
+            debug_print(f"[DEBUG] Geocoding address: {address}")
             response = requests.get(self.api_url, params=params, timeout=5)
             
             if response.status_code == 200:
@@ -299,7 +314,7 @@ class GeocodingTool:
                 "key": self.api_key
             }
             
-            print(f"[DEBUG] Reverse geocoding: {latitude}, {longitude}")
+            debug_print(f"[DEBUG] Reverse geocoding: {latitude}, {longitude}")
             response = requests.get(self.api_url, params=params, timeout=5)
             
             if response.status_code == 200:

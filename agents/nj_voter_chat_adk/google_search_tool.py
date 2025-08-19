@@ -6,6 +6,8 @@ import os
 from datetime import datetime, timedelta
 import requests
 from urllib.parse import quote_plus
+from .debug_config import debug_print, error_print
+from .secret_manager import load_secret
 
 
 class GoogleSearchTool:
@@ -36,7 +38,7 @@ class GoogleSearchTool:
                     with open(path, 'r') as f:
                         value = f.read().strip()
                         if value:
-                            print(f"[DEBUG] Loaded {secret_name} from {path}")
+                            debug_print(f"[DEBUG] Loaded {secret_name} from {path}")
                             return value
                 except Exception as e:
                     print(f"[WARNING] Could not read secret from {path}: {e}")
@@ -50,9 +52,27 @@ class GoogleSearchTool:
             api_key: Google Custom Search API key
             search_engine_id: Custom Search Engine ID
         """
-        # Try to read from secrets files first, then environment variables
-        self.api_key = api_key or self._read_secret("api-key") or os.getenv("GOOGLE_SEARCH_API_KEY")
-        self.search_engine_id = search_engine_id or self._read_secret("search-engine-id") or os.getenv("GOOGLE_SEARCH_ENGINE_ID")
+        # Try multiple sources for credentials:
+        # 1. Provided arguments
+        # 2. Google Secret Manager (with correct secret names)
+        # 3. Local secret files
+        # 4. Environment variables
+        
+        self.api_key = (
+            api_key or 
+            load_secret("google-search-api-key", "GOOGLE_SEARCH_API_KEY") or
+            load_secret("api-key", "GOOGLE_SEARCH_API_KEY") or  # This is the actual secret name in your project
+            self._read_secret("api-key") or 
+            os.getenv("GOOGLE_SEARCH_API_KEY")
+        )
+        
+        self.search_engine_id = (
+            search_engine_id or 
+            load_secret("google-search-cx", "GOOGLE_SEARCH_ENGINE_ID") or
+            load_secret("search-engine-id", "GOOGLE_SEARCH_ENGINE_ID") or  # This is the actual secret name
+            self._read_secret("search-engine-id") or 
+            os.getenv("GOOGLE_SEARCH_ENGINE_ID")
+        )
         
         if not self.api_key or not self.search_engine_id:
             print("[WARNING] Google Search API credentials not configured. Search functionality will be limited.")
@@ -82,7 +102,7 @@ class GoogleSearchTool:
             cached = self._cache[cache_key]
             age = (datetime.now() - cached["timestamp"]).total_seconds()
             if age < self._cache_ttl:
-                print(f"[DEBUG] Cache hit for search query (age: {age:.0f}s)")
+                debug_print(f"[DEBUG] Cache hit for search query (age: {age:.0f}s)")
                 return cached["results"]
         return None
     
@@ -170,7 +190,7 @@ class GoogleSearchTool:
                 # "siteSearchFilter": "i"  # include these sites
             }
             
-            print(f"[DEBUG] Searching Google for: {query[:100]}...")
+            debug_print(f"[DEBUG] Searching Google for: {query[:100]}...")
             response = requests.get(self.api_url, params=params, timeout=10)
             
             if response.status_code == 429:
@@ -212,12 +232,12 @@ class GoogleSearchTool:
             # Cache the results
             self._update_cache(cache_key, output)
             
-            print(f"[DEBUG] Search returned {len(results)} results")
+            debug_print(f"[DEBUG] Search returned {len(results)} results")
             return output
             
         except requests.exceptions.RequestException as e:
             error_msg = f"Search request failed: {str(e)}"
-            print(f"[ERROR] {error_msg}")
+            error_print(f"[ERROR] {error_msg}")
             return {
                 "error": error_msg,
                 "query": query,
@@ -225,7 +245,7 @@ class GoogleSearchTool:
             }
         except Exception as e:
             error_msg = f"Unexpected error during search: {str(e)}"
-            print(f"[ERROR] {error_msg}")
+            error_print(f"[ERROR] {error_msg}")
             return {
                 "error": error_msg,
                 "query": query,

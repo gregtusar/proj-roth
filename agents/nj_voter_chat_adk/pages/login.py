@@ -31,6 +31,19 @@ def show_login_page():
             text-align: center;
             margin-bottom: 2rem;
         }
+        .title-container h1 {
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .title-container h3 {
+            color: #666;
+            font-weight: normal;
+        }
+        .login-instruction {
+            text-align: center;
+            color: #333;
+            margin: 2rem 0;
+        }
         </style>
     """, unsafe_allow_html=True)
     
@@ -51,36 +64,44 @@ def show_login_page():
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        # Logo and title
-        st.markdown('<div class="title-container">', unsafe_allow_html=True)
+        # Logo and title - centered
+        import base64
+        from pathlib import Path
         
-        # Try to load logo
-        logo_path = "greywolf_logo.png"
-        if os.path.exists(logo_path):
+        logo_path = Path(__file__).parent.parent / "greywolf_logo.png"
+        if logo_path.exists():
             try:
-                logo = Image.open(logo_path)
-                st.image(logo, width=80)
+                with open(logo_path, "rb") as f:
+                    logo_data = base64.b64encode(f.read()).decode()
+                logo_html = f"""
+                    <div style="text-align: center; margin: 2rem 0;">
+                        <img src="data:image/png;base64,{logo_data}" 
+                             alt="Greywolf Logo" 
+                             style="width: 80px; height: 80px;">
+                    </div>
+                """
+                st.markdown(logo_html, unsafe_allow_html=True)
             except Exception as e:
                 logger.warning(f"Could not load logo: {e}")
-                st.markdown("# 🐺", unsafe_allow_html=True)
+                st.markdown("<div style='text-align: center; font-size: 60px; margin: 2rem 0;'>🐺</div>", unsafe_allow_html=True)
         else:
             # Fallback to wolf emoji if logo not found
-            st.markdown("# 🐺", unsafe_allow_html=True)
+            st.markdown("<div style='text-align: center; font-size: 60px; margin: 2rem 0;'>🐺</div>", unsafe_allow_html=True)
         
-        st.markdown("# Greywolf Analytica")
-        st.markdown("### NJ Voter Data Intelligence Platform")
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        st.markdown("---")
-        
-        # Login description
+        # Title - centered
         st.markdown("""
-        Welcome to Greywolf Analytica's voter intelligence platform. 
-        This application provides advanced analysis of voter registration 
-        data for New Jersey's Congressional District 07.
+            <div style="text-align: center;">
+                <h1 style="margin-bottom: 0.5rem;">Greywolf Analytica</h1>
+                <h3 style="color: #666; font-weight: normal;">NJ Voter Data Intelligence Platform</h3>
+            </div>
+        """, unsafe_allow_html=True)
         
-        Please sign in with your Google account to continue.
-        """)
+        # Simple instruction
+        st.markdown("""
+            <p class="login-instruction">
+                Please sign in with your Google account to continue
+            </p>
+        """, unsafe_allow_html=True)
         
         # Google Sign-In button
         auth = GoogleAuthenticator()
@@ -111,13 +132,6 @@ def show_login_page():
                 </a>
             </div>
         """, unsafe_allow_html=True)
-        
-        # Footer
-        st.markdown("---")
-        st.caption("""
-        By signing in, you agree to use this system responsibly and in 
-        accordance with all applicable laws and regulations.
-        """)
 
 
 def handle_oauth_callback(code: str):

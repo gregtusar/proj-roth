@@ -26,7 +26,7 @@ def _agent_invoke(agent, prompt: str):
 
 
 st.set_page_config(
-    page_title="Greywolf Analytics", 
+    page_title="Greywolf Analytica", 
     page_icon="🐺",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -236,7 +236,7 @@ header_html = f"""
         <div class="logo-container">
             {logo_html}
         </div>
-        <h1 class="main-title">Greywolf Analytics, LLC</h1>
+        <h1 class="main-title">Greywolf Analytica</h1>
     </div>
 </div>
 <div class="main-content">

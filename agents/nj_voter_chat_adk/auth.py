@@ -51,6 +51,19 @@ class GoogleAuthenticator:
                 from agents.nj_voter_chat_adk.secret_manager import SecretManagerClient
                 sm_client = SecretManagerClient()
                 client_secret = sm_client.get_secret("google-oauth-client-secret")
+                
+                # Handle case where entire OAuth JSON was stored as secret
+                if client_secret and client_secret.startswith('{"web":'):
+                    import json
+                    # Remove any trailing % or whitespace
+                    client_secret = client_secret.rstrip('%').strip()
+                    try:
+                        oauth_config = json.loads(client_secret)
+                        client_secret = oauth_config['web']['client_secret']
+                        logger.info("Extracted client_secret from OAuth JSON configuration")
+                    except Exception as e:
+                        logger.error(f"Failed to parse OAuth JSON: {e}")
+                        
             except Exception as e:
                 logger.warning(f"Could not retrieve OAuth client secret: {e}")
         return client_secret or ""
@@ -98,6 +111,11 @@ class GoogleAuthenticator:
     def handle_callback(self, code: str) -> Optional[Dict[str, Any]]:
         """Handle OAuth callback and extract user info"""
         try:
+            logger.info(f"Starting OAuth callback handling")
+            logger.info(f"Client ID present: {bool(self.client_id)}")
+            logger.info(f"Client Secret present: {bool(self.client_secret)}")
+            logger.info(f"Redirect URI: {self.redirect_uri}")
+            
             flow = Flow.from_client_config(
                 {
                     "web": {
@@ -115,14 +133,18 @@ class GoogleAuthenticator:
                 redirect_uri=self.redirect_uri
             )
             
+            logger.info("Flow created, fetching token...")
             flow.fetch_token(code=code)
             credentials = flow.credentials
+            logger.info("Token fetched successfully")
             
             # Verify the token and get user info
+            logger.info("Verifying ID token...")
             request = requests.Request()
             id_info = id_token.verify_oauth2_token(
                 credentials.id_token, request, self.client_id
             )
+            logger.info(f"Token verified, user email: {id_info.get('email')}")
             
             return {
                 "google_id": id_info.get("sub"),
@@ -135,6 +157,10 @@ class GoogleAuthenticator:
             }
         except Exception as e:
             logger.error(f"Error handling OAuth callback: {e}")
+            logger.error(f"Error type: {type(e).__name__}")
+            logger.error(f"Error details: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return None
     
     def check_user_authorized(self, email: str) -> bool:

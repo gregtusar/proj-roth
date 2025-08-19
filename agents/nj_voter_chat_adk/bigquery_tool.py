@@ -5,6 +5,7 @@ from google.cloud import bigquery
 from google.api_core.client_options import ClientOptions
 from .config import PROJECT_ID, BQ_LOCATION, ALLOWED_TABLES, MAX_ROWS, QUERY_TIMEOUT_SECONDS
 from .policy import is_select_only, tables_within_allowlist
+from .debug_config import debug_print, error_print
 
 class BigQueryReadOnlyTool:
     name = "bigquery_select"
@@ -106,8 +107,8 @@ class BigQueryReadOnlyTool:
             job_config.labels = {"agent": "nj_voter_chat"}
             start = time.time()
             
-            print(f"[DEBUG] Original SQL: {sql}")
-            print(f"[DEBUG] Mapped SQL: {mapped_sql}")
+            debug_print(f"[DEBUG] Original SQL: {sql}")
+            debug_print(f"[DEBUG] Mapped SQL: {mapped_sql}")
             
             client = self._get_client()
             query_job = client.query(mapped_sql, job_config=job_config, location=self.location)
@@ -133,7 +134,7 @@ class BigQueryReadOnlyTool:
             
         except Exception as e:
             error_msg = str(e)
-            print(f"[ERROR] BigQuery execution failed: {error_msg}")
+            error_print(f"[ERROR] BigQuery execution failed: {error_msg}")
             
             return {
                 "error": f"BigQuery execution failed: {error_msg}",

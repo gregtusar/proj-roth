@@ -10,6 +10,7 @@ from .config import MODEL, PROJECT_ID, REGION, SYSTEM_PROMPT
 from .bigquery_tool import BigQueryReadOnlyTool
 from .google_search_tool import GoogleSearchTool
 from .geocoding_tool import GeocodingTool
+from .debug_config import debug_print, error_print
 
 _bq_tool = BigQueryReadOnlyTool()
 # GoogleSearchTool will automatically read from secrets
@@ -32,10 +33,10 @@ def bigquery_select(sql: str) -> Dict[str, Any]:
     """
     try:
         result = _bq_tool.run(sql)
-        print(f"[DEBUG] BigQuery tool returned: {type(result)}, keys: {result.keys() if isinstance(result, dict) else 'N/A'}")
+        debug_print(f"[DEBUG] BigQuery tool returned: {type(result)}, keys: {result.keys() if isinstance(result, dict) else 'N/A'}")
         return result
     except Exception as e:
-        print(f"[ERROR] BigQuery tool execution failed: {e}")
+        error_print(f"[ERROR] BigQuery tool execution failed: {e}")
         return {
             "error": f"BigQuery tool execution failed: {str(e)}",
             "sql": sql,
@@ -62,10 +63,10 @@ def geocode_address(address: str) -> Dict[str, Any]:
     """
     try:
         result = _geocoding_tool.geocode(address)
-        print(f"[DEBUG] Geocoding result for '{address}': {result}")
+        debug_print(f"[DEBUG] Geocoding result for '{address}': {result}")
         return result
     except Exception as e:
-        print(f"[ERROR] Geocoding failed: {e}")
+        error_print(f"[ERROR] Geocoding failed: {e}")
         return {
             "error": f"Geocoding failed: {str(e)}",
             "address": address
@@ -85,10 +86,10 @@ def google_search(query: str, num_results: int = 5) -> Dict[str, Any]:
     try:
         # Use the NJ-specific search method to ensure NJ context
         result = _search_tool.search_nj_specific(query, num_results)
-        print(f"[DEBUG] Google search returned {result.get('result_count', 0)} results for query: {query[:100]}")
+        debug_print(f"[DEBUG] Google search returned {result.get('result_count', 0)} results for query: {query[:100]}")
         return result
     except Exception as e:
-        print(f"[ERROR] Google search failed: {e}")
+        error_print(f"[ERROR] Google search failed: {e}")
         return {
             "error": f"Google search failed: {str(e)}",
             "query": query,
@@ -102,9 +103,9 @@ class NJVoterChatAgent(Agent):
         os.environ["GOOGLE_CLOUD_PROJECT"] = PROJECT_ID
         os.environ["GOOGLE_CLOUD_LOCATION"] = REGION
         
-        print(f"[DEBUG] Initializing agent with instruction: {SYSTEM_PROMPT[:100]}...")
+        debug_print(f"[DEBUG] Initializing agent with instruction: {SYSTEM_PROMPT[:100]}...")
         super().__init__(name="nj_voter_chat", model=MODEL, tools=[bigquery_select, google_search, geocode_address], instruction=SYSTEM_PROMPT)
-        print(f"[DEBUG] Agent initialized successfully with instruction parameter and tools: bigquery_select, google_search, geocode_address")
+        debug_print(f"[DEBUG] Agent initialized successfully with instruction parameter and tools: bigquery_select, google_search, geocode_address")
         self._initialize_services()
     
     def _initialize_services(self):
@@ -151,7 +152,7 @@ class NJVoterChatAgent(Agent):
             return last
 
         try:
-            print("[DEBUG] NJVoterChatAgent.chat -> using proper ADK Runner invocation")
+            debug_print("[DEBUG] NJVoterChatAgent.chat -> using proper ADK Runner invocation")
             from google.adk.agents.run_config import RunConfig
             from google.genai import types
             
@@ -162,39 +163,39 @@ class NJVoterChatAgent(Agent):
                     user_id=self._user_id,
                     session_id=self._session_id
                 ))
-                print(f"[DEBUG] Created new session: {self._session_id}")
+                debug_print(f"[DEBUG] Created new session: {self._session_id}")
             else:
-                print(f"[DEBUG] Reusing existing session: {self._session_id}")
+                debug_print(f"[DEBUG] Reusing existing session: {self._session_id}")
             
             message_content = types.Content(
                 role="user",
                 parts=[types.Part(text=prompt)]
             )
-            print(f"[DEBUG] User prompt being sent with proper ADK message format: {prompt[:200]}...")
+            debug_print(f"[DEBUG] User prompt being sent with proper ADK message format: {prompt[:200]}...")
             
-            print(f"[DEBUG] Message content structure: {message_content}")
-            print(f"[DEBUG] Session ID: {self._session_id}, User ID: {self._user_id}")
+            debug_print(f"[DEBUG] Message content structure: {message_content}")
+            debug_print(f"[DEBUG] Session ID: {self._session_id}, User ID: {self._user_id}")
             
-            print(f"[DEBUG] About to call runner.run_async with RunConfig")
+            debug_print(f"[DEBUG] About to call runner.run_async with RunConfig")
             
             run_config = RunConfig()
             if hasattr(run_config, 'request'):
                 run_config.request = message_content
-                print(f"[DEBUG] Using RunConfig.request field for message content")
+                debug_print(f"[DEBUG] Using RunConfig.request field for message content")
                 agen = self._runner.run_async(
                     user_id=self._user_id,
                     session_id=self._session_id,
                     run_config=run_config
                 )
             else:
-                print(f"[DEBUG] Using original new_message parameter with fixed structure")
+                debug_print(f"[DEBUG] Using original new_message parameter with fixed structure")
                 agen = self._runner.run_async(
                     user_id=self._user_id,
                     session_id=self._session_id,
                     new_message=message_content,
                     run_config=run_config
                 )
-            print(f"[DEBUG] Runner.run_async returned: {type(agen)}")
+            debug_print(f"[DEBUG] Runner.run_async returned: {type(agen)}")
             
             if inspect.isasyncgen(agen):
                 result = _run_asyncio(_consume_async_gen(agen))
@@ -202,17 +203,17 @@ class NJVoterChatAgent(Agent):
                 result = agen
             
             if hasattr(result, 'content') and hasattr(result.content, 'parts'):
-                print(f"[DEBUG] Result has content with {len(result.content.parts)} parts")
+                debug_print(f"[DEBUG] Result has content with {len(result.content.parts)} parts")
                 text_parts = []
                 for i, part in enumerate(result.content.parts):
-                    print(f"[DEBUG] Part {i}: has_text={hasattr(part, 'text')}, text_length={len(part.text) if hasattr(part, 'text') and part.text else 0}")
+                    debug_print(f"[DEBUG] Part {i}: has_text={hasattr(part, 'text')}, text_length={len(part.text) if hasattr(part, 'text') and part.text else 0}")
                     if hasattr(part, 'text') and part.text:
                         text_parts.append(part.text)
                 
                 if text_parts:
                     final_response = '\n'.join(text_parts)
-                    print(f"[DEBUG] Extracted text response: {final_response[:200]}...")
-                    print(f"[DEBUG] Response indicates system instruction awareness: {'data assistant' in final_response.lower() or 'bigquery' in final_response.lower()}")
+                    debug_print(f"[DEBUG] Extracted text response: {final_response[:200]}...")
+                    debug_print(f"[DEBUG] Response indicates system instruction awareness: {'data assistant' in final_response.lower() or 'bigquery' in final_response.lower()}")
                     return final_response
                 else:
                     print(f"[WARNING] No text content found in response parts: {result.content.parts}")
@@ -222,7 +223,7 @@ class NJVoterChatAgent(Agent):
             return str(result)
             
         except Exception as e:
-            print(f"[ERROR] ADK Runner invocation failed: {e}")
+            error_print(f"[ERROR] ADK Runner invocation failed: {e}")
             
             error_str = str(e)
             if any(keyword in error_str.lower() for keyword in ['bigquery', 'unrecognized name', 'invalid query', 'query failed']):
@@ -237,8 +238,8 @@ class NJVoterChatAgent(Agent):
 
     def __call__(self, prompt: str):
         """Direct Agent invocation bypassing Runner - matches travel-concierge pattern"""
-        print(f"[DEBUG] NJVoterChatAgent.__call__ -> direct agent invocation")
-        print(f"[DEBUG] User prompt: {prompt[:200]}...")
+        debug_print(f"[DEBUG] NJVoterChatAgent.__call__ -> direct agent invocation")
+        debug_print(f"[DEBUG] User prompt: {prompt[:200]}...")
         
         try:
             from google.genai import types
@@ -250,7 +251,7 @@ class NJVoterChatAgent(Agent):
             result = super().generate_content([message])
             
             if hasattr(result, 'text') and result.text:
-                print(f"[DEBUG] Direct agent response: {result.text[:200]}...")
+                debug_print(f"[DEBUG] Direct agent response: {result.text[:200]}...")
                 return result.text
             elif hasattr(result, 'content') and hasattr(result.content, 'parts'):
                 text_parts = []
@@ -259,15 +260,15 @@ class NJVoterChatAgent(Agent):
                         text_parts.append(part.text)
                 if text_parts:
                     response = '\n'.join(text_parts)
-                    print(f"[DEBUG] Direct agent response: {response[:200]}...")
+                    debug_print(f"[DEBUG] Direct agent response: {response[:200]}...")
                     return response
             
             print(f"[WARNING] Unexpected direct agent response structure: {type(result)}")
             return str(result)
             
         except Exception as e:
-            print(f"[ERROR] Direct agent invocation failed: {e}")
-            print(f"[DEBUG] Falling back to Runner approach")
+            error_print(f"[ERROR] Direct agent invocation failed: {e}")
+            debug_print(f"[DEBUG] Falling back to Runner approach")
             return self.chat(prompt)
     
     def invoke(self, prompt: str):

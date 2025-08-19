@@ -16,8 +16,8 @@ def show_login_page():
     
     # Page configuration
     st.set_page_config(
-        page_title="NJ Voter Chat - Login",
-        page_icon="🗳️",
+        page_title="Greywolf Analytica - Login",
+        page_icon="🐺",
         layout="centered"
     )
     
@@ -64,44 +64,52 @@ def show_login_page():
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        # Logo and title - centered
+        # Logo - centered, using same approach as chat page
         import base64
         from pathlib import Path
+        import os
         
-        logo_path = Path(__file__).parent.parent / "greywolf_logo.png"
-        if logo_path.exists():
-            try:
-                with open(logo_path, "rb") as f:
-                    logo_data = base64.b64encode(f.read()).decode()
-                logo_html = f"""
-                    <div style="text-align: center; margin: 2rem 0;">
-                        <img src="data:image/png;base64,{logo_data}" 
-                             alt="Greywolf Logo" 
-                             style="width: 80px; height: 80px;">
-                    </div>
-                """
-                st.markdown(logo_html, unsafe_allow_html=True)
-            except Exception as e:
-                logger.warning(f"Could not load logo: {e}")
-                st.markdown("<div style='text-align: center; font-size: 60px; margin: 2rem 0;'>🐺</div>", unsafe_allow_html=True)
-        else:
+        # Try multiple paths to find the logo
+        possible_paths = [
+            Path(__file__).parent.parent / "greywolf_logo.png",  # From pages folder
+            Path(__file__).parent / "greywolf_logo.png",  # In same folder
+            Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) / "greywolf_logo.png",  # Absolute path
+            Path("greywolf_logo.png"),  # Current directory
+        ]
+        
+        logo_loaded = False
+        for logo_path in possible_paths:
+            if logo_path.exists():
+                try:
+                    with open(logo_path, "rb") as f:
+                        logo_data = base64.b64encode(f.read()).decode()
+                    logo_html = f"""
+                        <div style="text-align: center; margin: 2rem 0;">
+                            <img src="data:image/png;base64,{logo_data}" 
+                                 alt="Greywolf Logo" 
+                                 style="width: 80px; height: 80px;">
+                        </div>
+                    """
+                    st.markdown(logo_html, unsafe_allow_html=True)
+                    logo_loaded = True
+                    break
+                except Exception as e:
+                    logger.warning(f"Could not load logo from {logo_path}: {e}")
+        
+        if not logo_loaded:
             # Fallback to wolf emoji if logo not found
             st.markdown("<div style='text-align: center; font-size: 60px; margin: 2rem 0;'>🐺</div>", unsafe_allow_html=True)
         
-        # Title - centered
+        # Title - centered with inline styles to override Streamlit defaults
         st.markdown("""
-            <div style="text-align: center;">
-                <h1 style="margin-bottom: 0.5rem;">Greywolf Analytica</h1>
-                <h3 style="color: #666; font-weight: normal;">NJ Voter Data Intelligence Platform</h3>
+            <div style="text-align: center; width: 100%; display: flex; flex-direction: column; align-items: center;">
+                <h1 style="margin-bottom: 0.5rem; text-align: center; width: 100%;">Greywolf Analytica</h1>
+                <h3 style="color: #666; font-weight: normal; text-align: center; width: 100%;">NJ Voter Data Intelligence Platform</h3>
             </div>
         """, unsafe_allow_html=True)
         
-        # Simple instruction
-        st.markdown("""
-            <p class="login-instruction">
-                Please sign in with your Google account to continue
-            </p>
-        """, unsafe_allow_html=True)
+        # Add some spacing before button
+        st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
         
         # Google Sign-In button
         auth = GoogleAuthenticator()

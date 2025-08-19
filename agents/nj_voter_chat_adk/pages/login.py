@@ -27,49 +27,9 @@ def show_login_page():
         .main {
             padding-top: 3rem;
         }
-        .login-container {
-            max-width: 400px;
-            margin: 0 auto;
-            padding: 2rem;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .google-btn {
-            display: inline-flex;
-            align-items: center;
-            padding: 12px 24px;
-            background-color: white;
-            color: #3c4043;
-            border: 1px solid #dadce0;
-            border-radius: 4px;
-            font-family: 'Roboto', sans-serif;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.3s, box-shadow 0.3s;
-            text-decoration: none;
-            margin: 20px auto;
-            display: block;
-            width: fit-content;
-        }
-        .google-btn:hover {
-            background-color: #f8f9fa;
-            box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
-        }
-        .google-icon {
-            margin-right: 12px;
-            width: 18px;
-            height: 18px;
-        }
         .title-container {
             text-align: center;
             margin-bottom: 2rem;
-        }
-        .logo {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 1rem;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -102,22 +62,22 @@ def show_login_page():
                 st.image(logo, width=80)
             except Exception as e:
                 logger.warning(f"Could not load logo: {e}")
-                st.markdown("🗳️", unsafe_allow_html=True)
+                st.markdown("# 🐺", unsafe_allow_html=True)
         else:
-            # Fallback to emoji if logo not found
-            st.markdown("# 🗳️", unsafe_allow_html=True)
+            # Fallback to wolf emoji if logo not found
+            st.markdown("# 🐺", unsafe_allow_html=True)
         
-        st.markdown("# NJ Voter Chat")
-        st.markdown("### Congressional District 07 Analysis")
+        st.markdown("# Greywolf Analytica")
+        st.markdown("### NJ Voter Data Intelligence Platform")
         st.markdown("</div>", unsafe_allow_html=True)
         
         st.markdown("---")
         
         # Login description
         st.markdown("""
-        Welcome to the NJ Voter Chat system. This application provides 
-        intelligent analysis of voter registration data for New Jersey's 
-        Congressional District 07.
+        Welcome to Greywolf Analytica's voter intelligence platform. 
+        This application provides advanced analysis of voter registration 
+        data for New Jersey's Congressional District 07.
         
         Please sign in with your Google account to continue.
         """)
@@ -126,23 +86,30 @@ def show_login_page():
         auth = GoogleAuthenticator()
         auth_url = auth.get_google_auth_url()
         
-        # Create Google sign-in button with logo
-        google_logo_svg = """
-        <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="google-icon">
-            <g>
-                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-            </g>
-        </svg>
-        """
-        
+        # Create Google sign-in button with simpler approach
         st.markdown(f"""
-            <a href="{auth_url}" class="google-btn">
-                {google_logo_svg}
-                Continue with Google
-            </a>
+            <div style="text-align: center; margin: 20px 0;">
+                <a href="{auth_url}" style="
+                    display: inline-flex;
+                    align-items: center;
+                    padding: 12px 24px;
+                    background-color: white;
+                    color: #3c4043;
+                    border: 1px solid #dadce0;
+                    border-radius: 4px;
+                    font-family: 'Roboto', sans-serif;
+                    font-size: 14px;
+                    font-weight: 500;
+                    text-decoration: none;
+                    transition: background-color 0.3s, box-shadow 0.3s;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+                ">
+                    <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDI1LjAuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgIC0tPgo8c3ZnIHZlcnNpb249IjEuMSIgaWQ9IkxheWVyXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4IgoJIHZpZXdCb3g9IjAgMCA0OCA0OCIgc3R5bGU9ImVuYWJsZS1iYWNrZ3JvdW5kOm5ldyAwIDAgNDggNDg7IiB4bWw6c3BhY2U9InByZXNlcnZlIj4KPHN0eWxlIHR5cGU9InRleHQvY3NzIj4KCS5zdDB7ZmlsbDojRUE0MzM1O30KCS5zdDF7ZmlsbDojNDI4NUY0O30KCS5zdDJ7ZmlsbDojRkJCQzA1O30KCS5zdDN7ZmlsbDojMzRBODUzO30KPC9zdHlsZT4KPGc+Cgk8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMjQsOS41YzMuNTQsMCw2LjcxLDEuMjIsOS4yMSwzLjZsNi44NS02Ljg1QzM1LjksMi4zOCwzMC40NywwLDI0LDBDMTQuNjIsMCw2LjUxLDUuMzgsMi41NiwxMy4yMmw3Ljk4LDYuMTkKCQlDMTIuNDMsMTMuNzIsMTcuNzQsOS41LDI0LDkuNXoiLz4KCTxwYXRoIGNsYXNzPSJzdDEiIGQ9Ik00Ni45OCwyNC41NWMwLTEuNTctMC4xNS0zLjA5LTAuMzgtNC41NUgyNHY5LjAyaDEyLjk0Yy0wLjU4LDIuOTYtMi4yNiw1LjQ4LTQuNzgsNy4xOGw3LjczLDYKCQlDNDQuNDksMzguMzcsNDcuMDcsMzEuOTEsNDYuOTgsMjQuNTV6Ii8+Cgk8cGF0aCBjbGFzcz0ic3QyIiBkPSJNMTAuNTMsMjguNTljLTAuNDgtMS40NS0wLjc2LTIuOTktMC43Ni00LjU5czAuMjctMy4xNCwwLjc2LTQuNTlsLTcuOTgtNi4xOUMwLjkyLDE2LjQ2LDAsMjAuMTIsMCwyNAoJCWMwLDMuODgsMC45Miw3LjU0LDIuNTYsMTAuNzhMMTAuNTMsMjguNTl6Ii8+Cgk8cGF0aCBjbGFzcz0ic3QzIiBkPSJNMjQsNDhjNi40OCwwLDExLjkzLTIuMTMsMTUuODktNS44MWwtNy43My02Yy0yLjE1LDEuNDUtNC45MiwyLjMtOC4xNiwyLjNjLTYuMjYsMC0xMS41Ny00LjIyLTEzLjQ3LTkuOTEKCQlsLTcuOTgsNi4xOUM2LjUxLDQyLjYyLDE0LjYyLDQ4LDI0LDQ4eiIvPgo8L2c+Cjwvc3ZnPgo=" 
+                         style="width: 18px; height: 18px; margin-right: 12px;" 
+                         alt="Google Logo"/>
+                    Continue with Google
+                </a>
+            </div>
         """, unsafe_allow_html=True)
         
         # Footer
@@ -163,6 +130,8 @@ def handle_oauth_callback(code: str):
         
         if not user_info:
             st.error("Authentication failed. Please try again.")
+            st.warning("⚠️ Debug: Check Cloud Run logs for detailed error information")
+            st.info("Run: `gcloud run logs read nj-voter-chat --limit=50 --project=proj-roth`")
             st.query_params.clear()
             return
         

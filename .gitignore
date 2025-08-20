@@ -17,5 +17,15 @@ outputs/charts/*.png
 *.tmp
 .DS_Store
 
-# Credentials (if any get accidentally committed)
+# Credentials and keys
 *credentials*.json
+keys/
+
+# Data files
+file1
+file2
+*.csv
+ids_only_in_*.txt
+
+# Feature planning documents
+listfeature.txt

@@ -10,6 +10,7 @@ from .config import MODEL, PROJECT_ID, REGION, SYSTEM_PROMPT
 from .bigquery_tool import BigQueryReadOnlyTool
 from .google_search_tool import GoogleSearchTool
 from .geocoding_tool import GeocodingTool
+from .voter_list_tool import VoterListTool
 from .debug_config import debug_print, error_print
 
 _bq_tool = BigQueryReadOnlyTool()
@@ -17,6 +18,8 @@ _bq_tool = BigQueryReadOnlyTool()
 _search_tool = GoogleSearchTool()
 # GeocodingTool will use Google Maps API
 _geocoding_tool = GeocodingTool()
+# VoterListTool for managing saved lists
+_list_tool = VoterListTool()
 
 def bigquery_select(sql: str) -> Dict[str, Any]:
     """Executes read-only SELECT queries on approved BigQuery tables with smart field mapping.
@@ -96,6 +99,59 @@ def google_search(query: str, num_results: int = 5) -> Dict[str, Any]:
             "results": []
         }
 
+def save_voter_list(list_name: str, description: str, sql_query: str, row_count: int) -> Dict[str, Any]:
+    """Save a voter list for later retrieval and sharing.
+    
+    IMPORTANT: You should proactively save lists when:
+    - A query returns a meaningful set of voters (any size)
+    - The user asks questions like "Who are all the voters that..."
+    - The user explicitly asks to save a list with phrases like "save this list"
+    
+    Args:
+        list_name (str): A descriptive name for the list (auto-generate based on the query).
+                        Examples: "Democrats in Summit", "High-frequency voters born after 1990"
+        description (str): The original user query/question that generated this list.
+        sql_query (str): The exact SQL query used to generate the list (for re-running).
+        row_count (int): The number of voters in the result set.
+    
+    Returns:
+        Dict[str, Any]: Contains success status, list_id if successful, or error information.
+    
+    Example:
+        >>> save_voter_list(
+        ...     "Young Democrats in Summit",
+        ...     "Show me all Democrats under 30 in Summit",
+        ...     "SELECT * FROM voters WHERE demo_party = 'DEM' AND age < 30 AND muni_name = 'SUMMIT'",
+        ...     127
+        ... )
+        {"success": True, "list_id": "abc123", "message": "List 'Young Democrats in Summit' saved successfully"}
+    """
+    try:
+        # Get user context from session (will be set by the app)
+        import os
+        user_id = os.environ.get("VOTER_LIST_USER_ID", "default_user")
+        user_email = os.environ.get("VOTER_LIST_USER_EMAIL", "user@example.com")
+        
+        result = _list_tool.save_voter_list(
+            user_id=user_id,
+            user_email=user_email,
+            list_name=list_name,
+            description_text=description,
+            sql_query=sql_query,
+            row_count=row_count,
+            model_name=MODEL
+        )
+        
+        debug_print(f"[DEBUG] Saved voter list '{list_name}' with {row_count} voters")
+        return result
+    except Exception as e:
+        error_print(f"[ERROR] Failed to save voter list: {e}")
+        return {
+            "success": False,
+            "error": f"Failed to save list: {str(e)}",
+            "list_id": None
+        }
+
 class NJVoterChatAgent(Agent):
     def __init__(self):
         import os
@@ -104,8 +160,8 @@ class NJVoterChatAgent(Agent):
         os.environ["GOOGLE_CLOUD_LOCATION"] = REGION
         
         debug_print(f"[DEBUG] Initializing agent with instruction: {SYSTEM_PROMPT[:100]}...")
-        super().__init__(name="nj_voter_chat", model=MODEL, tools=[bigquery_select, google_search, geocode_address], instruction=SYSTEM_PROMPT)
-        debug_print(f"[DEBUG] Agent initialized successfully with instruction parameter and tools: bigquery_select, google_search, geocode_address")
+        super().__init__(name="nj_voter_chat", model=MODEL, tools=[bigquery_select, google_search, geocode_address, save_voter_list], instruction=SYSTEM_PROMPT)
+        debug_print(f"[DEBUG] Agent initialized successfully with instruction parameter and tools: bigquery_select, google_search, geocode_address, save_voter_list")
         self._initialize_services()
     
     def _initialize_services(self):

@@ -25,7 +25,15 @@ gcloud auth configure-docker "${REGION}-docker.pkg.dev" -q
 COMMIT_HASH=$(git rev-parse --short HEAD)
 IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${COMMIT_HASH}-$(date +%s)"
 
-if ! gcloud builds submit --tag "${IMAGE_URI}" agents/nj_voter_chat_adk/; then
+# Create a temporary cloudbuild.yaml that uses the correct Dockerfile
+cat > /tmp/cloudbuild_nj_voter.yaml <<EOF
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${IMAGE_URI}', '-f', 'agents/nj_voter_chat_adk/Dockerfile', '.']
+images: ['${IMAGE_URI}']
+EOF
+
+if ! gcloud builds submit --config=/tmp/cloudbuild_nj_voter.yaml .; then
     echo "ERROR: Docker image build failed"
     exit 1
 fi

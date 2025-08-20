@@ -11,11 +11,11 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install dependencies
-COPY requirements.txt /app/requirements.txt
+COPY agents/nj_voter_chat_adk/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --verbose -r /app/requirements.txt
 
 # Copy all agent files
-COPY . /app/agents/nj_voter_chat_adk/
+COPY agents/nj_voter_chat_adk/ /app/agents/nj_voter_chat_adk/
 
 # Set up parent directory structure for imports
 RUN mkdir -p /app/agents && touch /app/agents/__init__.py

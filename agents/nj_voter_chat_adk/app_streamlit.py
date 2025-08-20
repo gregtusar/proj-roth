@@ -53,65 +53,29 @@ h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
     color: #3B5D7C !important;
 }
 
-/* Hamburger menu button for sidebar toggle */
-.sidebar-toggle-btn {
+/* Removed custom hamburger menu - using Streamlit's native toggle */
+
+/* Logo in top left corner - positioned next to Streamlit's toggle */
+.logo-top-left {
     position: fixed;
-    left: 1rem;
-    top: 1rem;
-    z-index: 1001;
-    background: #FFFFFF;
-    border: 1px solid #E2E2E2;
-    border-radius: 8px;
-    padding: 10px;
-    cursor: pointer;
+    left: 65px;
+    top: 0.75rem;
+    z-index: 50;
     display: flex;
     align-items: center;
     justify-content: center;
     width: 44px;
     height: 44px;
+    background: white;
+    border-radius: 8px;
+    padding: 4px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: all 0.2s;
 }
 
-.sidebar-toggle-btn:hover {
-    background: #F6F6F6;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-/* When sidebar is visible, move the button */
-[data-testid="stSidebar"][aria-expanded="true"] ~ .main .sidebar-toggle-btn {
-    left: 295px;
-}
-
-/* Fixed header styling */
-.fixed-header {
-    position: fixed;
-    top: 60px;
-    left: 0;
-    right: 0;
-    background-color: #FFFFFF;
-    z-index: 999;
-    padding: 1.5rem 0 0.5rem 0;
-    border-bottom: 2px solid #E3F2FD;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.header-content {
-    text-align: center;
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-.logo-container {
-    display: flex;
-    justify-content: center;
-    margin-top: 2rem;
-    margin-bottom: 0.5rem;
-}
-
-.logo-container img {
-    width: 80px;
-    height: 80px;
+.logo-top-left img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
 }
 
 /* Black text for headers */
@@ -120,50 +84,139 @@ h1, h2, h3 {
     font-weight: 600;
 }
 
-/* Custom title styling */
-.main-title {
-    color: #2C5282;
-    text-align: center;
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin: 0;
+/* Keep Streamlit's sidebar toggle visible but style it */
+header[data-testid="stHeader"] {
+    background: transparent !important;
+    height: auto !important;
+    z-index: 999 !important;
 }
 
-/* Add padding to main content to account for fixed header and footer */
+/* Style the sidebar toggle button - both collapsed and expanded states */
+button[data-testid="collapsedControl"], 
+button[data-testid="expandedControl"] {
+    top: 1rem !important;
+    left: 1rem !important;
+    color: #3B5D7C !important;
+    z-index: 1000 !important;
+    position: fixed !important;
+}
+
+/* Keep the expanded control visible when sidebar is open */
+button[data-testid="expandedControl"] {
+    display: block !important;
+    visibility: visible !important;
+}
+
+/* Adjust main view */
+.main .block-container {
+    padding-top: 1rem !important;
+    max-width: 100% !important;
+}
+
+/* Style sidebar buttons to match interface */
+.stSidebar button {
+    background: transparent !important;
+    border: none !important;
+    color: #666666 !important;
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    text-align: left !important;
+    padding: 8px 12px !important;
+    transition: background-color 0.2s !important;
+}
+
+.stSidebar button:hover {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+    border-radius: 6px !important;
+}
+
+/* Style Recent Chats header to match */
+.stSidebar h3, .stSidebar .sidebar-section-header {
+    color: #666666 !important;
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    margin: 1rem 0 0.5rem 0 !important;
+}
+
+/* Style the Default Project text */
+.stSidebar .project-name {
+    color: #666666 !important;
+    font-size: 14px !important;
+    font-weight: 400 !important;
+}
+
+/* Hide the decoration at the top */
+[data-testid="stDecoration"] {
+    display: none !important;
+}
+
+
+/* Add padding to main content - no header now */
 .main-content {
-    padding-top: 250px;
+    padding-top: 2rem;
     padding-bottom: 100px;
-    min-height: calc(100vh - 350px);
+    min-height: calc(100vh - 132px);
+    max-width: 768px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 0;
+    padding-right: 0;
 }
 
-/* User info styling */
+/* User info styling - bottom left */
 .user-info {
     position: fixed;
-    top: 10px;
-    right: 20px;
-    z-index: 1000;
+    bottom: 20px;
+    left: 20px;
+    z-index: 997;
     display: flex;
     align-items: center;
     gap: 10px;
     background: white;
-    padding: 5px 10px;
-    border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 8px 12px;
+    border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    font-size: 14px;
+    color: #333;
 }
 
 .user-avatar {
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
+    border: 2px solid #E2E2E2;
 }
 
-/* Chat message styling */
+/* Chat message styling - ChatGPT-like appearance */
 .stChatMessage {
-    background-color: #F8F9FA;
-    border-left: 4px solid #0066CC;
-    border-radius: 8px;
-    margin: 0.5rem 0;
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    margin: 1rem 0;
+    padding: 0.75rem 0;
     color: #000000 !important;
+    max-width: 100%;
+}
+
+.stChatMessage[data-testid="stChatMessageContainer-assistant"] {
+    background-color: #F7F7F8;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+/* Ensure all content is properly aligned */
+[data-testid="stVerticalBlock"] {
+    max-width: 768px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Align spinner message */
+.stSpinner {
+    text-align: left;
+    margin-left: 0;
+    padding-left: 0;
 }
 
 /* Ensure all chat message content is black */
@@ -176,27 +229,50 @@ h1, h2, h3 {
     color: #000000 !important;
 }
 
-/* Input styling - fixed at bottom */
+/* Input styling - ChatGPT-like compact design */
 .stChatInput {
     position: fixed;
     bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: #FFFFFF;
-    padding: 1rem;
-    border-top: 2px solid #E3F2FD;
-    box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 768px;
+    background-color: transparent;
+    padding: 1rem 0 1.5rem 0;
     z-index: 998;
 }
 
+.stChatInput > div {
+    background-color: #FFFFFF;
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    padding: 0.5rem;
+}
+
+.stChatInput > div > div {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 .stChatInput > div > div > input {
-    border: 2px solid #E3F2FD;
+    border: 2px solid #3B5D7C;  /* Changed to wolf blue color */
     border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 15px;
+    background-color: #F7F7F8;
+    transition: all 0.2s;
 }
 
 .stChatInput > div > div > input:focus {
-    border-color: #0066CC;
-    box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+    border-color: #3B5D7C;  /* Keep the same blue on focus */
+    background-color: #FFFFFF;
+    box-shadow: 0 0 0 3px rgba(59, 93, 124, 0.2);  /* Blue shadow matching our theme */
+    outline: none;
+}
+
+.stChatInput > div > div > input::placeholder {
+    color: #8E8E93;
 }
 
 
@@ -228,12 +304,45 @@ h1, h2, h3 {
 
 st.markdown(nj_theme_css, unsafe_allow_html=True)
 
+# Import for logo handling - do this early
+import base64
+from pathlib import Path
+
+# Load and encode the logo - use absolute path resolution
+try:
+    logo_path = Path(__file__).parent / "greywolf_logo.png"
+    if logo_path.exists() and logo_path.is_file():
+        with open(logo_path, "rb") as f:
+            logo_data = base64.b64encode(f.read()).decode()
+        logo_html = f'<img src="data:image/png;base64,{logo_data}" alt="Wolf" style="width: 36px; height: 36px; object-fit: contain;">'
+        st.session_state.wolf_icon_data = logo_data  # Store for later use
+        print(f"[DEBUG] Logo loaded successfully from {logo_path}")
+    else:
+        # Use emoji fallback
+        logo_html = '<span style="font-size: 28px;">🐺</span>'
+        st.session_state.wolf_icon_data = None
+        print(f"[DEBUG] Logo file not found at {logo_path}, using emoji")
+except Exception as e:
+    logo_html = '<span style="font-size: 28px;">🐺</span>'
+    st.session_state.wolf_icon_data = None
+    print(f"[DEBUG] Error loading logo: {e}")
+
+# Display logo in top left corner next to hamburger menu
+st.markdown(f"""
+<div class="logo-top-left">
+    {logo_html}
+</div>
+""", unsafe_allow_html=True)
+
 if "agent" not in st.session_state:
     st.session_state.agent = NJVoterChatAgent()
 if "history" not in st.session_state:
     st.session_state.history = []
 if "chat_saved" not in st.session_state:
     st.session_state.chat_saved = False
+
+# Initialize list manager
+list_manager = ListManagerUI()
 
 # User info and logout button in top right
 if "user_info" in st.session_state:
@@ -243,17 +352,30 @@ if "user_info" in st.session_state:
     user_name = user_info.get("full_name", user_email)
     user_picture = user_info.get("picture_url", "")
     
+    # Debug logging for profile picture
+    if user_picture:
+        print(f"[DEBUG] User profile picture URL: {user_picture}")
+    else:
+        print(f"[DEBUG] No profile picture URL found in user_info: {user_info.keys()}")
+    
     # Set user context for list saving
-    list_manager = ListManagerUI()
     list_manager.set_user_context(user_id, user_email)
     
-    # Display user info in top right
-    st.markdown(f"""
-        <div class="user-info">
-            {f'<img src="{user_picture}" class="user-avatar" alt="User" />' if user_picture else ''}
-            <span>{user_name}</span>
-        </div>
-    """, unsafe_allow_html=True)
+    # Display user info in bottom left - always use initial since Google photos have CORS issues
+    with st.container():
+        # Create a placeholder for user info at bottom left using CSS
+        user_info_placeholder = st.empty()
+        # Always use initial - Google profile pictures have CORS/auth issues in iframes
+        initial = user_name[0].upper() if user_name else "U"
+        user_info_placeholder.markdown(
+            f'''<div class="user-info">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background: #3B5D7C; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                    {initial}
+                </div>
+                <span>{user_name}</span>
+            </div>''',
+            unsafe_allow_html=True
+        )
     
     # Render custom sidebar with navigation
     render_sidebar()
@@ -267,66 +389,40 @@ if "user_info" in st.session_state:
             auth.logout()
             st.rerun()
 
-# Create fixed header with logo and title
-import base64
-from pathlib import Path
 
-# Load and encode the logo
-logo_path = Path(__file__).parent / "greywolf_logo.png"
-if logo_path.exists():
-    with open(logo_path, "rb") as f:
-        logo_data = base64.b64encode(f.read()).decode()
-    logo_html = f'<img src="data:image/png;base64,{logo_data}" alt="Greywolf Logo">'
-else:
-    logo_html = '🐺'  # Fallback if logo not found
+# Start main content area
+st.markdown('<div class="main-content">', unsafe_allow_html=True)
 
-header_html = f"""
-<div class="fixed-header">
-    <div class="header-content">
-        <div class="logo-container">
-            {logo_html}
-        </div>
-        <h1 class="main-title">Greywolf Analytica</h1>
-    </div>
-</div>
-<div class="main-content">
-"""
+# Remove the hamburger menu entirely - Streamlit's sidebar works better without custom controls
+# The sidebar can be toggled using Streamlit's built-in arrow button
 
-st.markdown(header_html, unsafe_allow_html=True)
-
-# Add hamburger menu button for sidebar toggle
-st.markdown("""
-<button class="sidebar-toggle-btn" onclick="
-    const sidebar = document.querySelector('[data-testid=stSidebar]');
-    const expandedAttr = sidebar.getAttribute('aria-expanded');
-    if (expandedAttr === 'true') {
-        // Close sidebar
-        document.querySelector('[data-testid=collapsedControl] button').click();
-    } else {
-        // Open sidebar
-        document.querySelector('[data-testid=collapsedControl] button').click();
-    }
-">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B5D7C" stroke-width="2">
-        <line x1="3" y1="6" x2="21" y2="6"></line>
-        <line x1="3" y1="12" x2="21" y2="12"></line>
-        <line x1="3" y1="18" x2="21" y2="18"></line>
-    </svg>
-</button>
-""", unsafe_allow_html=True)
+# Wolf icon data should already be loaded above
 
 for role, content in st.session_state.history:
-    with st.chat_message(role):
-        st.markdown(content)
+    # Use wolf icon for user messages, default robot for assistant
+    if role == "user" and st.session_state.wolf_icon_data:
+        with st.chat_message(role, avatar=f"data:image/png;base64,{st.session_state.wolf_icon_data}"):
+            st.markdown(content)
+    else:
+        with st.chat_message(role):
+            st.markdown(content)
 
 prompt = st.chat_input("Ask a question about New Jersey voter data... 🗳️")
 if prompt:
     st.session_state.history.append(("user", prompt))
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    # Use wolf icon for user messages
+    if st.session_state.get('wolf_icon_data'):
+        with st.chat_message("user", avatar=f"data:image/png;base64,{st.session_state.wolf_icon_data}"):
+            st.markdown(prompt)
+    else:
+        with st.chat_message("user"):
+            st.markdown(prompt)
     try:
-        with st.spinner("🔍 Analyzing New Jersey voter data..."):
-            resp = _agent_invoke(st.session_state.agent, prompt)
+        # Use a container to ensure spinner is aligned
+        spinner_container = st.container()
+        with spinner_container:
+            with st.spinner("🔍 Analyzing New Jersey voter data..."):
+                resp = _agent_invoke(st.session_state.agent, prompt)
         print("[DEBUG] Response type:", type(resp))
         if resp is not None:
             try:
@@ -366,20 +462,25 @@ if prompt:
             st.session_state.current_chat_id = chat_id
             st.session_state.chat_saved = True
         
+        # Use default robot icon for assistant messages
         with st.chat_message("assistant"):
             st.markdown(answer)
             if rows:
                 st.dataframe(rows)
     except Exception as e:
         st.session_state.history.append(("assistant", f"Error: {e}"))
+        # Use default robot icon for error messages
         with st.chat_message("assistant"):
             st.exception(e)
         import traceback
         print("[ERROR] Exception during agent invocation:\n", traceback.format_exc())
 
-# Render list modal if needed
+# Render list modal using Streamlit's dialog feature
 if st.session_state.get("show_list_modal"):
-    list_manager.render_list_modal()
+    @st.dialog("📋 Voter List Details", width="large")
+    def show_list_dialog():
+        list_manager.render_list_modal_content()
+    show_list_dialog()
 
 # Close the main-content div
 st.markdown("</div>", unsafe_allow_html=True)

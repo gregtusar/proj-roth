@@ -132,6 +132,14 @@ def save_voter_list(list_name: str, description: str, sql_query: str, row_count:
         user_id = os.environ.get("VOTER_LIST_USER_ID", "default_user")
         user_email = os.environ.get("VOTER_LIST_USER_EMAIL", "user@example.com")
         
+        # Enhanced logging for debugging
+        debug_print(f"[DEBUG] Attempting to save list:")
+        debug_print(f"  - User ID: {user_id}")
+        debug_print(f"  - User Email: {user_email}")
+        debug_print(f"  - List Name: {list_name}")
+        debug_print(f"  - Row Count: {row_count}")
+        debug_print(f"  - SQL Query Length: {len(sql_query)} chars")
+        
         result = _list_tool.save_voter_list(
             user_id=user_id,
             user_email=user_email,
@@ -142,10 +150,16 @@ def save_voter_list(list_name: str, description: str, sql_query: str, row_count:
             model_name=MODEL
         )
         
-        debug_print(f"[DEBUG] Saved voter list '{list_name}' with {row_count} voters")
+        if result.get("success"):
+            debug_print(f"[DEBUG] Successfully saved voter list '{list_name}' with ID: {result.get('list_id')}")
+        else:
+            error_print(f"[ERROR] Failed to save list: {result.get('error')}")
+        
         return result
     except Exception as e:
-        error_print(f"[ERROR] Failed to save voter list: {e}")
+        import traceback
+        error_print(f"[ERROR] Exception while saving voter list: {e}")
+        error_print(f"[ERROR] Traceback: {traceback.format_exc()}")
         return {
             "success": False,
             "error": f"Failed to save list: {str(e)}",

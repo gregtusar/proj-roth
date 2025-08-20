@@ -61,7 +61,7 @@ def show_login_page():
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        # Logo - centered, using same approach as chat page
+        # Create a centered container for all login elements
         import base64
         from pathlib import Path
         import os
@@ -74,50 +74,35 @@ def show_login_page():
             Path("greywolf_logo.png"),  # Current directory
         ]
         
-        logo_loaded = False
+        logo_html = ""
         for logo_path in possible_paths:
             if logo_path.exists():
                 try:
                     with open(logo_path, "rb") as f:
                         logo_data = base64.b64encode(f.read()).decode()
-                    logo_html = f"""
-                        <div style="text-align: center; margin: 2rem 0;">
-                            <img src="data:image/png;base64,{logo_data}" 
-                                 alt="Greywolf Logo" 
-                                 style="width: 80px; height: 80px;">
-                        </div>
-                    """
-                    st.markdown(logo_html, unsafe_allow_html=True)
-                    logo_loaded = True
+                    logo_html = f'<img src="data:image/png;base64,{logo_data}" alt="Greywolf Logo" style="width: 80px; height: 80px; margin-bottom: 1.5rem;">'
                     break
                 except Exception as e:
                     logger.warning(f"Could not load logo from {logo_path}: {e}")
         
-        if not logo_loaded:
+        if not logo_html:
             # Fallback to wolf emoji if logo not found
-            st.markdown("<div style='text-align: center; font-size: 60px; margin: 2rem 0;'>🐺</div>", unsafe_allow_html=True)
-        
-        # Title - centered with inline styles to override Streamlit defaults
-        st.markdown("""
-            <div style="display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%;">
-                <h1 style="margin: 0; margin-bottom: 0.5rem; line-height: 1.2; color: #3B5D7C;">
-                    <div>Greywolf</div>
-                    <div>Analytica</div>
-                </h1>
-                <h3 style="color: #3B5D7C; font-weight: normal; margin: 0;">NJ Voter Data Intelligence Platform</h3>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # Add some spacing before button
-        st.markdown("<div style='height: 2rem;'></div>", unsafe_allow_html=True)
+            logo_html = '<div style="font-size: 60px; margin-bottom: 1.5rem;">🐺</div>'
         
         # Google Sign-In button
         auth = GoogleAuthenticator()
         auth_url = auth.get_google_auth_url()
         
-        # Create Google sign-in button with simpler approach
+        # Create all elements in a single centered container
         st.markdown(f"""
-            <div style="text-align: center; margin: 20px 0;">
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%; padding-top: 3rem;">
+                {logo_html}
+                <h1 style="color: #3B5D7C; margin: 0; font-size: 2.5rem; line-height: 1.2;">
+                    Greywolf<br>Analytica
+                </h1>
+                <h3 style="color: #666; font-weight: normal; margin: 1rem 0 3rem 0; font-size: 1.1rem;">
+                    NJ Voter Data Intelligence Platform
+                </h3>
                 <a href="{auth_url}" style="
                     display: inline-flex;
                     align-items: center;

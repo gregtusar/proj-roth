@@ -56,7 +56,7 @@ class VoterListTool:
             list_id = str(uuid.uuid4())
             current_time = datetime.utcnow()
             
-            # Prepare the row to insert
+            # Prepare the row to insert - convert datetime to ISO format string for JSON serialization
             row = {
                 "list_id": list_id,
                 "user_id": user_id,
@@ -67,8 +67,8 @@ class VoterListTool:
                 "row_count": row_count,
                 "is_shared": is_shared,
                 "is_active": True,
-                "created_at": current_time,
-                "updated_at": current_time,
+                "created_at": current_time.isoformat(),  # Convert to ISO format string
+                "updated_at": current_time.isoformat(),  # Convert to ISO format string
                 "created_by_model": model_name,
                 "query_execution_time_ms": execution_time_ms,
                 "access_count": 0,

@@ -268,10 +268,10 @@ def render_projects_section():
     """Render the projects tree section"""
     st.markdown('<div class="section-header">Projects</div>', unsafe_allow_html=True)
     
-    # Default project header with custom styling
+    # Default project header with custom styling - using project-name class
     st.markdown("""
     <div class="project-header">
-        <span>📁 Default Project</span>
+        <span class="project-name">📁 Default Project</span>
         <span style="font-size: 12px; color: #757575;">▼</span>
     </div>
     """, unsafe_allow_html=True)

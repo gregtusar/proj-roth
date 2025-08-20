@@ -212,16 +212,15 @@ class NJVoterChatAgent(Agent):
             from google.adk.agents.run_config import RunConfig
             from google.genai import types
             
-            if not self._session_id:
-                self._session_id = f"session_{int(time.time())}"
-                session = _run_asyncio(self._session_service.create_session(
-                    app_name="nj_voter_chat",
-                    user_id=self._user_id,
-                    session_id=self._session_id
-                ))
-                debug_print(f"[DEBUG] Created new session: {self._session_id}")
-            else:
-                debug_print(f"[DEBUG] Reusing existing session: {self._session_id}")
+            # Always create a new session for each request to avoid token accumulation
+            # This prevents the 7.8M token overflow issue where sessions accumulate context
+            self._session_id = f"session_{int(time.time())}_{os.urandom(4).hex()}"
+            session = _run_asyncio(self._session_service.create_session(
+                app_name="nj_voter_chat",
+                user_id=self._user_id,
+                session_id=self._session_id
+            ))
+            debug_print(f"[DEBUG] Created fresh session to avoid token overflow: {self._session_id}")
             
             message_content = types.Content(
                 role="user",

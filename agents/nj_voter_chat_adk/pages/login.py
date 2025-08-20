@@ -15,14 +15,7 @@ logger = logging.getLogger(__name__)
 def show_login_page():
     """Display the login page with Google sign-in"""
     
-    # Page configuration
-    st.set_page_config(
-        page_title="Greywolf Analytica - Login",
-        page_icon="🐺",
-        layout="centered"
-    )
-    
-    # Apply Uber Base design system
+    # Apply Uber Base design system (page config already set in main app)
     apply_base_design()
     
     # Custom CSS for login page with Base design

@@ -1,11 +1,12 @@
 """
-Login page for NJ Voter Chat with Google OAuth
+Login page for NJ Voter Chat with Google OAuth using Uber Base design system
 """
 import streamlit as st
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from auth import GoogleAuthenticator, check_authentication
+from styles.base_design import apply_base_design
 import logging
 from PIL import Image
 
@@ -21,7 +22,10 @@ def show_login_page():
         layout="centered"
     )
     
-    # Custom CSS for login page
+    # Apply Uber Base design system
+    apply_base_design()
+    
+    # Custom CSS for login page with Base design
     st.markdown("""
         <style>
         .main {
@@ -102,9 +106,12 @@ def show_login_page():
         
         # Title - centered with inline styles to override Streamlit defaults
         st.markdown("""
-            <div style="text-align: center; width: 100%; display: flex; flex-direction: column; align-items: center;">
-                <h1 style="margin-bottom: 0.5rem; text-align: center; width: 100%;">Greywolf Analytica</h1>
-                <h3 style="color: #666; font-weight: normal; text-align: center; width: 100%;">NJ Voter Data Intelligence Platform</h3>
+            <div style="display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%;">
+                <h1 style="margin: 0; margin-bottom: 0.5rem; line-height: 1.2; color: #3B5D7C;">
+                    <div>Greywolf</div>
+                    <div>Analytica</div>
+                </h1>
+                <h3 style="color: #3B5D7C; font-weight: normal; margin: 0;">NJ Voter Data Intelligence Platform</h3>
             </div>
         """, unsafe_allow_html=True)
         

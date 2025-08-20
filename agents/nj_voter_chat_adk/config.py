@@ -57,7 +57,7 @@ DATABASE SCHEMAS (use exact column names):
 1. voter_data.voters - Individual voter records (millions of rows)
    IDENTIFICATION:
    - id (STRING): Unique voter ID, e.g., 'NJ123456789'
-   - name_first, name_last, name_middle (STRING): Voter names
+   - name_first, name_last, name_middle (STRING): Voter names - **IMPORTANT: Names are CASE SENSITIVE in queries**
    
    DEMOGRAPHICS:
    - demo_age (FLOAT): Age in years
@@ -208,6 +208,7 @@ Method 5 - Find coordinates from an address:
   LIMIT 1
 
 IMPORTANT:
+- **Names (first, last, middle) are CASE SENSITIVE**: Must match exact case in database (e.g., 'John' not 'john' or 'JOHN')
 - Party values are UPPERCASE: 'DEMOCRAT' not 'Democrat' or 'democratic'
 - County names are UPPERCASE: 'MORRIS' not 'Morris'
 - Use TRUE/FALSE for boolean voting history fields
@@ -222,6 +223,13 @@ GEOCODING (geocode_address) - Convert addresses to coordinates:
 WEB SEARCH (google_search) - Secondary tool for current information:
 - Use when database doesn't have the information
 - For current events, candidate info, recent news
+
+SAVE VOTER LIST (save_voter_list) - Save query results for later use:
+- AUTOMATICALLY save lists when queries return voter sets
+- Triggered by questions like "Who are all the voters that..."
+- Save ANY meaningful voter list, regardless of size
+- User can also explicitly request saving with "save this list"
+- Lists can be accessed later via the List Manager interface
 
 The advisory team helps you:
 - **Elon**: Deploy cutting-edge tech and unconventional tactics to disrupt traditional campaigning

@@ -11,6 +11,9 @@ from agents.nj_voter_chat_adk import suppress_warnings
 
 from agents.nj_voter_chat_adk.agent import NJVoterChatAgent
 from agents.nj_voter_chat_adk.auth import check_authentication, GoogleAuthenticator
+from agents.nj_voter_chat_adk.styles.base_design import apply_base_design, create_uber_card, create_metric_card
+from agents.nj_voter_chat_adk.components.sidebar import render_sidebar, add_chat_to_history, get_current_chat
+from agents.nj_voter_chat_adk.components.list_manager import ListManagerUI
 def _agent_invoke(agent, prompt: str):
     if hasattr(agent, "chat"):
         return agent.chat(prompt)
@@ -32,17 +35,52 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Apply Uber Base design system
+apply_base_design()
+
 # Check authentication before proceeding
 if not check_authentication():
     # Show login interface
     from agents.nj_voter_chat_adk.pages.login import show_login_page
     show_login_page()
     st.stop()
+# Custom NJ theme CSS (now integrated with Base design)
 nj_theme_css = """
 <style>
-/* Light mode background */
-.stApp {
-    background-color: #FFFFFF;
+/* Extends Base design system with custom NJ theme */
+/* Override text colors to use wolf blue */
+h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+    color: #3B5D7C !important;
+}
+
+/* Hamburger menu button for sidebar toggle */
+.sidebar-toggle-btn {
+    position: fixed;
+    left: 1rem;
+    top: 1rem;
+    z-index: 1001;
+    background: #FFFFFF;
+    border: 1px solid #E2E2E2;
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+}
+
+.sidebar-toggle-btn:hover {
+    background: #F6F6F6;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* When sidebar is visible, move the button */
+[data-testid="stSidebar"][aria-expanded="true"] ~ .main .sidebar-toggle-btn {
+    left: 295px;
 }
 
 /* Fixed header styling */
@@ -194,13 +232,20 @@ if "agent" not in st.session_state:
     st.session_state.agent = NJVoterChatAgent()
 if "history" not in st.session_state:
     st.session_state.history = []
+if "chat_saved" not in st.session_state:
+    st.session_state.chat_saved = False
 
 # User info and logout button in top right
 if "user_info" in st.session_state:
     user_info = st.session_state["user_info"]
+    user_id = user_info.get("google_id", user_info.get("id", "default_user"))
     user_email = user_info.get("email", "")
     user_name = user_info.get("full_name", user_email)
     user_picture = user_info.get("picture_url", "")
+    
+    # Set user context for list saving
+    list_manager = ListManagerUI()
+    list_manager.set_user_context(user_id, user_email)
     
     # Display user info in top right
     st.markdown(f"""
@@ -210,8 +255,13 @@ if "user_info" in st.session_state:
         </div>
     """, unsafe_allow_html=True)
     
-    # Add logout button in sidebar
+    # Render custom sidebar with navigation
+    render_sidebar()
+    
+    # Add logout button at bottom of sidebar
     with st.sidebar:
+        st.markdown('<div style="flex-grow: 1;"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
         if st.button("🚪 Logout", type="secondary", use_container_width=True):
             auth = GoogleAuthenticator()
             auth.logout()
@@ -243,6 +293,27 @@ header_html = f"""
 """
 
 st.markdown(header_html, unsafe_allow_html=True)
+
+# Add hamburger menu button for sidebar toggle
+st.markdown("""
+<button class="sidebar-toggle-btn" onclick="
+    const sidebar = document.querySelector('[data-testid=stSidebar]');
+    const expandedAttr = sidebar.getAttribute('aria-expanded');
+    if (expandedAttr === 'true') {
+        // Close sidebar
+        document.querySelector('[data-testid=collapsedControl] button').click();
+    } else {
+        // Open sidebar
+        document.querySelector('[data-testid=collapsedControl] button').click();
+    }
+">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B5D7C" stroke-width="2">
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+</button>
+""", unsafe_allow_html=True)
 
 for role, content in st.session_state.history:
     with st.chat_message(role):
@@ -286,6 +357,15 @@ if prompt:
         if not answer:
             answer = "(No assistant text returned. See logs for details.)"
         st.session_state.history.append(("assistant", answer))
+        
+        # Save chat to history if it has meaningful content
+        if len(st.session_state.history) > 0 and not st.session_state.get('chat_saved'):
+            # Extract first few words of the prompt as title
+            title = prompt[:50] + "..." if len(prompt) > 50 else prompt
+            chat_id = add_chat_to_history(title, st.session_state.history)
+            st.session_state.current_chat_id = chat_id
+            st.session_state.chat_saved = True
+        
         with st.chat_message("assistant"):
             st.markdown(answer)
             if rows:
@@ -296,6 +376,10 @@ if prompt:
             st.exception(e)
         import traceback
         print("[ERROR] Exception during agent invocation:\n", traceback.format_exc())
+
+# Render list modal if needed
+if st.session_state.get("show_list_modal"):
+    list_manager.render_list_modal()
 
 # Close the main-content div
 st.markdown("</div>", unsafe_allow_html=True)

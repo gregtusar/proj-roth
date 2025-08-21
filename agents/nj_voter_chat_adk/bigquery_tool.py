@@ -2,6 +2,7 @@ from typing import Any, Dict
 import time
 import re
 import json
+import datetime
 from decimal import Decimal
 from google.cloud import bigquery
 from google.api_core.client_options import ClientOptions
@@ -10,10 +11,14 @@ from .policy import is_select_only, tables_within_allowlist
 from .debug_config import debug_print, error_print
 
 def convert_decimal(obj):
-    """Convert Decimal objects to JSON-serializable types."""
+    """Convert Decimal and date objects to JSON-serializable types."""
+    
     if isinstance(obj, Decimal):
         # Convert to float for numeric values
         return float(obj)
+    elif isinstance(obj, (datetime.date, datetime.datetime)):
+        # Convert date/datetime to ISO format string
+        return obj.isoformat()
     elif isinstance(obj, dict):
         return {k: convert_decimal(v) for k, v in obj.items()}
     elif isinstance(obj, list):

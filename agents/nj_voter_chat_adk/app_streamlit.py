@@ -1,6 +1,8 @@
 import streamlit as st
 import sys
 import os
+import time
+import json
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 if project_root not in sys.path:
@@ -151,6 +153,25 @@ button[data-testid="expandedControl"] {
     display: none !important;
 }
 
+
+/* Make code blocks wrap text instead of horizontal scroll */
+div[data-testid="stCode"] {
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+}
+
+div[data-testid="stCode"] pre {
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+}
+
+div[data-testid="stCode"] code {
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+}
 
 /* Add padding to main content - no header now */
 .main-content {
@@ -398,14 +419,19 @@ st.markdown('<div class="main-content">', unsafe_allow_html=True)
 
 # Wolf icon data should already be loaded above
 
-for role, content in st.session_state.history:
+for idx, (role, content) in enumerate(st.session_state.history):
     # Use wolf icon for user messages, default robot for assistant
     if role == "user" and st.session_state.wolf_icon_data:
         with st.chat_message(role, avatar=f"data:image/png;base64,{st.session_state.wolf_icon_data}"):
             st.markdown(content)
     else:
         with st.chat_message(role):
-            st.markdown(content)
+            if role == "assistant":
+                # Display assistant responses in a code block with copy button
+                # Text wrapping is handled by global CSS
+                st.code(content, language="markdown")
+            else:
+                st.markdown(content)
 
 prompt = st.chat_input("Ask a question about New Jersey voter data... 🗳️")
 if prompt:
@@ -464,7 +490,9 @@ if prompt:
         
         # Use default robot icon for assistant messages
         with st.chat_message("assistant"):
-            st.markdown(answer)
+            # Display response in a code block with copy button
+            # Text wrapping is handled by global CSS
+            st.code(answer, language="markdown")
             if rows:
                 st.dataframe(rows)
     except Exception as e:

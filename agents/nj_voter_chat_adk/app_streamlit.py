@@ -119,33 +119,38 @@ button[data-testid="expandedControl"] {
 .stSidebar button {
     background: transparent !important;
     border: none !important;
-    color: #666666 !important;
-    font-size: 14px !important;
+    color: #3B5D7C !important;
+    font-size: 15px !important;
     font-weight: 400 !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
     text-align: left !important;
-    padding: 8px 12px !important;
+    padding: 10px 16px !important;
     transition: background-color 0.2s !important;
+    width: 100% !important;
 }
 
 .stSidebar button:hover {
-    background-color: rgba(0, 0, 0, 0.05) !important;
-    border-radius: 6px !important;
+    background-color: #EEEEEE !important;
+    border-radius: 8px !important;
 }
 
 /* Style Recent Chats header to match */
 .stSidebar h3, .stSidebar .sidebar-section-header {
-    color: #666666 !important;
-    font-size: 14px !important;
-    font-weight: 400 !important;
-    margin: 1rem 0 0.5rem 0 !important;
+    color: #757575 !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    margin: 1rem 16px 0.5rem 16px !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
 }
 
 /* Style the Default Project text */
 .stSidebar .project-name {
-    color: #666666 !important;
-    font-size: 14px !important;
+    color: #3B5D7C !important;
+    font-size: 15px !important;
     font-weight: 400 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
 }
 
 /* Hide the decoration at the top */
@@ -165,12 +170,17 @@ div[data-testid="stCode"] pre {
     white-space: pre-wrap !important;
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    font-size: 15px !important;
+    line-height: 1.6 !important;
 }
 
 div[data-testid="stCode"] code {
     white-space: pre-wrap !important;
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    font-size: 15px !important;
 }
 
 /* Add padding to main content - no header now */
@@ -218,6 +228,9 @@ div[data-testid="stCode"] code {
     padding: 0.75rem 0;
     color: #000000 !important;
     max-width: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    font-size: 15px !important;
+    line-height: 1.6 !important;
 }
 
 .stChatMessage[data-testid="stChatMessageContainer-assistant"] {
@@ -240,14 +253,23 @@ div[data-testid="stCode"] code {
     padding-left: 0;
 }
 
-/* Ensure all chat message content is black */
+/* Ensure all chat message content is black and uses consistent font */
 .stChatMessage p, .stChatMessage div, .stChatMessage span {
     color: #000000 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    font-size: 15px !important;
+    line-height: 1.6 !important;
 }
 
 /* Make sure markdown content in chat messages is black */
 .stChatMessage .stMarkdown {
     color: #000000 !important;
+}
+
+.stChatMessage .stMarkdown p {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    font-size: 15px !important;
+    line-height: 1.6 !important;
 }
 
 /* Input styling - ChatGPT-like compact design */
@@ -405,7 +427,7 @@ if "user_info" in st.session_state:
     with st.sidebar:
         st.markdown('<div style="flex-grow: 1;"></div>', unsafe_allow_html=True)
         st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
-        if st.button("🚪 Logout", type="secondary", use_container_width=True):
+        if st.button("Logout", type="secondary", use_container_width=True):
             auth = GoogleAuthenticator()
             auth.logout()
             st.rerun()

@@ -244,7 +244,6 @@ def render_sidebar():
         # New Chat Button
         st.markdown("""
         <button class="new-chat-btn" onclick="window.location.reload()">
-            <span class="nav-item-icon">✏️</span>
             <span>New chat</span>
         </button>
         """, unsafe_allow_html=True)
@@ -271,7 +270,7 @@ def render_projects_section():
     # Default project header with custom styling - using project-name class
     st.markdown("""
     <div class="project-header">
-        <span class="project-name">📁 Default Project</span>
+        <span class="project-name">Default Project</span>
         <span style="font-size: 12px; color: #757575;">▼</span>
     </div>
     """, unsafe_allow_html=True)
@@ -281,7 +280,7 @@ def render_projects_section():
         for chat in st.session_state.projects['Default Project']:
             st.markdown(f"""
             <div class="chat-item" onclick="window.location.reload()">
-                💬 {chat['title']}
+                {chat['title']}
             </div>
             """, unsafe_allow_html=True)
     else:
@@ -294,7 +293,6 @@ def render_projects_section():
     # Add new project button with consistent styling
     st.markdown("""
     <div class="tool-item" style="margin-top: 8px;">
-        <span class="tool-item-icon">➕</span>
         <span>New Project</span>
     </div>
     """, unsafe_allow_html=True)
@@ -312,7 +310,7 @@ def render_chats_section():
             # Use consistent chat-item styling
             st.markdown(f"""
             <div class="chat-item" onclick="window.location.reload()">
-                💬 {chat_title}
+                {chat_title}
             </div>
             """, unsafe_allow_html=True)
     else:
@@ -327,7 +325,7 @@ def render_tools_section():
     st.markdown('<div class="section-header">Tools</div>', unsafe_allow_html=True)
     
     # List Manager with actual functionality
-    if st.button("📋 List Manager", key="tool_list_manager", use_container_width=True):
+    if st.button("List Manager", key="tool_list_manager", use_container_width=True):
         st.session_state.current_tool = "list_manager"
         st.session_state.show_list_manager = True
         st.rerun()
@@ -341,13 +339,13 @@ def render_tools_section():
     
     # Other tools (placeholders for now)
     tools = [
-        {"name": "Agents", "icon": "🤖", "key": "agents"},
-        {"name": "Campaigns", "icon": "📢", "key": "campaigns"},
-        {"name": "A/B Tests", "icon": "🔬", "key": "ab_tests"}
+        {"name": "Agents", "key": "agents"},
+        {"name": "Campaigns", "key": "campaigns"},
+        {"name": "A/B Tests", "key": "ab_tests"}
     ]
     
     for tool in tools:
-        if st.button(f"{tool['icon']} {tool['name']}", key=f"tool_{tool['key']}", use_container_width=True):
+        if st.button(f"{tool['name']}", key=f"tool_{tool['key']}", use_container_width=True):
             st.session_state.current_tool = tool['key']
             st.info(f"{tool['name']} coming soon!")
 

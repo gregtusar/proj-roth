@@ -4,28 +4,56 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+*.py[cod]
+*$py.class
 
 # Logs
 *.log
+deploy.log
 
 # Output files
 outputs/logs/*.log
 outputs/maps/*.html
 outputs/charts/*.png
+outputs/*.ipynb
 
 # Temporary files
 *.tmp
+*.swp
+*~
 .DS_Store
+test.txt
+
+# Backup files
+*.bak
+*.backup
+*.old
 
 # Credentials and keys
 *credentials*.json
 keys/
+*.key
+*.pem
 
 # Data files
+data/
 file1
 file2
 *.csv
 ids_only_in_*.txt
+voter_comparison_*.csv
+voter_*.txt
 
 # Feature planning documents
 listfeature.txt
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-*
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/

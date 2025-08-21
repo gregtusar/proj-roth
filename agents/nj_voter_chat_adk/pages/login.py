@@ -57,74 +57,71 @@ def show_login_page():
             st.switch_page("app_streamlit.py")
         return
     
-    # Display login interface
-    col1, col2, col3 = st.columns([1, 2, 1])
+    # Display login interface - use full width for better centering
+    # Create a centered container for all login elements
+    import base64
+    from pathlib import Path
+    import os
     
-    with col2:
-        # Create a centered container for all login elements
-        import base64
-        from pathlib import Path
-        import os
+    # Try multiple paths to find the logo
+    possible_paths = [
+        Path(__file__).parent.parent / "greywolf_logo.png",  # From pages folder
+        Path(__file__).parent / "greywolf_logo.png",  # In same folder
+        Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) / "greywolf_logo.png",  # Absolute path
+        Path("greywolf_logo.png"),  # Current directory
+    ]
+    
+    logo_html = ""
+    for logo_path in possible_paths:
+        if logo_path.exists():
+            try:
+                with open(logo_path, "rb") as f:
+                    logo_data = base64.b64encode(f.read()).decode()
+                logo_html = f'<img src="data:image/png;base64,{logo_data}" alt="Greywolf Logo" style="width: 80px; height: 80px; margin-bottom: 1.5rem;">'
+                break
+            except Exception as e:
+                logger.warning(f"Could not load logo from {logo_path}: {e}")
+    
+    if not logo_html:
+        # Fallback to wolf emoji if logo not found
+        logo_html = '<div style="font-size: 60px; margin-bottom: 1.5rem;">🐺</div>'
+    
+    # Google Sign-In button
+    auth = GoogleAuthenticator()
+    auth_url = auth.get_google_auth_url()
         
-        # Try multiple paths to find the logo
-        possible_paths = [
-            Path(__file__).parent.parent / "greywolf_logo.png",  # From pages folder
-            Path(__file__).parent / "greywolf_logo.png",  # In same folder
-            Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) / "greywolf_logo.png",  # Absolute path
-            Path("greywolf_logo.png"),  # Current directory
-        ]
-        
-        logo_html = ""
-        for logo_path in possible_paths:
-            if logo_path.exists():
-                try:
-                    with open(logo_path, "rb") as f:
-                        logo_data = base64.b64encode(f.read()).decode()
-                    logo_html = f'<img src="data:image/png;base64,{logo_data}" alt="Greywolf Logo" style="width: 80px; height: 80px; margin-bottom: 1.5rem;">'
-                    break
-                except Exception as e:
-                    logger.warning(f"Could not load logo from {logo_path}: {e}")
-        
-        if not logo_html:
-            # Fallback to wolf emoji if logo not found
-            logo_html = '<div style="font-size: 60px; margin-bottom: 1.5rem;">🐺</div>'
-        
-        # Google Sign-In button
-        auth = GoogleAuthenticator()
-        auth_url = auth.get_google_auth_url()
-        
-        # Create all elements in a single centered container
-        st.markdown(f"""
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%; padding-top: 3rem;">
-                {logo_html}
-                <h1 style="color: #3B5D7C; margin: 0; font-size: 2.5rem; line-height: 1.2;">
-                    Greywolf<br>Analytica
-                </h1>
-                <h3 style="color: #666; font-weight: normal; margin: 1rem 0 3rem 0; font-size: 1.1rem;">
-                    NJ Voter Data Intelligence Platform
-                </h3>
-                <a href="{auth_url}" style="
-                    display: inline-flex;
-                    align-items: center;
-                    padding: 12px 24px;
-                    background-color: white;
-                    color: #3c4043;
-                    border: 1px solid #dadce0;
-                    border-radius: 4px;
-                    font-family: 'Roboto', sans-serif;
-                    font-size: 14px;
-                    font-weight: 500;
+    # Create all elements in a single centered container
+    st.markdown(f"""
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%;">
+            {logo_html}
+            <h1 style="color: #3B5D7C; margin: 0; font-size: 2.5rem;">
+                Greywolf Analytica
+            </h1>
+            <h3 style="color: #666; font-weight: bold; margin: 1rem 0 3rem 0; font-size: 1.3rem;">
+                NJ Voter Data Intelligence Platform
+            </h3>
+            <a href="{auth_url}" style="
+                display: inline-flex;
+                align-items: center;
+                padding: 12px 24px;
+                background-color: white;
+                color: #3c4043;
+                border: 1px solid #dadce0;
+                border-radius: 4px;
+                font-family: 'Roboto', sans-serif;
+                font-size: 14px;
+                font-weight: bold;
                     text-decoration: none;
                     transition: background-color 0.3s, box-shadow 0.3s;
                     box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-                ">
-                    <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDI1LjAuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgIC0tPgo8c3ZnIHZlcnNpb249IjEuMSIgaWQ9IkxheWVyXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4IgoJIHZpZXdCb3g9IjAgMCA0OCA0OCIgc3R5bGU9ImVuYWJsZS1iYWNrZ3JvdW5kOm5ldyAwIDAgNDggNDg7IiB4bWw6c3BhY2U9InByZXNlcnZlIj4KPHN0eWxlIHR5cGU9InRleHQvY3NzIj4KCS5zdDB7ZmlsbDojRUE0MzM1O30KCS5zdDF7ZmlsbDojNDI4NUY0O30KCS5zdDJ7ZmlsbDojRkJCQzA1O30KCS5zdDN7ZmlsbDojMzRBODUzO30KPC9zdHlsZT4KPGc+Cgk8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMjQsOS41YzMuNTQsMCw2LjcxLDEuMjIsOS4yMSwzLjZsNi44NS02Ljg1QzM1LjksMi4zOCwzMC40NywwLDI0LDBDMTQuNjIsMCw2LjUxLDUuMzgsMi41NiwxMy4yMmw3Ljk4LDYuMTkKCQlDMTIuNDMsMTMuNzIsMTcuNzQsOS41LDI0LDkuNXoiLz4KCTxwYXRoIGNsYXNzPSJzdDEiIGQ9Ik00Ni45OCwyNC41NWMwLTEuNTctMC4xNS0zLjA5LTAuMzgtNC41NUgyNHY5LjAyaDEyLjk0Yy0wLjU4LDIuOTYtMi4yNiw1LjQ4LTQuNzgsNy4xOGw3LjczLDYKCQlDNDQuNDksMzguMzcsNDcuMDcsMzEuOTEsNDYuOTgsMjQuNTV6Ii8+Cgk8cGF0aCBjbGFzcz0ic3QyIiBkPSJNMTAuNTMsMjguNTljLTAuNDgtMS40NS0wLjc2LTIuOTktMC43Ni00LjU5czAuMjctMy4xNCwwLjc2LTQuNTlsLTcuOTgtNi4xOUMwLjkyLDE2LjQ2LDAsMjAuMTIsMCwyNAoJCWMwLDMuODgsMC45Miw3LjU0LDIuNTYsMTAuNzhMMTAuNTMsMjguNTl6Ii8+Cgk8cGF0aCBjbGFzcz0ic3QzIiBkPSJNMjQsNDhjNi40OCwwLDExLjkzLTIuMTMsMTUuODktNS44MWwtNy43My02Yy0yLjE1LDEuNDUtNC45MiwyLjMtOC4xNiwyLjNjLTYuMjYsMC0xMS41Ny00LjIyLTEzLjQ3LTkuOTEKCQlsLTcuOTgsNi4xOUM2LjUxLDQyLjYyLDE0LjYyLDQ4LDI0LDQ4eiIvPgo8L2c+Cjwvc3ZnPgo=" 
-                         style="width: 18px; height: 18px; margin-right: 12px;" 
-                         alt="Google Logo"/>
-                    Continue with Google
-                </a>
-            </div>
-        """, unsafe_allow_html=True)
+            ">
+                <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDI1LjAuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgIC0tPgo8c3ZnIHZlcnNpb249IjEuMSIgaWQ9IkxheWVyXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4IgoJIHZpZXdCb3g9IjAgMCA0OCA0OCIgc3R5bGU9ImVuYWJsZS1iYWNrZ3JvdW5kOm5ldyAwIDAgNDggNDg7IiB4bWw6c3BhY2U9InByZXNlcnZlIj4KPHN0eWxlIHR5cGU9InRleHQvY3NzIj4KCS5zdDB7ZmlsbDojRUE0MzM1O30KCS5zdDF7ZmlsbDojNDI4NUY0O30KCS5zdDJ7ZmlsbDojRkJCQzA1O30KCS5zdDN7ZmlsbDojMzRBODUzO30KPC9zdHlsZT4KPGc+Cgk8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMjQsOS41YzMuNTQsMCw2LjcxLDEuMjIsOS4yMSwzLjZsNi44NS02Ljg1QzM1LjksMi4zOCwzMC40NywwLDI0LDBDMTQuNjIsMCw2LjUxLDUuMzgsMi41NiwxMy4yMmw3Ljk4LDYuMTkKCQlDMTIuNDMsMTMuNzIsMTcuNzQsOS41LDI0LDkuNXoiLz4KCTxwYXRoIGNsYXNzPSJzdDEiIGQ9Ik00Ni45OCwyNC41NWMwLTEuNTctMC4xNS0zLjA5LTAuMzgtNC41NUgyNHY5LjAyaDEyLjk0Yy0wLjU4LDIuOTYtMi4yNiw1LjQ4LTQuNzgsNy4xOGw3LjczLDYKCQlDNDQuNDksMzguMzcsNDcuMDcsMzEuOTEsNDYuOTgsMjQuNTV6Ii8+Cgk8cGF0aCBjbGFzcz0ic3QyIiBkPSJNMTAuNTMsMjguNTljLTAuNDgtMS40NS0wLjc2LTIuOTktMC43Ni00LjU5czAuMjctMy4xNCwwLjc2LTQuNTlsLTcuOTgtNi4xOUMwLjkyLDE2LjQ2LDAsMjAuMTIsMCwyNAoJCWMwLDMuODgsMC45Miw3LjU0LDIuNTYsMTAuNzhMMTAuNTMsMjguNTl6Ii8+Cgk8cGF0aCBjbGFzcz0ic3QzIiBkPSJNMjQsNDhjNi40OCwwLDExLjkzLTIuMTMsMTUuODktNS44MWwtNy43My02Yy0yLjE1LDEuNDUtNC45MiwyLjMtOC4xNiwyLjNjLTYuMjYsMC0xMS41Ny00LjIyLTEzLjQ3LTkuOTEKCQlsLTcuOTgsNi4xOUM2LjUxLDQyLjYyLDE0LjYyLDQ4LDI0LDQ4eiIvPgo8L2c+Cjwvc3ZnPgo=" 
+                     style="width: 18px; height: 18px; margin-right: 12px;" 
+                     alt="Google Logo"/>
+                Continue with Google
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
 
 
 def handle_oauth_callback(code: str):

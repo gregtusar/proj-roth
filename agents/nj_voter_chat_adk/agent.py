@@ -174,7 +174,12 @@ class NJVoterChatAgent(Agent):
         os.environ["GOOGLE_CLOUD_LOCATION"] = REGION
         
         debug_print(f"[DEBUG] Initializing agent with instruction: {SYSTEM_PROMPT[:100]}...")
-        super().__init__(name="nj_voter_chat", model=MODEL, tools=[bigquery_select, google_search, geocode_address, save_voter_list], instruction=SYSTEM_PROMPT)
+        super().__init__(
+            name="nj_voter_chat", 
+            model=MODEL, 
+            tools=[bigquery_select, google_search, geocode_address, save_voter_list], 
+            instruction=SYSTEM_PROMPT
+        )
         debug_print(f"[DEBUG] Agent initialized successfully with instruction parameter and tools: bigquery_select, google_search, geocode_address, save_voter_list")
         self._initialize_services()
     
@@ -247,7 +252,25 @@ class NJVoterChatAgent(Agent):
             
             debug_print(f"[DEBUG] About to call runner.run_async with RunConfig")
             
+            # Configure generation parameters via RunConfig
+            max_tokens = int(os.environ.get("ADK_MAX_OUTPUT_TOKENS", "32768"))
             run_config = RunConfig()
+            
+            # Set generation parameters if available in RunConfig
+            if hasattr(run_config, 'generation_config'):
+                debug_print(f"[DEBUG] Setting generation_config with max_output_tokens={max_tokens}")
+                run_config.generation_config = {
+                    "max_output_tokens": max_tokens,
+                    "temperature": 0.7,
+                    "top_p": 0.95,
+                    "top_k": 40
+                }
+            elif hasattr(run_config, 'max_output_tokens'):
+                debug_print(f"[DEBUG] Setting max_output_tokens={max_tokens} directly")
+                run_config.max_output_tokens = max_tokens
+            else:
+                debug_print(f"[DEBUG] No generation config fields found in RunConfig")
+            
             if hasattr(run_config, 'request'):
                 run_config.request = message_content
                 debug_print(f"[DEBUG] Using RunConfig.request field for message content")

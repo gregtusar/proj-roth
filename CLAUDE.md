@@ -51,6 +51,20 @@ PROJECT_ID=proj-roth REGION=us-central1 bash scripts/deploy_nj_voter_chat.sh
 bash test_simple_build.sh
 ```
 
+### Data Loading & Donation Matching Pipeline
+```bash
+# IMPORTANT: Use this script for donation-to-voter fuzzy matching
+# This algorithm ignores ZIP codes due to corruption in source data
+bq query --use_legacy_sql=false < scripts/fuzzy_match_no_zip.sql
+
+# This script:
+# - Matches donations to voter records using name + city/state (no ZIP)
+# - Includes nickname resolution (GREG->GREGORY, MIKE->MICHAEL, etc.)  
+# - Creates/replaces proj-roth.voter_data.donations table
+# - Achieves ~24% match rate despite corrupted ZIP data
+# Note: Source donations CSV has corrupted ZIPs (e.g., "79241106" instead of "07924")
+```
+
 ## Architecture
 
 ### Data Layer (BigQuery)

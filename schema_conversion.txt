@@ -1,0 +1,87 @@
+
+
+
+Today, we have two key tables voters and street_party_summary
+
+voters was seeded by a file which has voter data. We then added columns for geo-location data, and run a script to lookup lattitide and longitude for each address. This will make it difficult to drop in new voter files as we get them. And calling the geolocation tagger was expensive, so not something we want to do again.
+
+a sample of the original voter file is here: 
+id,addr_residential_street_name,addr_residential_street_number,name_first,name_middle,name_last,demo_age,demo_race,demo_race_confidence,demo_gender,addr_residential_state,addr_residential_city,current_voter_registration_intent,current_support_score,current_tags,score_support_generic_dem,demo_party,registration_status_civitech,addr_residential_line1,addr_residential_line2,addr_residential_line3,addr_residential_zip_code,county_name,email,phone_1,phone_2,congressional_name,state_house_name,state_senate_name,precinct_name,municipal_name,place_name,city_council_name,voter_type,participation_primary_2016,participation_primary_2017,participation_primary_2018,participation_primary_2019,participation_primary_2020,participation_primary_2021,participation_primary_2022,participation_primary_2023,participation_primary_2024,participation_general_2016,participation_general_2017,participation_general_2018,participation_general_2019,participation_general_2020,participation_general_2021,participation_general_2022,participation_general_2023,participation_general_2024,vote_primary_dem_2016,vote_primary_rep_2016,vote_primary_dem_2017,vote_primary_rep_2017,vote_primary_dem_2018,vote_primary_rep_2018,vote_primary_dem_2019,vote_primary_rep_2019,vote_primary_dem_2020,vote_primary_rep_2020,vote_primary_dem_2021,vote_primary_rep_2021,vote_primary_dem_2022,vote_primary_rep_2022,vote_primary_dem_2023,vote_primary_rep_2023,vote_primary_dem_2024,vote_primary_rep_2024,vote_other_2016,vote_other_2017,vote_other_2018,vote_other_2019,vote_other_2020,vote_other_2021,vote_other_2022,vote_other_2023,vote_other_2024,notes
+NJ_K1540407120,ALPHANO,701,Angela,Rose,Desena,40,LATINO/A,LOW,FEMALE,NJ,ALLAMUCHY,,,,0.7509,DEMOCRAT,ACTIVE,701 ALPHANO RD,,,07820,WARREN,,,,NJ CONGRESSIONAL DISTRICT 07,NJ STATE HOUSE DISTRICT 024,NJ STATE SENATE DISTRICT 024,ALLAMUCHY TOWNSHIP - 04,,ALLAMUCHY,,TURNOUT,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,,,,,,,,,,
+NJ_152426805,B ALPHANO,701,David,P,Demary,70,WHITE,LOW,MALE,NJ,ALLAMUCHY,,,,0.1299,REPUBLICAN,ACTIVE,701 B ALPHANO RD,,,07820,WARREN,,,,NJ CONGRESSIONAL DISTRICT 07,NJ STATE HOUSE DISTRICT 024,NJ STATE SENATE DISTRICT 024,ALLAMUCHY TOWNSHIP - 04,,ALLAMUCHY,,,false,false,false,false,false,false,false,false,false,false,false,false,false,true,false,true,false,true,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,,,,,,,,,,
+NJ_118057784,BEAR,206,Barbara,L,Morgan,77,OTHER,LOW,FEMALE,NJ,ALLAMUCHY,,,,0.1568,REPUBLICAN,ACTIVE,206 BEAR CREEK RD,,,07820,WARREN,,,,NJ CONGRESSIONAL DISTRICT 07,NJ STATE HOUSE DISTRICT 024,NJ STATE SENATE DISTRICT 024,ALLAMUCHY TOWNSHIP - 04,,ALLAMUCHY,,,false,false,false,false,false,false,false,false,false,true,false,true,true,true,false,true,false,true,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,,,,,,,,,,
+NJ_M0628034341,COBBLE,2,Luke,William,Mcgovern,19,OTHER,LOW,MALE,NJ,ALLAMUCHY,,,,0.324,REPUBLICAN,ACTIVE,2 COBBLE HILL RD,,,07820,WARREN,,,,NJ CONGRESSIONAL DISTRICT 07,NJ STATE HOUSE DISTRICT 024,NJ STATE SENATE DISTRICT 024,ALLAMUCHY TOWNSHIP - 04,,ALLAMUCHY,,PERSUASION,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,true,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,,,,,,,,,,
+NJ_L6422157662,DOGWOOD,108,Cooper,J,Ferguson,18,BLACK,LOW,MALE,NJ,ALLAMUCHY,,,,0.1701,REPUBLICAN,ACTIVE,108 DOGWOOD WAY,,,07820,WARREN,,,,NJ CONGRESSIONAL DISTRICT 07,NJ STATE HOUSE DISTRICT 024,NJ STATE SENATE DISTRICT 024,ALLAMUCHY TOWNSHIP - 04,,ALLAMUCHY,,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,,,,,,,,,,
+
+
+We now have donation data, a sample of which is here:
+Committee Name,Full Name,First Name,Middle Name,Last Name,Suffix,Address 1,Address 2,City,State,Zip,Employer,Occupation,Contribution Amount,Election Type,Election Year
+FRIENDS OF JOHN BARRASSO,"GROSS, MARTIN MR",MARTIN MR,,GROSS,,1 SANDALWOOD DR,,LIVINGSTON,NJ,7039,SANDALWOOD SECURITIES,INVESTOR,1000,PRIMARY,2012
+PASCRELL FOR CONGRESS,"CHIRICHELLA, JOSEPH P.",JOSEPH P.,,CHIRICHELLA,,37 BROOKWOOD RD,,MOUNT LAUREL,NJ,8054,PSE&G,"DISTRICT MANAGER, ENGINEER",325,PRIMARY,2012
+ROMNEY FOR PRESIDENT INC.,"STEIGERWALT, ERIC MR.",ERIC,MR.,STEIGERWALT,,160 FOX CHASE ROAD,,CHESTER,NJ,7930,METLIFE,INTERIM CHIEF FINANCIAL OFFICER,2500,GENERAL,2012
+CARMONA FOR ARIZONA,"HALL, RICHARD",,,,,600C LAKE ST,,RAMSEY,NJ,7446,SELF,MUSICIAN,2500,GENERAL,2012
+STEWART GREENLEAF FOR AMERICA,"STEFKOVIC, MICHAEL",,,,,,,DEPTFORD,NJ,8096,AMS,,600,,2012
+PASCRELL FOR CONGRESS,"PAULIUS, VICTOR",VICTOR,,PAULIUS,,684 W CRESCENT AVE,,ALLENDALE,NJ,7401,V. PAULIUS & ASSOCIATES,PARTNER,500,PRIMARY,2012
+MICHAEL WILLIAMS FOR CONGRESS,"FIELER, SEAN M",SEAN M,,FIELER,,40 HASLET AVE,,PRINCETON,NJ,8540,EQUINOX PARTNERS LP,PARTNER,2500,PRIMARY,2012
+PASCRELL FOR CONGRESS,"LERCH, DIETER",DIETER,,LERCH,,"LERCH, VINCI & HIGGINS",17-17 RT. 208,FAIR LAWN,NJ,7410,"LERCH, VINCI  HIGGINS",ACCOUNTANT,500,PRIMARY,2012
+BILL NELSON FOR U S SENATE,"KRAMER, ABE J",ABE J,,KRAMER,,216 S DWIGHT PLACE,,ENGLEWOOD,NJ,7631,SELF EMPLOYED,R.E.,500,PRIMARY,2012
+ED POTOSNAK FOR CONGRESS,"KOLTON, CAROL R.",CAROL R.,,KOLTON,,680 SHACKAMAXON DR,,WESTFIELD,NJ,7090,SELF,SOCIAL WORKER,1000,PRIMARY,2012
+
+
+I would like to a plan to reorganize the schemas into new tables. The schemas below are not exhaustive or complete and don't contain all of the columns. The sample data above should help recreate the needed columns and a good guess at the type.
+
+individuals (persistent; unique people based on name matching):
+
+	master_id (STRING, PK, e.g., UUID)
+	standardized_name (STRING)
+
+
+addresses (persistent; unique normalized addresses with geo):
+
+	address_id (STRING, PK, e.g., UUID or hash of standardized_address)
+	standardized_address (STRING, e.g., "123 Main St, Anytown, CA 12345")
+	geo_location (GEOGRAPHY, derived via BigQuery GIS functions, e.g., ST_GEOGFROMTEXT(...) or external geocoding)
+	last_updated (TIMESTAMP)
+
+
+individual_addresses (junction table for links; handles multiples/moves):
+	individual_address_id (STRING, PK, UUID)
+	master_id (STRING, FK to individuals)
+	address_id (STRING, FK to addresses)
+	address_type (STRING, e.g., 'home', 'mailing', 'previous')
+	valid_from (DATE)
+	valid_to (DATE, NULL if current)
+	is_current (BOOLEAN, default TRUE)
+
+voters (processed table linking to individuals; regenerate on replacement):
+	vendor_voter_id (STRING, foreign key to raw_voters)
+	master_id (STRING, foreign key to individuals)
+	other_voter_columns (copied/joined from raw_voters)
+
+donations (processed table linking to individuals; regenerate on replacement):
+	donation_id (STRING, foreign key to raw_donations)
+	master_id (STRING, foreign key to individuals, NULL if no match)
+	amount (NUMERIC)
+	other_donation_columns (copied/joined from raw_donations)
+
+
+and then two tables for raw_voters (for the original voter file which can then be dropped in, and other tables rebuilt), and raw_donations.
+
+and then also 
+
+voter_geo_view (materialized view for geospatial queries, to avoid modifying raw data):
+	CREATE MATERIALIZED VIEW voter_geo_view AS
+	SELECT v.*, ST_GEOGFROMTEXT('POINT(' || longitude || ' ' || latitude || ')') AS geo_point  -- Adjust based on your geo columns
+	FROM voters v
+	JOIN individuals i ON v.master_id = i.master_id;
+
+
+we will need scripts to create the tables, and build all the non-raw tables, creating the IDs and linking all the tables relationally with foreign keys.
+
+for linking voters and individuals, we varity of fuzzy or near match or something to match on name and address.
+
+the overall model config code will need to have its schema updates, and hints for the model on how to relationally join the various tables together in order to accomplish geospatial reasoning for example.
+
+the geolocation data is now only present in the existing voter table, it will need to be extracted, so it can be put into the new address table
+
+in the event the original csv files are needed, they exist in a gcp bucket called nj7voterfile, and the files are donations.csv and firstvoterfile.csv

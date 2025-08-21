@@ -1,17 +1,40 @@
 from typing import Any, Dict
 import time
 import re
+import json
+from decimal import Decimal
 from google.cloud import bigquery
 from google.api_core.client_options import ClientOptions
 from .config import PROJECT_ID, BQ_LOCATION, ALLOWED_TABLES, MAX_ROWS, QUERY_TIMEOUT_SECONDS
 from .policy import is_select_only, tables_within_allowlist
 from .debug_config import debug_print, error_print
 
+def convert_decimal(obj):
+    """Convert Decimal objects to JSON-serializable types."""
+    if isinstance(obj, Decimal):
+        # Convert to float for numeric values
+        return float(obj)
+    elif isinstance(obj, dict):
+        return {k: convert_decimal(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_decimal(item) for item in obj]
+    return obj
+
 class BigQueryReadOnlyTool:
     name = "bigquery_select"
-    description = "Executes read-only SELECT queries on approved tables with smart field mapping and geospatial support. Supports BigQuery Geography functions like ST_DISTANCE, ST_GEOGPOINT for location-based queries. IMPORTANT: demo_party field values must be exactly 'REPUBLICAN', 'DEMOCRAT', or 'UNAFFILIATED' (case-sensitive)."
+    description = """Executes read-only SELECT queries on approved tables with smart field mapping and geospatial support. 
+    
+    NEW: Normalized schema with relationship queries available:
+    - Use voter_geo_view for complete voter info with addresses and geocoding
+    - Use donor_view to find campaign contributors and match them to voters
+    - Join tables on master_id to link individuals across datasets
+    - All 264K addresses have preserved geocoding (latitude/longitude)
+    
+    Supports BigQuery Geography functions like ST_DISTANCE, ST_GEOGPOINT for location-based queries. 
+    IMPORTANT: demo_party field values must be exactly 'REPUBLICAN', 'DEMOCRAT', or 'UNAFFILIATED' (case-sensitive)."""
 
     FIELD_MAPPINGS = {
+        # Original schema mappings
         'voter_id': 'id',
         'party': 'demo_party',
         'age': 'demo_age',
@@ -21,7 +44,8 @@ class BigQueryReadOnlyTool:
         'street': 'addr_residential_street_name',
         'street_name': 'addr_residential_street_name',
         'street_number': 'addr_residential_street_number',
-        'city': 'addr_residential_city',
+        # Removed 'city' mapping - it conflicts with normalized schema
+        # 'city': 'addr_residential_city',  # REMOVED - use city as-is in new schema
         'state': 'addr_residential_state',
         'zip': 'addr_residential_zip_code',
         'zip_code': 'addr_residential_zip_code',
@@ -32,6 +56,16 @@ class BigQueryReadOnlyTool:
         'first_name': 'name_first',
         'last_name': 'name_last',
         'middle_name': 'name_middle',
+        # New normalized schema mappings
+        'person_id': 'master_id',
+        'individual_id': 'master_id',
+        'location_id': 'address_id',
+        'standardized_address': 'standardized_address',
+        'standardized_name': 'standardized_name',
+        'vendor_id': 'vendor_voter_id',
+        'amount': 'contribution_amount',
+        'donor': 'master_id',
+        'donation': 'contribution_amount',
         # Geospatial function mappings
         'distance': 'ST_DISTANCE',
         'point': 'ST_GEOGPOINT',
@@ -119,7 +153,10 @@ class BigQueryReadOnlyTool:
             for i, r in enumerate(result_iter):
                 if i >= MAX_ROWS:
                     break
-                rows.append(dict(r))
+                # Convert row to dict and handle Decimal types
+                row_dict = dict(r)
+                row_dict = convert_decimal(row_dict)
+                rows.append(row_dict)
             
             total_rows = getattr(query_job, 'total_rows', None)
             truncated = total_rows is not None and total_rows > len(rows)

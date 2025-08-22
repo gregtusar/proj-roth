@@ -8,9 +8,13 @@ google-auth-oauthlib==1.1.0
 google-auth-httplib2==0.1.1
 google-cloud-secret-manager==2.16.4
 google-cloud-firestore==2.13.1
+google-cloud-bigquery==3.11.4
 httpx==0.25.1
 pydantic==2.5.0
 pydantic-settings==2.1.0
 redis==5.0.1
 python-dotenv==1.0.0
 passlib[bcrypt]==1.7.4
+# ADK dependencies
+google-genai==0.5.4
+googlemaps==4.11.0

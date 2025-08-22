@@ -26,12 +26,23 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY backend/ ./backend/
 
+# Copy ADK agent code
+COPY agents/nj_voter_chat_adk/ ./agents/nj_voter_chat_adk/
+
 # Copy frontend build from previous stage
 COPY --from=frontend-builder /app/frontend/build ./frontend/build
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8080
+ENV HOST=0.0.0.0
+ENV DEBUG=False
+ENV GOOGLE_CLOUD_PROJECT=proj-roth
+ENV GOOGLE_CLOUD_REGION=us-central1
+
+# Create a non-root user
+RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
+USER appuser
 
 # Expose port
 EXPOSE 8080

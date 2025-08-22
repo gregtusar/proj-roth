@@ -66,5 +66,12 @@ frontend/*.md
 !frontend/build/
 !frontend/build/**
 
-# ADK agents (not needed for main app)
-agents/
+# Keep ADK agent for backend import
+!agents/nj_voter_chat_adk/*.py
+!agents/nj_voter_chat_adk/requirements.txt
+
+# Exclude other agent files
+agents/nj_voter_chat_adk/tests/
+agents/nj_voter_chat_adk/Dockerfile*
+agents/nj_voter_chat_adk/*.md
+agents/nj_voter_chat_adk/.env*

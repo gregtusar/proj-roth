@@ -4,14 +4,19 @@ import asyncio
 from typing import AsyncGenerator, Optional
 import json
 
-# Add parent directory to import ADK agent
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
-# Import the ADK agent
-from agents.nj_voter_chat_adk.agent import NJVoterChatAgent
-
-# Create agent instance
-agent = NJVoterChatAgent()
+# Try to import ADK agent, fall back to mock if not available
+try:
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    from agents.nj_voter_chat_adk.agent import NJVoterChatAgent
+    agent = NJVoterChatAgent()
+    ADK_AVAILABLE = True
+except ImportError:
+    print("Warning: ADK not available, using mock agent service")
+    from .agent_service_mock import process_message_stream as mock_stream
+    from .agent_service_mock import invoke_agent_tool as mock_tool
+    from .agent_service_mock import get_available_tools as mock_tools
+    ADK_AVAILABLE = False
+    agent = None
 
 async def process_message_stream(
     message: str, 
@@ -20,6 +25,11 @@ async def process_message_stream(
     """
     Process a message through the ADK agent and stream the response
     """
+    if not ADK_AVAILABLE:
+        async for chunk in mock_stream(message, session_id):
+            yield chunk
+        return
+    
     try:
         # Use the agent's chat method
         # Note: The ADK agent may not support streaming natively,

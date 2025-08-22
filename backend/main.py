@@ -1,10 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 import socketio
 import uvicorn
 import sys
 import os
+from pathlib import Path
 
 # Add parent directory to path to import ADK agent
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -47,13 +50,26 @@ app.include_router(maps.router, prefix="/api/maps", tags=["Maps"])
 # Mount Socket.IO app
 app.mount("/socket.io", sio_app)
 
-@app.get("/")
-async def root():
-    return {
-        "name": settings.APP_NAME,
-        "version": settings.VERSION,
-        "status": "running"
-    }
+# Serve static files in production
+if not settings.DEBUG:
+    # Get the frontend build directory
+    frontend_build_dir = Path(__file__).parent.parent / "frontend" / "build"
+    
+    if frontend_build_dir.exists():
+        # Mount static files
+        app.mount("/static", StaticFiles(directory=str(frontend_build_dir / "static")), name="static")
+        
+        # Serve index.html for all non-API routes (React routing)
+        @app.get("/{full_path:path}")
+        async def serve_react_app(full_path: str):
+            # Don't serve React app for API routes
+            if full_path.startswith("api/") or full_path.startswith("socket.io/"):
+                return {"error": "Not found"}, 404
+            
+            index_path = frontend_build_dir / "index.html"
+            if index_path.exists():
+                return FileResponse(str(index_path))
+            return {"error": "Frontend not built"}, 404
 
 @app.get("/health")
 async def health_check():

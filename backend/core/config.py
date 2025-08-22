@@ -10,13 +10,15 @@ class Settings(BaseSettings):
     
     # Server
     HOST: str = os.getenv("HOST", "0.0.0.0")
-    PORT: int = int(os.getenv("PORT", "8000"))
+    PORT: int = int(os.getenv("PORT", "8080"))
     
     # CORS
     CORS_ORIGINS: list[str] = [
         "http://localhost:3000",
         "http://localhost:8080",
         "https://nj-voter-chat.web.app",
+        "https://nj-voter-chat-app-proj-roth.us-central1.run.app",
+        os.getenv("FRONTEND_URL", ""),
     ]
     
     # Google Cloud

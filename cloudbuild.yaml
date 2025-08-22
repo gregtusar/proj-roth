@@ -1,0 +1,45 @@
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${_IMAGE_URI}', '.']
+
+  # Push the image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_IMAGE_URI}']
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image'
+      - '${_IMAGE_URI}'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_APPLICATION_CREDENTIALS=/secrets/service-account.json'
+      - '--set-secrets'
+      - '/secrets/service-account.json=nj-voter-chat-sa:latest'
+      - '--service-account'
+      - 'agent-runner@${PROJECT_ID}.iam.gserviceaccount.com'
+      - '--memory'
+      - '2Gi'
+      - '--cpu'
+      - '2'
+      - '--timeout'
+      - '3600'
+      - '--max-instances'
+      - '10'
+
+substitutions:
+  _SERVICE_NAME: nj-voter-chat-app
+  _REGION: us-central1
+  _IMAGE_URI: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/nj-voter-chat/nj-voter-chat-app:${SHORT_SHA}-${BUILD_ID}
+
+options:
+  logging: CLOUD_LOGGING_ONLY

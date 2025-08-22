@@ -43,7 +43,8 @@ gcloud run deploy "${SERVICE_NAME}" \
   --allow-unauthenticated \
   --service-account "${SA_EMAIL}" \
   --region "${REGION}" \
-  --set-env-vars GOOGLE_CLOUD_PROJECT="${PROJECT_ID}",GOOGLE_CLOUD_REGION="${REGION}",ADK_MAX_OUTPUT_TOKENS="32768"
+  --set-env-vars GOOGLE_CLOUD_PROJECT="${PROJECT_ID}",GOOGLE_CLOUD_REGION="${REGION}",ADK_MAX_OUTPUT_TOKENS="32768" \
+  --set-secrets="GOOGLE_CLIENT_ID=google-oauth-client-id:latest,GOOGLE_CLIENT_SECRET=google-oauth-client-secret:latest"
 
 echo "Service URL:"
 gcloud run services describe "${SERVICE_NAME}" --region "${REGION}" --format='value(status.url)'

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from typing import Optional
@@ -21,6 +21,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
 class GoogleAuthRequest(BaseModel):
     googleToken: str
+    redirectUri: Optional[str] = None
 
 class AuthResponse(BaseModel):
     user: dict
@@ -69,9 +70,12 @@ async def google_auth_callback(request: GoogleAuthRequest):
     Handle Google OAuth callback and exchange code for tokens
     """
     try:
+        # Use the provided redirect URI or default to localhost for development
+        redirect_uri = request.redirectUri or "http://localhost:3000/login"
+        
         print(f"Received auth code: {request.googleToken[:20]}..." if len(request.googleToken) > 20 else request.googleToken)
         print(f"Using client_id: {settings.GOOGLE_CLIENT_ID}")
-        print(f"Using redirect_uri: http://localhost:3000/login")
+        print(f"Using redirect_uri: {redirect_uri}")
         
         # Exchange authorization code for tokens
         async with httpx.AsyncClient() as client:
@@ -81,7 +85,7 @@ async def google_auth_callback(request: GoogleAuthRequest):
                     "code": request.googleToken,
                     "client_id": settings.GOOGLE_CLIENT_ID,
                     "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                    "redirect_uri": "http://localhost:3000/login",
+                    "redirect_uri": redirect_uri,
                     "grant_type": "authorization_code",
                 }
             )

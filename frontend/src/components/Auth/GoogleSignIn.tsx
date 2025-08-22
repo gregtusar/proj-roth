@@ -48,8 +48,9 @@ const GoogleSignIn: React.FC = () => {
     const code = urlParams.get('code');
     
     if (code) {
-      // Exchange code for token
-      dispatch(loginWithGoogle({ googleToken: code }));
+      // Exchange code for token with the current redirect URI
+      const redirectUri = `${window.location.origin}/login`;
+      dispatch(loginWithGoogle({ googleToken: code, redirectUri }));
     }
   }, [dispatch]);
 

@@ -16,6 +16,7 @@ export interface AuthState {
 
 export interface LoginCredentials {
   googleToken: string;
+  redirectUri?: string;
 }
 
 export interface AuthResponse {

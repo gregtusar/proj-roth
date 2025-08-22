@@ -40,8 +40,10 @@ ENV DEBUG=False
 ENV GOOGLE_CLOUD_PROJECT=proj-roth
 ENV GOOGLE_CLOUD_REGION=us-central1
 
-# Create a non-root user
-RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
+# Create a non-root user and set permissions
+RUN useradd -m -u 1001 appuser && \
+    chown -R appuser:appuser /app && \
+    chmod -R 755 /app
 USER appuser
 
 # Expose port

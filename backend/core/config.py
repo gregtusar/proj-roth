@@ -17,7 +17,7 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://localhost:8080",
         "https://nj-voter-chat.web.app",
-        "https://nj-voter-chat-app-proj-roth.us-central1.run.app",
+        "https://nj-voter-chat-app-nwv4o72vjq-uc.a.run.app",
         "https://nj-voter-chat-app-169579073940.us-central1.run.app",
         os.getenv("FRONTEND_URL", ""),
     ]

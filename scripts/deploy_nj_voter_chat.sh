@@ -5,7 +5,7 @@ PROJECT_ID="${PROJECT_ID:-proj-roth}"
 REGION="${REGION:-us-central1}"
 REPO_NAME="${REPO_NAME:-nj-voter-chat}"
 IMAGE_NAME="${IMAGE_NAME:-nj-voter-chat}"
-SERVICE_NAME="${SERVICE_NAME:-nj-voter-chat}"
+SERVICE_NAME="${SERVICE_NAME:-nj-voter-chat-app}"
 SA_EMAIL="${SA_EMAIL:-agent-runner@${PROJECT_ID}.iam.gserviceaccount.com}"
 
 gcloud config set project "${PROJECT_ID}"
@@ -29,7 +29,7 @@ IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${C
 cat > /tmp/cloudbuild_nj_voter.yaml <<EOF
 steps:
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${IMAGE_URI}', '-f', 'agents/nj_voter_chat_adk/Dockerfile', '.']
+    args: ['build', '-t', '${IMAGE_URI}', '-f', 'Dockerfile', '.']
 images: ['${IMAGE_URI}']
 EOF
 

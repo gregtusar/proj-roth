@@ -12,9 +12,18 @@ const initialState: AuthState = {
 
 export const loginWithGoogle = createAsyncThunk(
   'auth/loginWithGoogle',
-  async (credentials: LoginCredentials) => {
-    const response = await authService.loginWithGoogle(credentials);
-    return response;
+  async (credentials: LoginCredentials, { rejectWithValue }) => {
+    try {
+      const response = await authService.loginWithGoogle(credentials);
+      return response;
+    } catch (error: any) {
+      console.error('Google login error:', error);
+      if (error.response) {
+        console.error('Error response:', error.response.data);
+        return rejectWithValue(error.response.data.detail || 'Authentication failed');
+      }
+      return rejectWithValue('Network error occurred');
+    }
   }
 );
 
@@ -63,9 +72,9 @@ const authSlice = createSlice({
           localStorage.setItem('refresh_token', action.payload.refresh_token);
         }
       })
-      .addCase(loginWithGoogle.rejected, (state, action) => {
+      .addCase(loginWithGoogle.rejected, (state, action: any) => {
         state.isLoading = false;
-        state.error = action.error.message || 'Login failed';
+        state.error = action.payload || action.error.message || 'Login failed';
         state.isAuthenticated = false;
       })
       .addCase(logout.fulfilled, (state) => {

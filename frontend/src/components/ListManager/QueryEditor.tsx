@@ -9,6 +9,7 @@ import 'prismjs/components/prism-sql';
 import { AppDispatch } from '../../store';
 import { runQuery, updateList } from '../../store/listsSlice';
 import { VoterList } from '../../types/lists';
+import * as listsService from '../../services/lists';
 
 const EditorContainer = styled('div', {
   backgroundColor: '#1e1e1e',
@@ -55,20 +56,27 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ list }) => {
   const dispatch = useDispatch<AppDispatch>();
   const [query, setQuery] = useState(list.query);
   const [isEditing, setIsEditing] = useState(false);
-  const [isRunning, setIsRunning] = useState(false);
+  const [isRunningQuery, setIsRunningQuery] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
+  // Update query when list changes
+  React.useEffect(() => {
+    setQuery(list.query);
+    setIsEditing(false);
+  }, [list.id, list.query]);
 
   const handleRun = async () => {
-    setIsRunning(true);
+    setIsRunningQuery(true);
     try {
       await dispatch(runQuery(list.id)).unwrap();
     } finally {
-      setIsRunning(false);
+      setIsRunningQuery(false);
     }
   };
 
   const handleSave = async () => {
     if (query !== list.query) {
-      await dispatch(updateList(list.id, { query })).unwrap();
+      await dispatch(updateList({ listId: list.id, updates: { query } })).unwrap();
     }
     setIsEditing(false);
   };
@@ -76,6 +84,22 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ list }) => {
   const handleCancel = () => {
     setQuery(list.query);
     setIsEditing(false);
+  };
+
+  const handleRegenerateQuery = async () => {
+    // This will call the backend to use AI to generate SQL from the description
+    setIsRegenerating(true);
+    try {
+      const response = await listsService.regenerateSqlQuery(list.id);
+      setQuery(response.query);
+      // Automatically save the new query
+      await dispatch(updateList({ listId: list.id, updates: { query: response.query } })).unwrap();
+    } catch (error) {
+      console.error('Failed to regenerate SQL query:', error);
+      alert('Failed to regenerate SQL query. Please try again.');
+    } finally {
+      setIsRegenerating(false);
+    }
   };
 
   const highlightSQL = (code: string) => {
@@ -90,6 +114,28 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ list }) => {
           {!isEditing ? (
             <>
               <Button
+                onClick={handleRegenerateQuery}
+                kind={KIND.tertiary}
+                size={SIZE.mini}
+                disabled={!list.description}
+                isLoading={isRegenerating}
+                overrides={{
+                  BaseButton: {
+                    style: {
+                      color: '#ffffff',
+                      ':hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      },
+                      ':disabled': {
+                        color: 'rgba(255, 255, 255, 0.5)',
+                      },
+                    },
+                  },
+                }}
+              >
+                Regenerate SQL
+              </Button>
+              <Button
                 onClick={() => setIsEditing(true)}
                 kind={KIND.secondary}
                 size={SIZE.mini}
@@ -100,7 +146,7 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ list }) => {
                 onClick={handleRun}
                 kind={KIND.primary}
                 size={SIZE.mini}
-                isLoading={isRunning}
+                isLoading={isRunningQuery}
               >
                 Run Query
               </Button>
@@ -136,7 +182,7 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ list }) => {
         />
       </StyledEditor>
 
-      {list.row_count !== undefined && (
+      {list.row_count !== undefined && list.row_count !== null && (
         <div style={{ color: '#888', fontSize: '12px', marginTop: '8px' }}>
           Last run returned {list.row_count.toLocaleString()} rows
         </div>

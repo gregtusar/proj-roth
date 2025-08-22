@@ -1,0 +1,148 @@
+/* Dark Mode Global Styles */
+
+/* Apply dark mode when class is added to html element */
+.dark-mode {
+  /* Base colors */
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --bg-tertiary: #404040;
+  
+  --text-primary: #ffffff;
+  --text-secondary: #e0e0e0;
+  --text-tertiary: #a0a0a0;
+  
+  --border-color: #404040;
+  
+  /* Override body background */
+  background-color: #1a1a1a !important;
+}
+
+/* Light mode (default) */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #e5e7eb;
+  
+  --text-primary: #111827;
+  --text-secondary: #374151;
+  --text-tertiary: #6b7280;
+  
+  --border-color: #e5e7eb;
+}
+
+/* Apply dark mode to Base Web components */
+.dark-mode .baseui--toast {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark-mode .baseui--modal {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark-mode .baseui--button {
+  color: var(--text-primary);
+}
+
+.dark-mode .baseui--input input,
+.dark-mode .baseui--textarea textarea {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+.dark-mode .baseui--popover__body {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Leaflet map adjustments for dark mode */
+.dark-mode .leaflet-container {
+  background-color: #1a1a1a;
+}
+
+.dark-mode .leaflet-popup-content-wrapper,
+.dark-mode .leaflet-popup-tip {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.dark-mode .leaflet-control-layers,
+.dark-mode .leaflet-bar {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+.dark-mode .leaflet-control-layers-expanded {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* Apply dark mode to body and main containers */
+.dark-mode body,
+.dark-mode #root {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Dark mode for all divs that use styled components */
+.dark-mode div[data-baseweb] {
+  color: var(--text-primary);
+}
+
+/* Dark mode for cards and panels */
+.dark-mode .baseui--card {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Dark mode for tables */
+.dark-mode table {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark-mode th,
+.dark-mode td {
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Dark mode for code blocks */
+.dark-mode pre,
+.dark-mode code {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Dark mode for select dropdowns */
+.dark-mode .baseui--select__control,
+.dark-mode .baseui--select__dropdown {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+.dark-mode .baseui--select__option {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark-mode .baseui--select__option:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+/* Dark mode for tabs */
+.dark-mode .baseui--tabs-tab {
+  color: var(--text-secondary) !important;
+}
+
+.dark-mode .baseui--tabs-tab--active {
+  color: var(--text-primary) !important;
+}
+
+/* Smooth transitions */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}

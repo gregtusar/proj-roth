@@ -8,8 +8,10 @@ import json
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 # Import the ADK agent
-from agents.nj_voter_chat_adk.agent import agent, executor
-from agents.nj_voter_chat_adk.config import Config
+from agents.nj_voter_chat_adk.agent import NJVoterChatAgent
+
+# Create agent instance
+agent = NJVoterChatAgent()
 
 async def process_message_stream(
     message: str, 
@@ -19,18 +21,12 @@ async def process_message_stream(
     Process a message through the ADK agent and stream the response
     """
     try:
-        # Prepare the input for the agent
-        agent_input = {
-            "input": message,
-            "session_id": session_id or "default"
-        }
-        
-        # Use the executor to run the agent
+        # Use the agent's chat method
         # Note: The ADK agent may not support streaming natively,
         # so we'll simulate it by yielding chunks
         result = await asyncio.to_thread(
-            executor.invoke,
-            agent_input
+            agent.chat,
+            message
         )
         
         # Extract the response from the result

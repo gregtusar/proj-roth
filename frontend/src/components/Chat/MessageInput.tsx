@@ -1,34 +1,36 @@
 import React, { useState, useRef, KeyboardEvent } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { styled } from 'baseui';
-import { Input, SIZE } from 'baseui/input';
+import { Textarea, SIZE } from 'baseui/textarea';
 import { Button, KIND, SIZE as ButtonSize } from 'baseui/button';
 import { RootState, AppDispatch } from '../../store';
 import { addMessage } from '../../store/chatSlice';
 import wsService from '../../services/websocket';
 
-const Container = styled('div', {
+const Container = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
   padding: '16px 24px',
-  borderTop: '1px solid #e0e0e0',
-  backgroundColor: '#ffffff',
-});
+  borderTop: $isDarkMode ? '1px solid #374151' : '1px solid #e5e7eb',
+  backgroundColor: $isDarkMode ? '#1f2937' : '#ffffff',
+  transition: 'background-color 0.3s ease, border-color 0.3s ease',
+}));
 
 const InputContainer = styled('div', {
   display: 'flex',
   gap: '12px',
-  alignItems: 'flex-end',
+  alignItems: 'center', // Center align the send button with input
 });
 
-const StyledInput = styled(Input, {
+const StyledTextarea = styled(Textarea, {
   flex: 1,
 });
 
-const CharCount = styled('div', {
+const CharCount = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
   fontSize: '12px',
-  color: '#666',
+  color: $isDarkMode ? '#a0a0a0' : '#666',
   marginTop: '4px',
   textAlign: 'right',
-});
+  transition: 'color 0.3s ease',
+}));
 
 const MessageInput: React.FC = () => {
   const [message, setMessage] = useState('');
@@ -36,7 +38,8 @@ const MessageInput: React.FC = () => {
   const { isLoading, currentSessionId } = useSelector(
     (state: RootState) => state.chat
   );
-  const inputRef = useRef<HTMLInputElement>(null);
+  const { isDarkMode } = useSelector((state: RootState) => state.settings);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = () => {
     if (!message.trim() || isLoading) return;
@@ -51,10 +54,10 @@ const MessageInput: React.FC = () => {
     dispatch(addMessage(userMessage));
     wsService.sendMessage(message.trim(), currentSessionId || undefined);
     setMessage('');
-    inputRef.current?.focus();
+    // Focus will be handled by the inputRef prop
   };
 
-  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyPress = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -65,20 +68,32 @@ const MessageInput: React.FC = () => {
   const remainingChars = maxLength - message.length;
 
   return (
-    <Container>
+    <Container $isDarkMode={isDarkMode}>
       <InputContainer>
-        <StyledInput
-          ref={inputRef}
+        <StyledTextarea
+          inputRef={inputRef}
           value={message}
-          onChange={(e) => setMessage((e.target as HTMLInputElement).value)}
+          onChange={(e) => setMessage((e.target as HTMLTextAreaElement).value)}
           onKeyPress={handleKeyPress}
           placeholder="Ask about voter data, demographics, or political information..."
           size={SIZE.large}
           disabled={isLoading}
+          autoFocus
+          rows={2}
+          maxRows={6}
+          resize="vertical"
           overrides={{
             Root: {
               style: {
                 flex: 1,
+              },
+            },
+            Input: {
+              style: {
+                minHeight: '56px',
+                maxHeight: '150px',
+                resize: 'none',
+                overflowY: 'auto',
               },
             },
           }}
@@ -89,14 +104,22 @@ const MessageInput: React.FC = () => {
           kind={KIND.primary}
           size={ButtonSize.large}
           isLoading={isLoading}
+          overrides={{
+            BaseButton: {
+              style: {
+                height: '40px', // Match input height
+              },
+            },
+          }}
         >
           Send
         </Button>
       </InputContainer>
       {message.length > 0 && (
         <CharCount
+          $isDarkMode={isDarkMode}
           style={{
-            color: remainingChars < 100 ? '#ff0000' : '#666',
+            color: remainingChars < 100 ? '#ff0000' : isDarkMode ? '#a0a0a0' : '#666',
           }}
         >
           {remainingChars} characters remaining

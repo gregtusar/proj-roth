@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from 'react-query';
 import App from './App';
 import { store } from './store';
 import './styles/global.css';
+import './styles/darkmode.css';
 
 const engine = new Styletron();
 const queryClient = new QueryClient({

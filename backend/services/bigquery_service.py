@@ -1,60 +1,58 @@
 import asyncio
 import time
 from typing import Dict, List, Any
-import sys
-import os
+from google.cloud import bigquery
 
-# Add parent directory to import ADK agent components
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
-from agents.nj_voter_chat_adk.bigquery_tool import BigQueryReadOnlyTool
-
-async def execute_query(query: str, limit: int = 10000) -> Dict[str, Any]:
+async def execute_query(query: str, limit: int = 100000) -> Dict[str, Any]:
     """
     Execute a BigQuery query and return results
+    
+    Args:
+        query: SQL query to execute
+        limit: Maximum rows to return (default 100,000, use 0 for no limit)
     """
     try:
         start_time = time.time()
         
-        # Use the BigQuery tool from ADK agent
-        tool = BigQueryReadOnlyTool()
+        # Use native BigQuery client for better control
+        client = bigquery.Client(project='proj-roth')
         
-        # Add limit if not present
-        if "LIMIT" not in query.upper():
+        # Add project prefix if not present
+        if 'proj-roth.' not in query:
+            query = query.replace('voter_data.', '`proj-roth.voter_data.')
+            query = query.replace('`proj-roth.voter_data.', '`proj-roth`.voter_data.')
+        
+        # Only add limit if not present AND limit > 0
+        if limit > 0 and "LIMIT" not in query.upper():
             query = f"{query} LIMIT {limit}"
         
-        # Execute query in thread pool
-        result = await asyncio.to_thread(
-            tool.run,
-            {"query": query}
-        )
+        # Execute query
+        query_job = client.query(query)
+        results = list(query_job.result())
         
         execution_time = time.time() - start_time
         
-        # Parse result
-        if isinstance(result, str):
-            # If result is a string (error message), return empty result
-            return {
-                "columns": [],
-                "rows": [],
-                "total_rows": 0,
-                "execution_time": execution_time,
-                "query": query,
-                "error": result
-            }
-        
         # Extract columns and rows from result
-        if isinstance(result, list) and len(result) > 0:
+        if results:
             # Get column names from first row
-            columns = list(result[0].keys()) if isinstance(result[0], dict) else []
+            first_row = results[0]
+            columns = list(first_row.keys())
             
             # Convert to row format
             rows = []
-            for row in result:
-                if isinstance(row, dict):
-                    rows.append([row.get(col) for col in columns])
-                else:
-                    rows.append(row)
+            for row in results:
+                row_data = []
+                for col in columns:
+                    value = row[col]
+                    # Convert special types to JSON-serializable format
+                    if hasattr(value, 'isoformat'):  # datetime
+                        value = value.isoformat()
+                    elif hasattr(value, 'to_eng_string'):  # Decimal
+                        value = float(value)
+                    elif value is not None and not isinstance(value, (str, int, float, bool, list, dict)):
+                        value = str(value)
+                    row_data.append(value)
+                rows.append(row_data)
             
             return {
                 "columns": columns,

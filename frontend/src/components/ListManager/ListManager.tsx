@@ -1,26 +1,31 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { styled } from 'baseui';
 import { Button, KIND, SIZE } from 'baseui/button';
 import { Heading, HeadingLevel } from 'baseui/heading';
+import { Delete } from 'baseui/icon';
 import { RootState, AppDispatch } from '../../store';
 import {
   fetchUserLists,
   setSelectedList,
   setModalOpen,
+  deleteList,
 } from '../../store/listsSlice';
 import ListModal from './ListModal';
 import ResultsTable from './ResultsTable';
 import QueryEditor from './QueryEditor';
+import ConfirmModal from '../Common/ConfirmModal';
 
 const Container = styled('div', {
   height: '100%',
   display: 'flex',
+  flexDirection: 'row',
   backgroundColor: '#f5f5f5',
+  width: '100%',
 });
 
-const Sidebar = styled('div', {
-  width: '300px',
+const LeftPanel = styled('div', {
+  width: '450px',
   backgroundColor: '#ffffff',
   borderRight: '1px solid #e0e0e0',
   display: 'flex',
@@ -46,6 +51,9 @@ const ListItem = styled('div', ({ $selected }: { $selected: boolean }) => ({
   borderRadius: '8px',
   cursor: 'pointer',
   transition: 'all 0.2s ease',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
   ':hover': {
     backgroundColor: $selected ? '#e3f2fd' : '#f5f5f5',
   },
@@ -68,11 +76,32 @@ const ListMeta = styled('div', {
   color: '#999',
 });
 
+const ListContent = styled('div', {
+  flex: 1,
+});
+
+const DeleteButton = styled('button', {
+  background: 'transparent',
+  border: 'none',
+  color: '#dc2626',
+  cursor: 'pointer',
+  padding: '4px',
+  borderRadius: '4px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition: 'all 0.2s ease',
+  ':hover': {
+    backgroundColor: '#fee2e2',
+  },
+});
+
 const MainContent = styled('div', {
   flex: 1,
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',
+  backgroundColor: '#ffffff',
 });
 
 const ContentHeader = styled('div', {
@@ -83,8 +112,11 @@ const ContentHeader = styled('div', {
 
 const ContentBody = styled('div', {
   flex: 1,
-  padding: '20px',
+  padding: '24px 40px',
   overflowY: 'auto',
+  maxWidth: '1200px',
+  margin: '0 auto',
+  width: '100%',
 });
 
 const EmptyState = styled('div', {
@@ -106,6 +138,9 @@ const ListManager: React.FC = () => {
   const { userLists, selectedList, isModalOpen, queryResults } = useSelector(
     (state: RootState) => state.lists
   );
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [listToDelete, setListToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     dispatch(fetchUserLists());
@@ -119,10 +154,34 @@ const ListManager: React.FC = () => {
     dispatch(setModalOpen(true));
   };
 
+  const handleDeleteClick = (e: React.MouseEvent, list: any) => {
+    e.stopPropagation(); // Prevent selecting the list
+    setListToDelete(list);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (listToDelete) {
+      setIsDeleting(true);
+      try {
+        await dispatch(deleteList(listToDelete.id)).unwrap();
+        // Refresh the list after successful deletion
+        await dispatch(fetchUserLists());
+        setDeleteModalOpen(false);
+        setListToDelete(null);
+      } catch (error) {
+        console.error('Failed to delete list:', error);
+        alert('Failed to delete list. Please try again.');
+      } finally {
+        setIsDeleting(false);
+      }
+    }
+  };
+
   return (
     <>
       <Container>
-        <Sidebar>
+        <LeftPanel>
           <SidebarHeader>
             <HeadingLevel>
               <Heading styleLevel={5}>My Lists</Heading>
@@ -155,19 +214,37 @@ const ListManager: React.FC = () => {
                   $selected={selectedList?.id === list.id}
                   onClick={() => handleListSelect(list)}
                 >
-                  <ListTitle>{list.name}</ListTitle>
-                  {list.description && (
-                    <ListDescription>{list.description}</ListDescription>
-                  )}
-                  <ListMeta>
-                    {list.row_count ? `${list.row_count} rows • ` : ''}
-                    Updated {new Date(list.updated_at).toLocaleDateString()}
-                  </ListMeta>
+                  <ListContent>
+                    <ListTitle>{list.name}</ListTitle>
+                    {list.description && (
+                      <ListDescription>{list.description}</ListDescription>
+                    )}
+                    <ListMeta>
+                      {list.row_count ? `${list.row_count.toLocaleString()} rows • ` : ''}
+                      Updated {new Date(list.updated_at).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        year: 'numeric' 
+                      })}
+                      {list.user_email && (
+                        <>
+                          <br />
+                          <span style={{ fontSize: '10px' }}>{list.user_email}</span>
+                        </>
+                      )}
+                    </ListMeta>
+                  </ListContent>
+                  <DeleteButton
+                    onClick={(e) => handleDeleteClick(e, list)}
+                    title="Delete list"
+                  >
+                    <Delete size={20} />
+                  </DeleteButton>
                 </ListItem>
               ))
             )}
           </ListContainer>
-        </Sidebar>
+        </LeftPanel>
 
         <MainContent>
           {selectedList ? (
@@ -190,7 +267,9 @@ const ListManager: React.FC = () => {
           ) : (
             <EmptyState>
               <EmptyStateIcon>📋</EmptyStateIcon>
-              <Heading styleLevel={5}>Select a list to view</Heading>
+              <HeadingLevel>
+                <Heading styleLevel={5}>Select a list to view</Heading>
+              </HeadingLevel>
               <p style={{ marginTop: '8px' }}>
                 Choose a list from the sidebar or create a new one
               </p>
@@ -200,6 +279,20 @@ const ListManager: React.FC = () => {
       </Container>
 
       {isModalOpen && <ListModal />}
+      
+      <ConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setListToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete List"
+        message={`Are you sure you want to delete "${listToDelete?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isLoading={isDeleting}
+      />
     </>
   );
 };

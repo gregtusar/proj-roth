@@ -12,22 +12,24 @@ const LayoutContainer = styled('div', {
   overflow: 'hidden',
 });
 
-const MainContent = styled('main', ({ $sidebarOpen }: { $sidebarOpen: boolean }) => ({
+const MainContent = styled('main', ({ $sidebarOpen, $isDarkMode }: { $sidebarOpen: boolean; $isDarkMode: boolean }) => ({
   flex: 1,
-  marginLeft: $sidebarOpen ? '280px' : '60px',
-  transition: 'margin-left 0.3s ease',
+  marginLeft: $sidebarOpen ? '260px' : '60px',
+  transition: 'margin-left 0.3s ease, background-color 0.3s ease',
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',
+  backgroundColor: $isDarkMode ? '#1a1a1a' : '#ffffff',
 }));
 
 const MainLayout: React.FC = () => {
   const { isOpen } = useSelector((state: RootState) => state.sidebar);
+  const { isDarkMode } = useSelector((state: RootState) => state.settings);
 
   return (
     <LayoutContainer>
       <Sidebar />
-      <MainContent $sidebarOpen={isOpen}>
+      <MainContent $sidebarOpen={isOpen} $isDarkMode={isDarkMode}>
         <Outlet />
       </MainContent>
     </LayoutContainer>

@@ -11,12 +11,20 @@ import GoogleSignIn from './components/Auth/GoogleSignIn';
 import MainLayout from './components/Layout/MainLayout';
 import ChatContainer from './components/Chat/ChatContainer';
 import ListManager from './components/ListManager/ListManager';
+import StreetMap from './components/StreetMap/StreetMap';
+import Settings from './components/Settings/Settings';
 
 function App() {
   const dispatch = useDispatch<AppDispatch>();
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
+    // Initialize dark mode preference
+    const isDarkMode = localStorage.getItem('darkMode') === 'true';
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark-mode');
+    }
+    
     // Try to refresh token on app load
     const token = localStorage.getItem('access_token');
     const refresh = localStorage.getItem('refresh_token');
@@ -54,6 +62,8 @@ function App() {
         <Route path="chat" element={<ChatContainer />} />
         <Route path="chat/:sessionId" element={<ChatContainer />} />
         <Route path="lists" element={<ListManager />} />
+        <Route path="street-map" element={<StreetMap />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

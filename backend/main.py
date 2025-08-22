@@ -10,7 +10,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.config import settings
-from api import auth, chat, lists, agent
+from api import auth, chat, lists, agent, maps
 from core.websocket import sio, sio_app
 
 @asynccontextmanager
@@ -42,6 +42,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(lists.router, prefix="/api/lists", tags=["Lists"])
 app.include_router(agent.router, prefix="/api/agent", tags=["Agent"])
+app.include_router(maps.router, prefix="/api/maps", tags=["Maps"])
 
 # Mount Socket.IO app
 app.mount("/socket.io", sio_app)

@@ -3,23 +3,29 @@ import { styled } from 'baseui';
 import { Avatar } from 'baseui/avatar';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Message as MessageType } from '../../types/chat';
 import { Tag, KIND as TagKind } from 'baseui/tag';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
 
-const MessageContainer = styled('div', ({ $role }: { $role: string }) => ({
+const MessageContainer = styled('div', ({ $role, $isDarkMode }: { $role: string; $isDarkMode: boolean }) => ({
   display: 'flex',
   gap: '12px',
   padding: '12px',
-  backgroundColor: $role === 'user' ? '#f8f9fa' : '#ffffff',
+  backgroundColor: $isDarkMode 
+    ? ($role === 'user' ? '#2d2d2d' : '#262626')
+    : ($role === 'user' ? '#f8f9fa' : '#ffffff'),
   borderRadius: '8px',
-  border: '1px solid #e0e0e0',
+  border: $isDarkMode ? '1px solid #404040' : '1px solid #e0e0e0',
+  transition: 'background-color 0.3s ease, border-color 0.3s ease',
 }));
 
-const MessageContent = styled('div', {
+const MessageContent = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
   flex: 1,
   fontSize: '14px',
   lineHeight: '1.6',
+  color: $isDarkMode ? '#e0e0e0' : '#111827',
   '& p': {
     margin: '0 0 8px 0',
   },
@@ -34,20 +40,23 @@ const MessageContent = styled('div', {
     margin: '8px 0',
   },
   '& code': {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: $isDarkMode ? '#404040' : '#f0f0f0',
     padding: '2px 4px',
     borderRadius: '3px',
     fontSize: '13px',
   },
-});
+  transition: 'color 0.3s ease',
+}));
 
-const ToolCallContainer = styled('div', {
+const ToolCallContainer = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
   marginTop: '8px',
   padding: '8px',
-  backgroundColor: '#f5f5f5',
+  backgroundColor: $isDarkMode ? '#404040' : '#f5f5f5',
   borderRadius: '4px',
   fontSize: '12px',
-});
+  color: $isDarkMode ? '#a0a0a0' : '#666',
+  transition: 'background-color 0.3s ease, color 0.3s ease',
+}));
 
 const StreamingIndicator = styled('span', {
   display: 'inline-block',
@@ -70,12 +79,13 @@ interface MessageProps {
 }
 
 const Message: React.FC<MessageProps> = ({ message, isStreaming = false }) => {
+  const { isDarkMode } = useSelector((state: RootState) => state.settings);
   const isUser = message.role === 'user';
   const avatarSrc = isUser ? undefined : undefined;
   const avatarName = isUser ? 'You' : 'Assistant';
 
   return (
-    <MessageContainer $role={message.role}>
+    <MessageContainer $role={message.role} $isDarkMode={isDarkMode}>
       <Avatar
         name={avatarName}
         size="32px"
@@ -88,14 +98,14 @@ const Message: React.FC<MessageProps> = ({ message, isStreaming = false }) => {
           },
         }}
       />
-      <MessageContent>
+      <MessageContent $isDarkMode={isDarkMode}>
         <ReactMarkdown
           components={{
             code({ node, inline, className, children, ...props }) {
               const match = /language-(\w+)/.exec(className || '');
               return !inline && match ? (
                 <SyntaxHighlighter
-                  style={vscDarkPlus}
+                  style={oneDark}
                   language={match[1]}
                   PreTag="div"
                   {...props}
@@ -116,7 +126,7 @@ const Message: React.FC<MessageProps> = ({ message, isStreaming = false }) => {
         {isStreaming && <StreamingIndicator />}
         
         {message.metadata?.tool_calls && (
-          <ToolCallContainer>
+          <ToolCallContainer $isDarkMode={isDarkMode}>
             {message.metadata.tool_calls.map((call, index) => (
               <Tag
                 key={index}

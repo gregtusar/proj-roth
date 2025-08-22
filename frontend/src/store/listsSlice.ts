@@ -43,6 +43,14 @@ export const deleteList = createAsyncThunk(
   }
 );
 
+export const updateList = createAsyncThunk(
+  'lists/update',
+  async ({ listId, updates }: { listId: string; updates: Partial<VoterList> }) => {
+    const response = await listsService.updateList(listId, updates);
+    return response;
+  }
+);
+
 const listsSlice = createSlice({
   name: 'lists',
   initialState,
@@ -93,6 +101,17 @@ const listsSlice = createSlice({
         if (state.selectedList?.id === action.payload) {
           state.selectedList = null;
           state.queryResults = null;
+        }
+      })
+      .addCase(updateList.fulfilled, (state, action) => {
+        const index = state.userLists.findIndex(
+          (list) => list.id === action.payload.id
+        );
+        if (index !== -1) {
+          state.userLists[index] = action.payload;
+        }
+        if (state.selectedList?.id === action.payload.id) {
+          state.selectedList = action.payload;
         }
       });
   },

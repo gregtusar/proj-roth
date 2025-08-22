@@ -3,6 +3,7 @@ import authReducer from './authSlice';
 import chatReducer from './chatSlice';
 import listsReducer from './listsSlice';
 import sidebarReducer from './sidebarSlice';
+import settingsReducer from './settingsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     chat: chatReducer,
     lists: listsReducer,
     sidebar: sidebarReducer,
+    settings: settingsReducer,
   },
 });
 

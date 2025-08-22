@@ -7,13 +7,14 @@ import { loadSession } from '../../store/chatSlice';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 
-const Container = styled('div', {
+const Container = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
   display: 'flex',
   flexDirection: 'column',
   height: '100%',
   width: '100%',
-  backgroundColor: '#ffffff',
-});
+  backgroundColor: $isDarkMode ? '#1a1a1a' : '#ffffff',
+  transition: 'background-color 0.3s ease',
+}));
 
 const Header = styled('div', {
   padding: '16px 24px',
@@ -41,6 +42,7 @@ const ChatContainer: React.FC = () => {
   const { sessionId } = useParams();
   const dispatch = useDispatch<AppDispatch>();
   const { currentSessionId } = useSelector((state: RootState) => state.chat);
+  const { isDarkMode } = useSelector((state: RootState) => state.settings);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,10 +60,7 @@ const ChatContainer: React.FC = () => {
   }, []);
 
   return (
-    <Container>
-      <Header>
-        <Title>NJ Voter Chat</Title>
-      </Header>
+    <Container $isDarkMode={isDarkMode}>
       <ChatArea>
         <MessageList />
         <div ref={messagesEndRef} />

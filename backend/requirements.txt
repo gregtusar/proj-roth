@@ -12,7 +12,5 @@ httpx==0.25.1
 pydantic==2.5.0
 pydantic-settings==2.1.0
 redis==5.0.1
-aioredis==2.0.1
 python-dotenv==1.0.0
-corsheaders==4.0.0
 passlib[bcrypt]==1.7.4

@@ -69,6 +69,10 @@ async def google_auth_callback(request: GoogleAuthRequest):
     Handle Google OAuth callback and exchange code for tokens
     """
     try:
+        print(f"Received auth code: {request.googleToken[:20]}..." if len(request.googleToken) > 20 else request.googleToken)
+        print(f"Using client_id: {settings.GOOGLE_CLIENT_ID}")
+        print(f"Using redirect_uri: http://localhost:3000/login")
+        
         # Exchange authorization code for tokens
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -82,10 +86,12 @@ async def google_auth_callback(request: GoogleAuthRequest):
                 }
             )
             
+            print(f"Google token exchange response status: {response.status_code}")
             if response.status_code != 200:
+                print(f"Google token exchange error: {response.text}")
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Failed to exchange authorization code"
+                    detail=f"Failed to exchange authorization code: {response.text}"
                 )
             
             token_data = response.json()

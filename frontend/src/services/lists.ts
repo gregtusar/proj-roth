@@ -36,3 +36,7 @@ export async function exportListToCsv(listId: string): Promise<Blob> {
   });
   return response as unknown as Blob;
 }
+
+export async function regenerateSqlQuery(listId: string): Promise<{ query: string }> {
+  return apiClient.post<{ query: string }>(`/lists/${listId}/regenerate-sql`);
+}

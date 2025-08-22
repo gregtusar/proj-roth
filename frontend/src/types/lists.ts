@@ -7,6 +7,7 @@ export interface VoterList {
   updated_at: string;
   row_count?: number;
   user_id: string;
+  user_email?: string;
 }
 
 export interface QueryResult {

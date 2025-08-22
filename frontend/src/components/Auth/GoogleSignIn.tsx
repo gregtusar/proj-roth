@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, StyledBody } from 'baseui/card';
 import { Button, SIZE, KIND } from 'baseui/button';
 import { Heading, HeadingLevel } from 'baseui/heading';
 import { Notification, KIND as NotificationKind } from 'baseui/notification';
@@ -11,20 +10,23 @@ import { loginWithGoogle, clearError } from '../../store/authSlice';
 
 const Container = styled('div', {
   display: 'flex',
+  flexDirection: 'column',
   justifyContent: 'center',
   alignItems: 'center',
   height: '100vh',
-  backgroundColor: '#f5f5f5',
+  backgroundColor: '#ffffff',
 });
 
-const LoginCard = styled(Card, {
+const LoginContent = styled('div', {
   width: '400px',
   textAlign: 'center',
 });
 
-const Logo = styled('div', {
-  fontSize: '48px',
+const Logo = styled('img', {
+  width: '120px',
+  height: '120px',
   marginBottom: '20px',
+  objectFit: 'contain',
 });
 
 const GoogleSignIn: React.FC = () => {
@@ -57,28 +59,41 @@ const GoogleSignIn: React.FC = () => {
     const redirectUri = `${window.location.origin}/login`;
     const scope = 'openid email profile';
     
+    console.log('Google OAuth Config:', {
+      clientId,
+      redirectUri,
+      hasClientId: !!clientId
+    });
+    
+    if (!clientId) {
+      alert('Google Client ID not configured. Please check .env file.');
+      return;
+    }
+    
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
       `client_id=${clientId}&` +
-      `redirect_uri=${redirectUri}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `response_type=code&` +
-      `scope=${scope}&` +
+      `scope=${encodeURIComponent(scope)}&` +
       `access_type=offline&` +
       `prompt=consent`;
     
+    console.log('Redirecting to:', authUrl);
     window.location.href = authUrl;
   };
 
   return (
     <Container>
-      <LoginCard>
-        <StyledBody>
-          <HeadingLevel>
-            <Logo>🗳️</Logo>
-            <Heading styleLevel={3}>NJ Voter Chat</Heading>
+      <LoginContent>
+        <HeadingLevel>
+          <Logo src="/greywolf_logo.png" alt="Greywolf Analytica" />
+          <Heading styleLevel={3}>Greywolf Analytica</Heading>
+          <div style={{ marginTop: '20px' }}>
             <Heading styleLevel={6}>
-              Interactive voter data analysis for New Jersey
+              An AI Powered Campaign Management Platform
             </Heading>
-          </HeadingLevel>
+          </div>
+        </HeadingLevel>
           
           <div style={{ marginTop: '40px' }}>
             <Button
@@ -109,11 +124,10 @@ const GoogleSignIn: React.FC = () => {
             </div>
           )}
           
-          <div style={{ marginTop: '40px', fontSize: '12px', color: '#666' }}>
-            By signing in, you agree to our Terms of Service and Privacy Policy
-          </div>
-        </StyledBody>
-      </LoginCard>
+        <div style={{ marginTop: '40px', fontSize: '12px', color: '#666' }}>
+          By signing in, you agree to our Terms of Service and Privacy Policy
+        </div>
+      </LoginContent>
     </Container>
   );
 };

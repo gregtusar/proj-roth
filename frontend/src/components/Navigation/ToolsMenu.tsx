@@ -1,7 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { styled } from 'baseui';
 import { Button, KIND, SIZE } from 'baseui/button';
+import { RootState } from '../../store';
 
 const MenuContainer = styled('div', {
   padding: '0 8px',
@@ -11,6 +13,7 @@ const MenuItem = styled(Button, {
   width: '100%',
   marginBottom: '4px',
   justifyContent: 'flex-start',
+  textAlign: 'left',
 });
 
 const MenuIcon = styled('span', {
@@ -28,11 +31,15 @@ interface ToolsMenuProps {
 
 const ToolsMenu: React.FC<ToolsMenuProps> = ({ isCompact = false }) => {
   const navigate = useNavigate();
+  const { isDarkMode } = useSelector((state: RootState) => state.settings);
 
   const tools = [
     { id: 'lists', icon: '📋', label: 'List Manager', path: '/lists' },
-    { id: 'query', icon: '🔍', label: 'Query Builder', path: '/query' },
-    { id: 'export', icon: '📥', label: 'Export Data', path: '/export' },
+    { id: 'query', icon: '🔍', label: 'Query', path: '/query' },
+    { id: 'videos', icon: '🎥', label: 'Video Assets', path: '/videos' },
+    { id: 'campaign', icon: '📢', label: 'Campaign Manager', path: '/campaign' },
+    { id: 'abtesting', icon: '🧪', label: 'A/B Testing Tool', path: '/ab-testing' },
+    { id: 'streetmap', icon: '🗺️', label: 'Street Map', path: '/street-map' },
     { id: 'settings', icon: '⚙️', label: 'Settings', path: '/settings' },
   ];
 
@@ -57,7 +64,7 @@ const ToolsMenu: React.FC<ToolsMenuProps> = ({ isCompact = false }) => {
                   height: '40px',
                   marginBottom: '4px',
                   ':hover': {
-                    backgroundColor: '#333',
+                    backgroundColor: isDarkMode ? '#374151' : '#e5e7eb',
                   },
                 },
               },
@@ -81,9 +88,12 @@ const ToolsMenu: React.FC<ToolsMenuProps> = ({ isCompact = false }) => {
           overrides={{
             BaseButton: {
               style: {
-                color: '#ccc',
+                color: isDarkMode ? '#f3f4f6' : '#111827',
+                fontWeight: '400',
+                justifyContent: 'flex-start',
+                paddingLeft: '12px',
                 ':hover': {
-                  backgroundColor: '#2a2a2a',
+                  backgroundColor: isDarkMode ? '#374151' : '#f3f4f6',
                 },
               },
             },

@@ -3,9 +3,10 @@ FROM node:18-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm ci --only=production
+RUN npm ci
 COPY frontend/ .
-RUN npm run build
+# Build only if build directory doesn't exist
+RUN if [ ! -d "build" ]; then npm run build; fi
 
 # Runtime stage
 FROM python:3.11-slim

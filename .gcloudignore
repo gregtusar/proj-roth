@@ -52,12 +52,15 @@ dist/
 # Node modules (will be reinstalled during build)
 **/node_modules/
 
-# Frontend source (only need build for production)
+# Frontend source files to exclude
 frontend/src/
 frontend/public/
-frontend/*.json
-frontend/*.md
 frontend/.env*
+frontend/*.md
+
+# Keep package.json files for Docker build
+!frontend/package.json
+!frontend/package-lock.json
 
 # Keep the frontend build directory
 !frontend/build/

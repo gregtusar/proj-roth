@@ -15,6 +15,7 @@ pydantic-settings==2.1.0
 redis==5.0.1
 python-dotenv==1.0.0
 passlib[bcrypt]==1.7.4
-# ADK dependencies
+# ADK dependencies  
 google-genai>=0.4.0
 googlemaps==4.10.0
+google-adk==1.11.0

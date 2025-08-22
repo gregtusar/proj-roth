@@ -10,7 +10,12 @@ import asyncio
 
 from api.auth import get_current_user
 from services.bigquery_service import execute_query
-from agents.nj_voter_chat_adk.agent import NJVoterChatAgent
+# from agents.nj_voter_chat_adk.agent import NJVoterChatAgent  # Temporarily disabled
+
+# Mock agent for now
+class MockAgent:
+    def generate_sql(self, description):
+        return f"SELECT * FROM voters WHERE /* Generated query for: {description} */ LIMIT 100"
 
 router = APIRouter()
 
@@ -583,7 +588,7 @@ async def regenerate_sql_query(
     
     try:
         # Use the agent to generate SQL from description
-        agent = NJVoterChatAgent()
+        agent = MockAgent()  # Using mock agent temporarily
         
         # Create a more conversational prompt for the agent
         prompt = f"""Create a SQL query to find: {list_data['description']}

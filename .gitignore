@@ -57,3 +57,4 @@ listfeature.txt
 venv/
 ENV/
 env/
+frontend/node_modules/

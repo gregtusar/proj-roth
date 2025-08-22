@@ -59,12 +59,26 @@ if not settings.DEBUG:
         # Mount static files
         app.mount("/static", StaticFiles(directory=str(frontend_build_dir / "static")), name="static")
         
+        # Serve public files (like logo) at root
+        @app.get("/greywolf_logo.png")
+        async def serve_logo():
+            logo_path = frontend_build_dir / "greywolf_logo.png"
+            if logo_path.exists():
+                return FileResponse(str(logo_path))
+            return {"error": "Logo not found"}, 404
+        
         # Serve index.html for all non-API routes (React routing)
         @app.get("/{full_path:path}")
         async def serve_react_app(full_path: str):
             # Don't serve React app for API routes
             if full_path.startswith("api/") or full_path.startswith("socket.io/"):
                 return {"error": "Not found"}, 404
+            
+            # Check if it's a file in the build directory
+            if "." in full_path:
+                file_path = frontend_build_dir / full_path
+                if file_path.exists():
+                    return FileResponse(str(file_path))
             
             index_path = frontend_build_dir / "index.html"
             if index_path.exists():

@@ -81,6 +81,8 @@ class FirestoreChatService:
         # Use sync client for reliability
         try:
             # Always use sync client for session creation (most reliable)
+            if not self.sync_client:
+                raise RuntimeError("Firestore sync client is not initialized")
             self.sync_client.collection('chat_sessions').document(session_id).set(session_data)
             print(f"Successfully created session: {session_id}")
         except Exception as e:
@@ -97,6 +99,8 @@ class FirestoreChatService:
         """Get all sessions for a user, ordered by most recent"""
         # Use sync client with asyncio.to_thread for async compatibility
         def _get_sessions():
+            if not self.sync_client:
+                return []
             query = (
                 self.sync_client.collection('chat_sessions')
                 .where(filter=firestore.FieldFilter("user_id", "==", user_id))
@@ -118,6 +122,8 @@ class FirestoreChatService:
     async def get_session(self, session_id: str, user_id: str) -> Optional[ChatSession]:
         """Get a specific session"""
         def _get_session():
+            if not self.sync_client:
+                return None
             doc_ref = self.sync_client.collection('chat_sessions').document(session_id)
             doc = doc_ref.get()
             
@@ -139,24 +145,33 @@ class FirestoreChatService:
         new_name: str
     ) -> bool:
         """Update session name"""
-        doc_ref = self.sessions_collection.document(session_id)
-        
-        # First verify ownership
-        doc = await doc_ref.get()
-        if not doc.exists:
-            return False
+        def _update_name():
+            if not self.sync_client:
+                return False
+            doc_ref = self.sync_client.collection('chat_sessions').document(session_id)
             
-        session_data = doc.to_dict()
-        if session_data.get("user_id") != user_id:
+            # First verify ownership
+            doc = doc_ref.get()
+            if not doc.exists:
+                return False
+                
+            session_data = doc.to_dict()
+            if session_data.get("user_id") != user_id:
+                return False
+            
+            # Update the session
+            doc_ref.update({
+                "session_name": new_name,
+                "updated_at": datetime.utcnow()
+            })
+            
+            return True
+        
+        try:
+            return await asyncio.to_thread(_update_name)
+        except Exception as e:
+            print(f"Error updating session name: {e}")
             return False
-        
-        # Update the session
-        await doc_ref.update({
-            "session_name": new_name,
-            "updated_at": datetime.utcnow()
-        })
-        
-        return True
     
     async def delete_session(self, session_id: str, user_id: str) -> bool:
         """Soft delete a session"""
@@ -206,6 +221,8 @@ class FirestoreChatService:
         }
         
         def _add_message():
+            if not self.sync_client:
+                raise RuntimeError("Firestore sync client is not initialized")
             # Create message document
             self.sync_client.collection('chat_messages').document(message_id).set(message_data)
             
@@ -222,8 +239,9 @@ class FirestoreChatService:
                         "message_count": current_count + 1
                     })
             
-            transaction = self.sync_client.transaction()
-            update_session(transaction)
+            if self.sync_client:
+                transaction = self.sync_client.transaction()
+                update_session(transaction)
         
         # Run sync operation in thread pool
         await asyncio.to_thread(_add_message)
@@ -242,6 +260,8 @@ class FirestoreChatService:
             raise ValueError(f"Session {session_id} not found or access denied")
         
         def _get_messages():
+            if not self.sync_client:
+                return []
             # Get messages
             query = self.sync_client.collection('chat_messages').where(
                 filter=firestore.FieldFilter("session_id", "==", session_id)
@@ -266,24 +286,29 @@ class FirestoreChatService:
         }
     
     async def _get_next_sequence_number(self, session_id: str) -> int:
-        """Get the next sequence number for a session"""
-        def _get_max_sequence():
-            # Get all messages for this session and find the highest sequence number
-            # This avoids the need for a composite index
-            query = self.sync_client.collection('chat_messages').where(
-                filter=firestore.FieldFilter("session_id", "==", session_id)
-            )
+        """Get the next sequence number for a session using atomic increment"""
+        def _atomic_increment():
+            if not self.sync_client:
+                return 0
+            session_ref = self.sync_client.collection('chat_sessions').document(session_id)
             
-            max_sequence = -1
-            for doc in query.stream():
-                msg_data = doc.to_dict()
-                if msg_data.get("sequence_number", 0) > max_sequence:
-                    max_sequence = msg_data["sequence_number"]
+            @firestore.transactional
+            def increment_sequence(transaction):
+                session_doc = session_ref.get(transaction=transaction)
+                if session_doc.exists:
+                    current_seq = session_doc.to_dict().get("last_sequence_number", -1)
+                    new_seq = current_seq + 1
+                    transaction.update(session_ref, {"last_sequence_number": new_seq})
+                    return new_seq
+                else:
+                    transaction.update(session_ref, {"last_sequence_number": 0})
+                    return 0
             
-            return max_sequence + 1
+            transaction = self.sync_client.transaction()
+            return increment_sequence(transaction)
         
         # Run sync operation in thread pool
-        return await asyncio.to_thread(_get_max_sequence)
+        return await asyncio.to_thread(_atomic_increment)
     
     async def search_sessions(
         self,
@@ -349,6 +374,9 @@ class FirestoreChatService:
             .where(filter=firestore.FieldFilter("updated_at", "<", cutoff_date))
         )
         
+        if not self.client:
+            return 0
+            
         batch = self.client.batch()
         count = 0
         

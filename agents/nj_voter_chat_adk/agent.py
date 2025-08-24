@@ -188,10 +188,14 @@ class NJVoterChatAgent(Agent):
         from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
         from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
         from google.adk.runners import Runner
+        from .session_integration import SessionIntegration
         
         self._session_service = InMemorySessionService()
         self._memory_service = InMemoryMemoryService()
         self._artifact_service = InMemoryArtifactService()
+        
+        self._persistent_sessions = SessionIntegration()
+        
         self._runner = Runner(
             app_name="nj_voter_chat",
             agent=self,
@@ -229,7 +233,26 @@ class NJVoterChatAgent(Agent):
         # Get user context
         user_id = os.environ.get("VOTER_LIST_USER_ID", "default_user")
         user_email = os.environ.get("VOTER_LIST_USER_EMAIL", "user@example.com")
+        chat_session_id = os.environ.get("CHAT_SESSION_ID")
         session_id = self._session_id if hasattr(self, '_session_id') else None
+        
+        persistent_session_id = None
+        try:
+            persistent_session_id = _run_asyncio(self._persistent_sessions.create_or_get_session(
+                user_id=user_id,
+                user_email=user_email,
+                session_id=chat_session_id
+            ))
+            
+            _run_asyncio(self._persistent_sessions.add_message(
+                session_id=persistent_session_id,
+                user_id=user_id,
+                message_type="user",
+                message_text=prompt
+            ))
+        except Exception as e:
+            print(f"Error with persistent session: {e}")
+            persistent_session_id = None
 
         try:
             debug_print("[DEBUG] NJVoterChatAgent.chat -> using proper ADK Runner invocation")
@@ -426,6 +449,16 @@ class NJVoterChatAgent(Agent):
                     debug_print(f"[DEBUG] Extracted text response: {final_response[:200]}...")
                     debug_print(f"[DEBUG] Response indicates system instruction awareness: {'data assistant' in final_response.lower() or 'bigquery' in final_response.lower()}")
                     
+                    if persistent_session_id:
+                        try:
+                            _run_asyncio(self._persistent_sessions.add_message(
+                                session_id=persistent_session_id,
+                                user_id=user_id,
+                                message_type="assistant",
+                                message_text=final_response
+                            ))
+                        except Exception as e:
+                            print(f"Error storing assistant response: {e}")
                     
                     return final_response
                 else:

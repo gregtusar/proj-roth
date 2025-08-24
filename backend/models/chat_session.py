@@ -11,6 +11,7 @@ class ChatSession(BaseModel):
     updated_at: datetime
     is_active: bool = True
     message_count: int = 0
+    last_sequence_number: int = -1
     metadata: Optional[dict] = None
 
 class ChatMessage(BaseModel):

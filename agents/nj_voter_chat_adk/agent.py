@@ -6,20 +6,41 @@ import os
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 
-from .config import MODEL, PROJECT_ID, REGION, SYSTEM_PROMPT
-from .bigquery_tool import BigQueryReadOnlyTool
-from .google_search_tool import GoogleSearchTool
-from .geocoding_tool import GeocodingTool
-from .voter_list_tool import VoterListTool
-from .debug_config import debug_print, error_print
+from config import MODEL, PROJECT_ID, REGION, SYSTEM_PROMPT
+from bigquery_tool import BigQueryReadOnlyTool
+from google_search_tool import GoogleSearchTool
+from geocoding_tool import GeocodingTool
+from voter_list_tool import VoterListTool
+from debug_config import debug_print, error_print
 
-_bq_tool = BigQueryReadOnlyTool()
-# GoogleSearchTool will automatically read from secrets
-_search_tool = GoogleSearchTool()
-# GeocodingTool will use Google Maps API
-_geocoding_tool = GeocodingTool()
-# VoterListTool for managing saved lists
-_list_tool = VoterListTool()
+_bq_tool = None
+_search_tool = None
+_geocoding_tool = None
+_list_tool = None
+
+def _get_bq_tool():
+    global _bq_tool
+    if _bq_tool is None:
+        _bq_tool = BigQueryReadOnlyTool()
+    return _bq_tool
+
+def _get_search_tool():
+    global _search_tool
+    if _search_tool is None:
+        _search_tool = GoogleSearchTool()
+    return _search_tool
+
+def _get_geocoding_tool():
+    global _geocoding_tool
+    if _geocoding_tool is None:
+        _geocoding_tool = GeocodingTool()
+    return _geocoding_tool
+
+def _get_list_tool():
+    global _list_tool
+    if _list_tool is None:
+        _list_tool = VoterListTool()
+    return _list_tool
 
 def bigquery_select(sql: str) -> Dict[str, Any]:
     """Executes read-only SELECT queries on approved BigQuery tables with smart field mapping.
@@ -35,7 +56,7 @@ def bigquery_select(sql: str) -> Dict[str, Any]:
                        instead of raising an exception.
     """
     try:
-        result = _bq_tool.run(sql)
+        result = _get_bq_tool().run(sql)
         debug_print(f"[DEBUG] BigQuery tool returned: {type(result)}, keys: {result.keys() if isinstance(result, dict) else 'N/A'}")
         return result
     except Exception as e:
@@ -65,7 +86,7 @@ def geocode_address(address: str) -> Dict[str, Any]:
         {"latitude": 40.7155, "longitude": -74.3574, "formatted_address": "Summit Station, Summit, NJ 07901, USA"}
     """
     try:
-        result = _geocoding_tool.geocode(address)
+        result = _get_geocoding_tool().geocode(address)
         debug_print(f"[DEBUG] Geocoding result for '{address}': {result}")
         return result
     except Exception as e:
@@ -88,7 +109,7 @@ def google_search(query: str, num_results: int = 5) -> Dict[str, Any]:
     """
     try:
         # Use the NJ-specific search method to ensure NJ context
-        result = _search_tool.search_nj_specific(query, num_results)
+        result = _get_search_tool().search_nj_specific(query, num_results)
         debug_print(f"[DEBUG] Google search returned {result.get('result_count', 0)} results for query: {query[:100]}")
         return result
     except Exception as e:
@@ -140,7 +161,7 @@ def save_voter_list(list_name: str, description: str, sql_query: str, row_count:
         debug_print(f"  - Row Count: {row_count}")
         debug_print(f"  - SQL Query Length: {len(sql_query)} chars")
         
-        result = _list_tool.save_voter_list(
+        result = _get_list_tool().save_voter_list(
             user_id=user_id,
             user_email=user_email,
             list_name=list_name,
@@ -188,7 +209,7 @@ class NJVoterChatAgent(Agent):
         from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
         from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
         from google.adk.runners import Runner
-        from .session_integration import SessionIntegration
+        from session_integration import SessionIntegration
         
         self._session_service = InMemorySessionService()
         self._memory_service = InMemoryMemoryService()

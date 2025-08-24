@@ -5,8 +5,8 @@ from urllib.parse import quote_plus
 import time
 import hashlib
 from datetime import datetime
-from .debug_config import debug_print, error_print
-from .secret_manager import load_secret
+from debug_config import debug_print, error_print
+from secret_manager import load_secret
 
 
 class GeocodingTool:

@@ -3,9 +3,9 @@ Simple agent implementation without ADK dependency
 """
 import json
 from typing import Dict, Any
-from .bigquery_tool import BigQueryReadOnlyTool
-from .google_search_tool import GoogleSearchTool
-from .geocoding_tool import GeocodingTool
+from bigquery_tool import BigQueryReadOnlyTool
+from google_search_tool import GoogleSearchTool
+from geocoding_tool import GeocodingTool
 
 class NJVoterChatAgent:
     """Simplified agent for NJ voter data queries without ADK dependency"""

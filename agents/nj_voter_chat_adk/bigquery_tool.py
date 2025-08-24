@@ -6,9 +6,9 @@ import datetime
 from decimal import Decimal
 from google.cloud import bigquery
 from google.api_core.client_options import ClientOptions
-from .config import PROJECT_ID, BQ_LOCATION, ALLOWED_TABLES, MAX_ROWS, QUERY_TIMEOUT_SECONDS
-from .policy import is_select_only, tables_within_allowlist
-from .debug_config import debug_print, error_print
+from config import PROJECT_ID, BQ_LOCATION, ALLOWED_TABLES, MAX_ROWS, QUERY_TIMEOUT_SECONDS
+from policy import is_select_only, tables_within_allowlist
+from debug_config import debug_print, error_print
 
 def convert_decimal(obj):
     """Convert Decimal and date objects to JSON-serializable types."""

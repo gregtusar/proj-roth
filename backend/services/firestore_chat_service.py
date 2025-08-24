@@ -42,6 +42,8 @@ class FirestoreChatService:
             print(f"Firestore chat service initialized for project: {self.project_id} (primary=sync, async_available={self.has_async})")
         except Exception as e:
             print(f"Warning: Could not connect to Firestore: {e}")
+            print(f"Firestore connection details: project_id={self.project_id}")
+            print("This may be due to missing credentials or network issues")
             self.connected = False
             self.client = None
             self.sync_client = None
@@ -117,7 +119,11 @@ class FirestoreChatService:
             return sessions
         
         # Run sync operation in thread pool
-        return await asyncio.to_thread(_get_sessions)
+        try:
+            return await asyncio.to_thread(_get_sessions)
+        except Exception as e:
+            print(f"Error loading user sessions: {e}")
+            return []
     
     async def get_session(self, session_id: str, user_id: str) -> Optional[ChatSession]:
         """Get a specific session"""

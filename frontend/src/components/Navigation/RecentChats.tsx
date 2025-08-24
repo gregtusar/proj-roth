@@ -71,7 +71,7 @@ interface RecentChatsProps {
 const RecentChats: React.FC<RecentChatsProps> = ({ isCompact = false }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  const { sessions, currentSessionId } = useSelector(
+  const { sessions, currentSessionId, error } = useSelector(
     (state: RootState) => state.chat
   );
   const { isDarkMode } = useSelector(
@@ -155,6 +155,10 @@ const RecentChats: React.FC<RecentChatsProps> = ({ isCompact = false }) => {
         ))}
       </ChatList>
     );
+  }
+
+  if (error) {
+    return <EmptyState $isDarkMode={isDarkMode}>Error loading chats: {error}</EmptyState>;
   }
 
   if (sessions.length === 0) {

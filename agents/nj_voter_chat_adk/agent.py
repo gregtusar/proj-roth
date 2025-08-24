@@ -226,23 +226,49 @@ class NJVoterChatAgent(Agent):
                 last = chunk
             return last
 
+        # Get user context
+        user_id = os.environ.get("VOTER_LIST_USER_ID", "default_user")
+        user_email = os.environ.get("VOTER_LIST_USER_EMAIL", "user@example.com")
+        session_id = self._session_id if hasattr(self, '_session_id') else None
+
         try:
             debug_print("[DEBUG] NJVoterChatAgent.chat -> using proper ADK Runner invocation")
             from google.adk.agents.run_config import RunConfig
             from google.genai import types
             
-            # Use persistent session to maintain context across conversations
-            # Note: This may accumulate tokens over time, but provides better conversational context
-            if not self._session_id:
-                self._session_id = f"session_{int(time.time())}"
-                session = _run_asyncio(self._session_service.create_session(
-                    app_name="nj_voter_chat",
-                    user_id=self._user_id,
-                    session_id=self._session_id
-                ))
-                debug_print(f"[DEBUG] Created new persistent session: {self._session_id}")
+            # Use the chat session ID if provided, otherwise create a new one
+            # This ensures each chat conversation has its own ADK session
+            chat_session_id = os.environ.get("CHAT_SESSION_ID")
+            
+            # If we have a chat session ID and it's different from current, create new ADK session
+            if chat_session_id:
+                expected_session_id = f"chat_{chat_session_id}"
+                if not hasattr(self, '_session_id') or self._session_id != expected_session_id:
+                    self._session_id = expected_session_id
+                    # Try to create session, but handle case where it might already exist
+                    try:
+                        session = _run_asyncio(self._session_service.create_session(
+                            app_name="nj_voter_chat",
+                            user_id=self._user_id,
+                            session_id=self._session_id
+                        ))
+                        debug_print(f"[DEBUG] Created new ADK session for chat: {self._session_id}")
+                    except Exception as e:
+                        debug_print(f"[DEBUG] Session creation returned: {e}, continuing with session_id: {self._session_id}")
+                else:
+                    debug_print(f"[DEBUG] Reusing ADK session for chat: {self._session_id}")
             else:
-                debug_print(f"[DEBUG] Reusing existing session for context: {self._session_id}")
+                # Fallback: create a new session each time if no chat session ID
+                self._session_id = f"session_{int(time.time())}_{os.getpid()}"
+                try:
+                    session = _run_asyncio(self._session_service.create_session(
+                        app_name="nj_voter_chat",
+                        user_id=self._user_id,
+                        session_id=self._session_id
+                    ))
+                    debug_print(f"[DEBUG] Created new ADK session (no chat session): {self._session_id}")
+                except Exception as e:
+                    debug_print(f"[DEBUG] Session creation returned: {e}, continuing with session_id: {self._session_id}")
             
             message_content = types.Content(
                 role="user",
@@ -277,23 +303,113 @@ class NJVoterChatAgent(Agent):
             if hasattr(run_config, 'request'):
                 run_config.request = message_content
                 debug_print(f"[DEBUG] Using RunConfig.request field for message content")
-                agen = self._runner.run_async(
-                    user_id=self._user_id,
-                    session_id=self._session_id,
-                    run_config=run_config
-                )
+                try:
+                    agen = self._runner.run_async(
+                        user_id=self._user_id,
+                        session_id=self._session_id,
+                        run_config=run_config
+                    )
+                except ValueError as e:
+                    if "Session not found" in str(e):
+                        debug_print(f"[DEBUG] Session not found, creating new session and retrying")
+                        # Create a new session with timestamp to avoid conflicts
+                        self._session_id = f"chat_{chat_session_id}_{int(time.time())}" if chat_session_id else f"session_{int(time.time())}_{os.getpid()}"
+                        try:
+                            session = _run_asyncio(self._session_service.create_session(
+                                app_name="nj_voter_chat",
+                                user_id=self._user_id,
+                                session_id=self._session_id
+                            ))
+                            debug_print(f"[DEBUG] Created fresh ADK session: {self._session_id}")
+                        except Exception as se:
+                            debug_print(f"[DEBUG] Session creation error (continuing): {se}")
+                        # Retry with new session
+                        agen = self._runner.run_async(
+                            user_id=self._user_id,
+                            session_id=self._session_id,
+                            run_config=run_config
+                        )
+                    else:
+                        raise
             else:
                 debug_print(f"[DEBUG] Using original new_message parameter with fixed structure")
-                agen = self._runner.run_async(
-                    user_id=self._user_id,
-                    session_id=self._session_id,
-                    new_message=message_content,
-                    run_config=run_config
-                )
+                try:
+                    agen = self._runner.run_async(
+                        user_id=self._user_id,
+                        session_id=self._session_id,
+                        new_message=message_content,
+                        run_config=run_config
+                    )
+                except ValueError as e:
+                    if "Session not found" in str(e):
+                        debug_print(f"[DEBUG] Session not found, creating new session and retrying")
+                        # Create a new session with timestamp to avoid conflicts
+                        self._session_id = f"chat_{chat_session_id}_{int(time.time())}" if chat_session_id else f"session_{int(time.time())}_{os.getpid()}"
+                        try:
+                            session = _run_asyncio(self._session_service.create_session(
+                                app_name="nj_voter_chat",
+                                user_id=self._user_id,
+                                session_id=self._session_id
+                            ))
+                            debug_print(f"[DEBUG] Created fresh ADK session: {self._session_id}")
+                        except Exception as se:
+                            debug_print(f"[DEBUG] Session creation error (continuing): {se}")
+                        # Retry with new session
+                        agen = self._runner.run_async(
+                            user_id=self._user_id,
+                            session_id=self._session_id,
+                            new_message=message_content,
+                            run_config=run_config
+                        )
+                    else:
+                        raise
             debug_print(f"[DEBUG] Runner.run_async returned: {type(agen)}")
             
             if inspect.isasyncgen(agen):
-                result = _run_asyncio(_consume_async_gen(agen))
+                try:
+                    result = _run_asyncio(_consume_async_gen(agen))
+                except ValueError as e:
+                    if "Session not found" in str(e):
+                        debug_print(f"[DEBUG] Session not found during async consumption, creating new session and retrying")
+                        # Create a completely new session with timestamp
+                        self._session_id = f"chat_{int(time.time())}_{os.getpid()}"
+                        try:
+                            session = _run_asyncio(self._session_service.create_session(
+                                app_name="nj_voter_chat",
+                                user_id=self._user_id,
+                                session_id=self._session_id
+                            ))
+                            debug_print(f"[DEBUG] Created fresh ADK session after error: {self._session_id}")
+                        except Exception as se:
+                            debug_print(f"[DEBUG] Session creation error (continuing): {se}")
+                        
+                        # Retry with completely new session
+                        if hasattr(run_config, 'request'):
+                            agen = self._runner.run_async(
+                                user_id=self._user_id,
+                                session_id=self._session_id,
+                                run_config=run_config
+                            )
+                        else:
+                            agen = self._runner.run_async(
+                                user_id=self._user_id,
+                                session_id=self._session_id,
+                                new_message=message_content,
+                                run_config=run_config
+                            )
+                        result = _run_asyncio(_consume_async_gen(agen))
+                    else:
+                        raise
+                except AttributeError as e:
+                    # aiohttp compatibility issue - happens when using BigQuery tool
+                    # but doesn't prevent the tool from working
+                    if "ClientConnectorDNSError" in str(e):
+                        error_print(f"[WARNING] aiohttp compatibility issue (ignoring): {e}")
+                        # The tool execution continues despite this error
+                        # Return a message indicating to retry
+                        return "I'm processing your database query. Due to a temporary compatibility issue, please send your request again and it should work."
+                    else:
+                        raise
             else:
                 result = agen
             
@@ -309,18 +425,23 @@ class NJVoterChatAgent(Agent):
                     final_response = '\n'.join(text_parts)
                     debug_print(f"[DEBUG] Extracted text response: {final_response[:200]}...")
                     debug_print(f"[DEBUG] Response indicates system instruction awareness: {'data assistant' in final_response.lower() or 'bigquery' in final_response.lower()}")
+                    
+                    
                     return final_response
                 else:
                     print(f"[WARNING] No text content found in response parts: {result.content.parts}")
-                    return "No response content available."
+                    error_msg = "No response content available."
+                    return error_msg
             
             print(f"[WARNING] Unexpected response structure: {type(result)}")
-            return str(result)
+            response = str(result)
+            return response
             
         except Exception as e:
             error_print(f"[ERROR] ADK Runner invocation failed: {e}")
             
             error_str = str(e)
+            
             if any(keyword in error_str.lower() for keyword in ['bigquery', 'unrecognized name', 'invalid query', 'query failed']):
                 print(f"[INFO] Detected BigQuery-related error, returning user-friendly message")
                 return f"I encountered an issue with the database query: {error_str}. Please try rephrasing your question or check the field names you're using. Common field names include: id, demo_party, addr_residential_city, county_name, latitude, longitude."

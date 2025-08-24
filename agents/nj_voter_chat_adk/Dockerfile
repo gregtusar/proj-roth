@@ -1,4 +1,5 @@
-# syntax=docker/dockerfile:1
+# This Dockerfile is deprecated - use the main application Dockerfile instead
+# The agent is now integrated into the backend API service
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -25,4 +26,5 @@ ENV PORT=8080
 
 EXPOSE 8080
 
-CMD ["streamlit", "run", "agents/nj_voter_chat_adk/app_streamlit.py", "--server.port=8080", "--server.address=0.0.0.0"]
+# Run CLI for testing purposes only
+CMD ["python", "-m", "agents.nj_voter_chat_adk.app_cli"]

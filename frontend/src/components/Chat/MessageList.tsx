@@ -53,7 +53,7 @@ const EmptyStateHint = styled('p', ({ $isDarkMode }: { $isDarkMode: boolean }) =
 }));
 
 const MessageList: React.FC = () => {
-  const { messages, isLoading, streamingMessage } = useSelector(
+  const { messages, isLoading, streamingMessage, currentSessionId } = useSelector(
     (state: RootState) => state.chat
   );
   const { isDarkMode } = useSelector((state: RootState) => state.settings);
@@ -83,16 +83,19 @@ const MessageList: React.FC = () => {
   return (
     <Container ref={containerRef} $isDarkMode={isDarkMode}>
       {messages.map((message) => (
-        <Message key={message.id} message={message} />
+        <Message key={message.message_id} message={message} />
       ))}
       
       {streamingMessage !== null && (
         <Message
           message={{
-            id: 'streaming',
-            role: 'assistant',
-            content: streamingMessage,
+            message_id: 'streaming',
+            session_id: currentSessionId || 'temp-session',
+            user_id: 'assistant',
+            message_type: 'assistant',
+            message_text: streamingMessage,
             timestamp: new Date().toISOString(),
+            sequence_number: messages.length,
           }}
           isStreaming
         />

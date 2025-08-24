@@ -122,9 +122,12 @@ const Sidebar: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   const { isDarkMode } = useSelector((state: RootState) => state.settings);
 
-  const handleNewChat = () => {
+  const handleNewChat = async () => {
+    // Clear current messages and session
     dispatch(clearMessages());
-    navigate('/chat');
+    // Navigate to chat without session ID to indicate new chat
+    navigate('/chat/new');
+    // The actual session will be created when the first message is sent
   };
 
   const handleLogout = () => {

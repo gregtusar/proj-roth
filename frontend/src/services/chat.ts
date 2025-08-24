@@ -11,21 +11,38 @@ export async function sendMessage(
   });
 }
 
-export async function getChatHistory(): Promise<ChatSession[]> {
-  return apiClient.get<ChatSession[]>('/chat/history');
+export async function getChatSessions(): Promise<{ sessions: ChatSession[] }> {
+  return apiClient.get<{ sessions: ChatSession[] }>('/sessions/');
 }
 
-export async function getSession(sessionId: string): Promise<ChatSession> {
-  return apiClient.get<ChatSession>(`/chat/session/${sessionId}`);
+export async function createSession(
+  sessionName?: string,
+  firstMessage?: string
+): Promise<ChatSession> {
+  return apiClient.post<ChatSession>('/sessions/', {
+    session_name: sessionName,
+    first_message: firstMessage,
+  });
 }
 
-export async function saveSession(
+export async function getSessionMessages(sessionId: string): Promise<{
+  session: ChatSession;
+  messages: Message[];
+}> {
+  return apiClient.get<{ session: ChatSession; messages: Message[] }>(
+    `/sessions/${sessionId}`
+  );
+}
+
+export async function updateSessionName(
   sessionId: string,
-  messages: Message[]
-): Promise<void> {
-  return apiClient.post(`/chat/session/${sessionId}/save`, { messages });
+  sessionName: string
+): Promise<{ success: boolean }> {
+  return apiClient.put<{ success: boolean }>(`/sessions/${sessionId}`, {
+    session_name: sessionName,
+  });
 }
 
-export async function deleteSession(sessionId: string): Promise<void> {
-  return apiClient.delete(`/chat/session/${sessionId}`);
+export async function deleteSession(sessionId: string): Promise<{ success: boolean }> {
+  return apiClient.delete<{ success: boolean }>(`/sessions/${sessionId}`);
 }

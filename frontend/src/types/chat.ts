@@ -1,8 +1,11 @@
 export interface Message {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
+  message_id: string;
+  session_id: string;
+  user_id: string;
+  message_type: 'user' | 'assistant';
+  message_text: string;
   timestamp: string;
+  sequence_number: number;
   metadata?: {
     tool_calls?: ToolCall[];
     query?: string;
@@ -17,12 +20,15 @@ export interface ToolCall {
 }
 
 export interface ChatSession {
-  id: string;
-  title: string;
+  session_id: string;
+  user_id: string;
+  user_email: string;
+  session_name: string;
   created_at: string;
   updated_at: string;
-  messages: Message[];
-  user_id: string;
+  is_active: boolean;
+  message_count: number;
+  metadata?: Record<string, any>;
 }
 
 export interface ChatState {

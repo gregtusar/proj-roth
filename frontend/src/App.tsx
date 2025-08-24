@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from './store';
 import { refreshToken } from './store/authSlice';
+import { loadChatSessions } from './store/chatSlice';
 import wsService from './services/websocket';
 
 // Components
@@ -35,9 +36,11 @@ function App() {
   }, [dispatch]);
 
   useEffect(() => {
-    // Connect WebSocket when authenticated
+    // Connect WebSocket and load sessions when authenticated
     if (isAuthenticated) {
       wsService.connect();
+      // Load user's chat sessions on app startup
+      dispatch(loadChatSessions());
     } else {
       wsService.disconnect();
     }
@@ -45,7 +48,7 @@ function App() {
     return () => {
       wsService.disconnect();
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, dispatch]);
 
   return (
     <Routes>

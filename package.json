@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "claude": "^0.1.1",
+    "yoga": "^0.0.20",
+    "yoga-layout": "^3.2.1"
+  }
+}

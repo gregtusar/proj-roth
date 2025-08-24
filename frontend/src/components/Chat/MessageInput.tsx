@@ -3,9 +3,10 @@ import { useDispatch, useSelector } from 'react-redux';
 import { styled } from 'baseui';
 import { Textarea, SIZE } from 'baseui/textarea';
 import { Button, KIND, SIZE as ButtonSize } from 'baseui/button';
-import { RootState, AppDispatch } from '../../store';
+import { RootState, AppDispatch, store } from '../../store';
 import { addMessage } from '../../store/chatSlice';
 import wsService from '../../services/websocket';
+import { Message } from '../../types/chat';
 
 const Container = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
   padding: '16px 24px',
@@ -35,7 +36,7 @@ const CharCount = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => (
 const MessageInput: React.FC = () => {
   const [message, setMessage] = useState('');
   const dispatch = useDispatch<AppDispatch>();
-  const { isLoading, currentSessionId } = useSelector(
+  const { messages, isLoading, currentSessionId } = useSelector(
     (state: RootState) => state.chat
   );
   const { isDarkMode } = useSelector((state: RootState) => state.settings);
@@ -44,15 +45,27 @@ const MessageInput: React.FC = () => {
   const handleSend = () => {
     if (!message.trim() || isLoading) return;
 
-    const userMessage = {
-      id: Date.now().toString(),
-      role: 'user' as const,
-      content: message.trim(),
+    // Don't add message to store yet - wait for backend confirmation
+    // This ensures we have the correct session_id
+    const messageText = message.trim();
+    
+    // Send message through WebSocket
+    // Backend will create session if needed and return proper session_id
+    wsService.sendMessage(messageText, currentSessionId || undefined);
+    
+    // Add user message to store with temporary ID
+    // It will be replaced when we get the real message from backend
+    const tempMessage: Message = {
+      message_id: `temp-${Date.now()}`,
+      session_id: currentSessionId || 'pending',
+      user_id: store.getState().auth.user?.id || 'current_user',
+      message_type: 'user',
+      message_text: messageText,
       timestamp: new Date().toISOString(),
+      sequence_number: messages.length,
     };
-
-    dispatch(addMessage(userMessage));
-    wsService.sendMessage(message.trim(), currentSessionId || undefined);
+    dispatch(addMessage(tempMessage));
+    
     setMessage('');
     // Focus will be handled by the inputRef prop
   };

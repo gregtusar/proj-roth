@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { styled } from 'baseui';
 import { Avatar } from 'baseui/avatar';
 import ReactMarkdown from 'react-markdown';
@@ -73,6 +73,41 @@ const StreamingIndicator = styled('span', {
   },
 });
 
+const CopyButton = styled('button', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '4px',
+  padding: '4px 8px',
+  marginTop: '8px',
+  backgroundColor: 'transparent',
+  border: `1px solid ${$isDarkMode ? '#404040' : '#e0e0e0'}`,
+  borderRadius: '4px',
+  color: $isDarkMode ? '#a0a0a0' : '#666',
+  fontSize: '12px',
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+  ':hover': {
+    backgroundColor: $isDarkMode ? '#404040' : '#f0f0f0',
+    borderColor: $isDarkMode ? '#606060' : '#d0d0d0',
+  },
+  ':active': {
+    transform: 'scale(0.95)',
+  },
+}));
+
+const CopyIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"></polyline>
+  </svg>
+);
+
 interface MessageProps {
   message: MessageType;
   isStreaming?: boolean;
@@ -80,12 +115,37 @@ interface MessageProps {
 
 const Message: React.FC<MessageProps> = ({ message, isStreaming = false }) => {
   const { isDarkMode } = useSelector((state: RootState) => state.settings);
-  const isUser = message.role === 'user';
-  const avatarSrc = isUser ? undefined : undefined;
-  const avatarName = isUser ? 'You' : 'Assistant';
+  const { user } = useSelector((state: RootState) => state.auth);
+  const isUser = message.message_type === 'user';
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message.message_text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text:', err);
+    }
+  };
+  
+  // Get user initials from email or name
+  const getUserInitials = () => {
+    if (user?.email) {
+      const parts = user.email.split('@')[0].split('.');
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return user.email[0].toUpperCase();
+    }
+    return 'U';
+  };
+  
+  const avatarSrc = isUser ? undefined : '/greywolf_logo.png';
+  const avatarName = isUser ? getUserInitials() : 'Greywolf';
 
   return (
-    <MessageContainer $role={message.role} $isDarkMode={isDarkMode}>
+    <MessageContainer $role={message.message_type} $isDarkMode={isDarkMode}>
       <Avatar
         name={avatarName}
         size="32px"
@@ -93,7 +153,7 @@ const Message: React.FC<MessageProps> = ({ message, isStreaming = false }) => {
         overrides={{
           Root: {
             style: {
-              backgroundColor: isUser ? '#0066cc' : '#00aa00',
+              backgroundColor: isUser ? '#0066cc' : '#f3f4f6',
             },
           },
         }}
@@ -120,7 +180,7 @@ const Message: React.FC<MessageProps> = ({ message, isStreaming = false }) => {
             },
           }}
         >
-          {message.content}
+          {message.message_text}
         </ReactMarkdown>
         
         {isStreaming && <StreamingIndicator />}
@@ -151,6 +211,17 @@ const Message: React.FC<MessageProps> = ({ message, isStreaming = false }) => {
           <div style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
             Found {message.metadata.results_count} results
           </div>
+        )}
+        
+        {!isUser && !isStreaming && (
+          <CopyButton
+            $isDarkMode={isDarkMode}
+            onClick={handleCopy}
+            title={copied ? 'Copied!' : 'Copy to clipboard'}
+          >
+            {copied ? <CheckIcon /> : <CopyIcon />}
+            <span>{copied ? 'Copied!' : 'Copy'}</span>
+          </CopyButton>
         )}
       </MessageContent>
     </MessageContainer>

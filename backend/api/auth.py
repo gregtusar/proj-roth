@@ -71,7 +71,7 @@ async def google_auth_callback(request: GoogleAuthRequest):
     """
     try:
         # Use the provided redirect URI or default to localhost for development
-        redirect_uri = request.redirectUri or "http://localhost:3000/login"
+        redirect_uri = request.redirectUri or "http://localhost:8000/login"
         
         print(f"Received auth code: {request.googleToken[:20]}..." if len(request.googleToken) > 20 else request.googleToken)
         print(f"Using client_id: {settings.GOOGLE_CLIENT_ID}")

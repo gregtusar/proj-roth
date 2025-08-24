@@ -122,6 +122,9 @@ const chatSlice = createSlice({
       .addCase(loadChatSessions.fulfilled, (state, action) => {
         state.sessions = action.payload;
       })
+      .addCase(loadChatSessions.rejected, (state, action) => {
+        state.error = action.error.message || 'Failed to load chat sessions';
+      })
       .addCase(loadSession.fulfilled, (state, action) => {
         state.messages = action.payload.messages;
         state.currentSessionId = action.payload.session.session_id;
@@ -130,6 +133,9 @@ const chatSlice = createSlice({
         if (index !== -1) {
           state.sessions[index] = action.payload.session;
         }
+      })
+      .addCase(loadSession.rejected, (state, action) => {
+        state.error = action.error.message || 'Failed to load session messages';
       })
       .addCase(createNewSession.fulfilled, (state, action) => {
         state.sessions.unshift(action.payload);

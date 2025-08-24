@@ -43,16 +43,11 @@ WESTFIELD_DATA_DIR=data
 
 ### Running the Agent
 
-The Westfield agent can be run in two modes:
+The Westfield agent can be run using the interactive CLI:
 
-#### CLI Mode (Interactive Chat)
+#### CLI Interface (Interactive Chat)
 ```bash
 python -m agents.westfield.app_cli
-```
-
-#### Streamlit Web Interface
-```bash
-streamlit run agents/westfield/app_streamlit.py
 ```
 
 ### Initial Data Setup

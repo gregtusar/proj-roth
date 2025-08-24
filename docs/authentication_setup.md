@@ -20,11 +20,11 @@ The application now requires users to authenticate with their Google account bef
 - Handles OAuth callbacks
 - Redirects to main app on successful authentication
 
-### 3. Modified Main App (`app_streamlit.py`)
+### 3. Modified Main App (`app_cli.py`)
 - Checks authentication before allowing access
-- Displays user info and avatar in top-right
-- Provides logout button in sidebar
-- Redirects to login if not authenticated
+- Displays user info in CLI interface
+- Provides logout command
+- Exits if not authenticated
 
 ### 4. User Database Table
 - Table: `proj-roth.voter_data.authorized_users`
@@ -115,15 +115,15 @@ export OAUTH_REDIRECT_URI="http://localhost:8501"
 
 1. Start the application:
 ```bash
-streamlit run agents/nj_voter_chat_adk/app_streamlit.py
+python -m agents.nj_voter_chat_adk.app_cli
 ```
 
-2. You should be redirected to the login page
-3. Click "Continue with Google"
-4. Authenticate with a Google account
-5. If authorized, you'll be redirected to the main chat interface
-6. User info appears in top-right corner
-7. Logout button available in sidebar
+2. The CLI will check for authentication
+3. If not authenticated, you'll be prompted to authenticate
+4. Follow the OAuth flow in your browser
+5. If authorized, you'll return to the CLI interface
+6. User info appears in CLI output
+7. Use 'logout' command to clear authentication
 
 ## Deployment Considerations
 

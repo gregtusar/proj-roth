@@ -30,4 +30,4 @@ ENV PORT=8080
 
 EXPOSE 8080
 
-CMD ["bash", "-lc", "streamlit run agents/nj_voter_chat_adk/app_streamlit.py --server.port $PORT --server.address 0.0.0.0"]
+CMD ["python", "-m", "agents.nj_voter_chat_adk.app_cli"]

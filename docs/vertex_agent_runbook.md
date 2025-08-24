@@ -132,8 +132,7 @@ Run locally:
 - gcloud config set project proj-roth
 - export GOOGLE_CLOUD_PROJECT=proj-roth
 - export GOOGLE_CLOUD_REGION=us-central1
-- streamlit run agents/nj_voter_chat_adk/app_streamlit.py
-- Or: python -m agents.nj_voter_chat_adk.app_cli
+- python -m agents.nj_voter_chat_adk.app_cli
 
 Guardrails:
 - SELECT-only enforced

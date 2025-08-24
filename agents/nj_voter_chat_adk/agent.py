@@ -224,7 +224,7 @@ class NJVoterChatAgent(Agent):
             memory_service=self._memory_service,
             artifact_service=self._artifact_service
         )
-        self._user_id = "streamlit_user"
+        self._user_id = "default_user"
         self._session_id = None
 
     def chat(self, prompt: str):

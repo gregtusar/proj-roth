@@ -24,9 +24,9 @@ export GOOGLE_CLOUD_REGION=us-central1
 python -m agents.nj_voter_chat_adk.app_cli
 ```
 
-## Run Streamlit
+## Run Interactive CLI
 ```
-streamlit run agents/nj_voter_chat_adk/app_streamlit.py
+python -m agents.nj_voter_chat_adk.app_cli
 ```
 
 ## Deploy to Cloud Run (public URL)

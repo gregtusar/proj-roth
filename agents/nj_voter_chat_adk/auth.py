@@ -2,7 +2,7 @@
 Google OAuth authentication module for NJ Voter Chat
 """
 import os
-import streamlit as st
+import sys
 import jwt
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
@@ -261,40 +261,41 @@ class GoogleAuthenticator:
             return None
     
     def logout(self):
-        """Clear authentication from session"""
-        if "access_token" in st.session_state:
-            del st.session_state["access_token"]
-        if "user_info" in st.session_state:
-            del st.session_state["user_info"]
-        if "authenticated" in st.session_state:
-            del st.session_state["authenticated"]
+        """Clear authentication from environment"""
+        if "ACCESS_TOKEN" in os.environ:
+            del os.environ["ACCESS_TOKEN"]
+        if "USER_INFO" in os.environ:
+            del os.environ["USER_INFO"]
+        if "AUTHENTICATED" in os.environ:
+            del os.environ["AUTHENTICATED"]
 
 
 def require_auth(func):
-    """Decorator to require authentication for Streamlit pages"""
+    """Decorator to require authentication for CLI applications"""
     def wrapper(*args, **kwargs):
-        if not st.session_state.get("authenticated", False):
-            st.error("Please log in to access this page")
-            st.stop()
+        if not os.environ.get("AUTHENTICATED", "false").lower() == "true":
+            print("Error: Please log in to access this functionality")
+            sys.exit(1)
         return func(*args, **kwargs)
     return wrapper
 
 
 def check_authentication() -> bool:
     """Check if user is authenticated with valid token"""
-    if "access_token" not in st.session_state:
+    access_token = os.environ.get("ACCESS_TOKEN")
+    if not access_token:
         return False
     
     auth = GoogleAuthenticator()
-    user_data = auth.verify_access_token(st.session_state["access_token"])
+    user_data = auth.verify_access_token(access_token)
     
     if user_data:
-        st.session_state["authenticated"] = True
-        st.session_state["user_info"] = user_data
+        os.environ["AUTHENTICATED"] = "true"
+        os.environ["USER_INFO"] = json.dumps(user_data)
         return True
     else:
         # Token invalid or expired
-        st.session_state["authenticated"] = False
-        if "access_token" in st.session_state:
-            del st.session_state["access_token"]
+        os.environ["AUTHENTICATED"] = "false"
+        if "ACCESS_TOKEN" in os.environ:
+            del os.environ["ACCESS_TOKEN"]
         return False

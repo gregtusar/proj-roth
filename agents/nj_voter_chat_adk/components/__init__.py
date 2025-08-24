@@ -1,7 +1,7 @@
 """
 Custom UI components for NJ Voter Chat
 """
-from .sidebar import (
+from sidebar import (
     render_sidebar,
     add_chat_to_history,
     get_current_chat,

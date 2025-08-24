@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.config import settings
-from api import auth, chat, lists, agent, maps
+from api import auth, chat, lists_firestore as lists, agent, maps, sessions
 from core.websocket import sio, sio_app
 
 @asynccontextmanager
@@ -43,6 +43,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
+app.include_router(sessions.router, prefix="/api/sessions", tags=["Sessions"])
 app.include_router(lists.router, prefix="/api/lists", tags=["Lists"])
 app.include_router(agent.router, prefix="/api/agent", tags=["Agent"])
 app.include_router(maps.router, prefix="/api/maps", tags=["Maps"])
@@ -70,9 +71,10 @@ if not settings.DEBUG:
         # Serve index.html for all non-API routes (React routing)
         @app.get("/{full_path:path}")
         async def serve_react_app(full_path: str):
+            from fastapi import HTTPException
             # Don't serve React app for API routes
             if full_path.startswith("api/") or full_path.startswith("socket.io/"):
-                return {"error": "Not found"}, 404
+                raise HTTPException(status_code=404, detail="Not found")
             
             # Check if it's a file in the build directory
             if "." in full_path:

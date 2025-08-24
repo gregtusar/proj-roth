@@ -24,11 +24,12 @@ export GOOGLE_CLOUD_REGION=us-central1
 
 ### Running the Agent
 ```bash
-# CLI version
+# CLI version (for testing only)
 python -m agents.nj_voter_chat_adk.app_cli
 
-# Streamlit web UI
-streamlit run agents/nj_voter_chat_adk/app_streamlit.py
+# Main application (React frontend + Python backend)
+python backend/main.py
+# Then navigate to http://localhost:8080
 ```
 
 ### Testing
@@ -74,13 +75,14 @@ bq query --use_legacy_sql=false < scripts/fuzzy_match_no_zip.sql
 - **Access**: Read-only access enforced through BigQueryReadOnlyTool with guardrails
 
 ### Agent Architecture (agents/nj_voter_chat_adk/)
-- **agent.py**: Main ADK agent using Gemini, exposes three tools:
+- **agent.py**: Main ADK agent using Gemini, exposes four tools:
   - `bigquery_select`: Execute read-only SQL with automatic field mapping
   - `geocode_address`: Convert addresses to lat/lng via Google Maps
   - `google_search`: Search for current NJ political information
+  - `save_voter_list`: Save query results for later use
 - **bigquery_tool.py**: Implements SQL validation, table allowlisting, row limits (10K max)
 - **config.py**: Central configuration for model, prompts, and constraints
-- **app_cli.py/app_streamlit.py**: User interfaces for the agent
+- **app_cli.py**: CLI interface for testing the agent
 
 ### Data Processing Scripts (scripts/)
 - **geocoding/**: Pipeline scripts for batch geocoding voter addresses using Google Maps API

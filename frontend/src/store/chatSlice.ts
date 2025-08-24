@@ -19,19 +19,43 @@ export const sendMessage = createAsyncThunk(
   }
 );
 
-export const loadChatHistory = createAsyncThunk(
-  'chat/loadHistory',
+export const loadChatSessions = createAsyncThunk(
+  'chat/loadSessions',
   async () => {
-    const response = await chatService.getChatHistory();
-    return response;
+    const response = await chatService.getChatSessions();
+    return response.sessions;
   }
 );
 
 export const loadSession = createAsyncThunk(
   'chat/loadSession',
   async (sessionId: string) => {
-    const response = await chatService.getSession(sessionId);
+    const response = await chatService.getSessionMessages(sessionId);
     return response;
+  }
+);
+
+export const createNewSession = createAsyncThunk(
+  'chat/createSession',
+  async ({ sessionName, firstMessage }: { sessionName?: string; firstMessage?: string }) => {
+    const response = await chatService.createSession(sessionName, firstMessage);
+    return response;
+  }
+);
+
+export const renameSession = createAsyncThunk(
+  'chat/renameSession',
+  async ({ sessionId, sessionName }: { sessionId: string; sessionName: string }) => {
+    await chatService.updateSessionName(sessionId, sessionName);
+    return { sessionId, sessionName };
+  }
+);
+
+export const deleteSessionAsync = createAsyncThunk(
+  'chat/deleteSession',
+  async (sessionId: string) => {
+    await chatService.deleteSession(sessionId);
+    return sessionId;
   }
 );
 
@@ -60,13 +84,24 @@ const chatSlice = createSlice({
     finalizeStreamingMessage: (state) => {
       if (state.streamingMessage !== null) {
         const message: Message = {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content: state.streamingMessage,
+          message_id: Date.now().toString(),
+          session_id: state.currentSessionId || 'temp-session',
+          user_id: 'current_user',
+          message_type: 'assistant',
+          message_text: state.streamingMessage,
           timestamp: new Date().toISOString(),
+          sequence_number: state.messages.length,
         };
         state.messages.push(message);
         state.streamingMessage = null;
+      }
+    },
+    updateSession: (state, action: PayloadAction<ChatSession>) => {
+      const index = state.sessions.findIndex(s => s.session_id === action.payload.session_id);
+      if (index !== -1) {
+        state.sessions[index] = action.payload;
+      } else {
+        state.sessions.unshift(action.payload);
       }
     },
   },
@@ -84,12 +119,34 @@ const chatSlice = createSlice({
         state.isLoading = false;
         state.error = action.error.message || 'Failed to send message';
       })
-      .addCase(loadChatHistory.fulfilled, (state, action) => {
+      .addCase(loadChatSessions.fulfilled, (state, action) => {
         state.sessions = action.payload;
       })
       .addCase(loadSession.fulfilled, (state, action) => {
         state.messages = action.payload.messages;
-        state.currentSessionId = action.payload.id;
+        state.currentSessionId = action.payload.session.session_id;
+        // Update session in the list
+        const index = state.sessions.findIndex(s => s.session_id === action.payload.session.session_id);
+        if (index !== -1) {
+          state.sessions[index] = action.payload.session;
+        }
+      })
+      .addCase(createNewSession.fulfilled, (state, action) => {
+        state.sessions.unshift(action.payload);
+        state.currentSessionId = action.payload.session_id;
+      })
+      .addCase(renameSession.fulfilled, (state, action) => {
+        const session = state.sessions.find(s => s.session_id === action.payload.sessionId);
+        if (session) {
+          session.session_name = action.payload.sessionName;
+        }
+      })
+      .addCase(deleteSessionAsync.fulfilled, (state, action) => {
+        state.sessions = state.sessions.filter(s => s.session_id !== action.payload);
+        if (state.currentSessionId === action.payload) {
+          state.currentSessionId = null;
+          state.messages = [];
+        }
       });
   },
 });
@@ -101,6 +158,7 @@ export const {
   setCurrentSession,
   updateStreamingMessage,
   finalizeStreamingMessage,
+  updateSession,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

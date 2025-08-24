@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { styled } from 'baseui';
 import { RootState, AppDispatch } from '../../store';
-import { loadSession } from '../../store/chatSlice';
+import { loadSession, clearMessages } from '../../store/chatSlice';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 
@@ -46,18 +46,28 @@ const ChatContainer: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (sessionId && sessionId !== currentSessionId) {
+    console.log('[ChatContainer] Route changed to:', sessionId, 'Current session:', currentSessionId);
+    
+    if (!sessionId || sessionId === 'new') {
+      // Clear for new chat
+      dispatch(clearMessages());
+    } else {
+      // Always load the session when navigating to a specific session ID
+      // Don't check if it's the same - just load it to ensure we have the latest data
+      console.log('[ChatContainer] Loading session:', sessionId);
       dispatch(loadSession(sessionId));
     }
-  }, [sessionId, currentSessionId, dispatch]);
+  }, [sessionId, dispatch]); // Dependencies
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Scroll when messages change
+  const { messages } = useSelector((state: RootState) => state.chat);
   useEffect(() => {
     scrollToBottom();
-  }, []);
+  }, [messages]);
 
   return (
     <Container $isDarkMode={isDarkMode}>

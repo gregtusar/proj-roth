@@ -19,6 +19,13 @@ def _agent_invoke(agent, prompt: str):
 
 def main():
     agent = NJVoterChatAgent()
+    
+    # Set CLI context for prompt logging
+    import os
+    os.environ["VOTER_LIST_USER_ID"] = "cli_user"
+    os.environ["VOTER_LIST_USER_EMAIL"] = os.environ.get("USER", "cli_user") + "@cli.local"
+    os.environ["CLIENT_TYPE"] = "cli"
+    
     print("NJ Voter Chat (ADK) - type 'exit' to quit.")
     while True:
         try:

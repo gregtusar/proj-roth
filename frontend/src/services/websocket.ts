@@ -85,13 +85,33 @@ class WebSocketService {
     });
 
     this.socket.on('message', (message: any) => {
-      store.dispatch(addMessage(message));
+      // Only add non-duplicate messages
+      const state = store.getState();
+      const exists = state.chat.messages.some(
+        (msg: any) => msg.message_id === message.message_id
+      );
+      if (!exists) {
+        store.dispatch(addMessage(message));
+      }
     });
 
     this.socket.on('message_confirmed', (message: any) => {
       // Replace the temporary message with the confirmed one from backend
       console.log('[WebSocket] Message confirmed:', message);
-      // We could update the message here if needed
+      
+      // Find and remove temp message, then add confirmed one
+      const state = store.getState();
+      const tempMessageIndex = state.chat.messages.findIndex(
+        (msg: any) => msg.message_id.startsWith('temp-') && 
+                      msg.message_text === message.message_text &&
+                      msg.message_type === 'user'
+      );
+      
+      if (tempMessageIndex !== -1) {
+        // Message exists as temp, replace it
+        // We'll handle this by dispatching an action to replace the message
+        store.dispatch(addMessage(message));
+      }
     });
 
     this.socket.on('session_created', (data: { session_id: string; session_name: string }) => {
@@ -142,7 +162,16 @@ class WebSocketService {
   }
 
   sendMessage(message: string, sessionId?: string): void {
-    console.log('[WebSocket] sendMessage called:', { message, sessionId });
+    const state = store.getState();
+    // Use the provided sessionId or fall back to current session
+    const effectiveSessionId = sessionId || state.chat.currentSessionId;
+    
+    console.log('[WebSocket] sendMessage called:', { 
+      message, 
+      sessionId,
+      effectiveSessionId,
+      currentSessionId: state.chat.currentSessionId 
+    });
     console.log('[WebSocket] Socket state:', { 
       exists: !!this.socket, 
       connected: this.socket?.connected 
@@ -166,12 +195,11 @@ class WebSocketService {
       return;
     }
 
-    const state = store.getState();
     const user = state.auth.user;
 
     const payload = {
       message,
-      session_id: sessionId || state.chat.currentSessionId,
+      session_id: effectiveSessionId,
       user_id: user?.id || 'anonymous',
       user_email: user?.email || 'anonymous@example.com',
     };

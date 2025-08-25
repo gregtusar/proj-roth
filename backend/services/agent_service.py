@@ -39,6 +39,7 @@ async def process_message_stream(
     Process a message through the ADK agent and stream the response
     """
     print(f"[Agent] Processing message: {message[:50]}... ADK_AVAILABLE={ADK_AVAILABLE}")
+    print(f"[Agent] Session context: session_id={session_id}, user_id={user_id}")
     
     if not ADK_AVAILABLE:
         print("[Agent] Error: ADK agent not available")
@@ -54,9 +55,19 @@ async def process_message_stream(
         os.environ["CLIENT_TYPE"] = "react"
         
         # CRITICAL: Pass the chat session_id to the agent so it can maintain separate ADK sessions
+        # This enables conversation context to be maintained across messages
         if session_id:
             os.environ["CHAT_SESSION_ID"] = session_id
             print(f"[Agent] Using chat session_id for ADK session: {session_id}")
+            
+            # Load conversation history if this is an existing session
+            # The agent will handle this internally through session_integration
+            print(f"[Agent] Session {session_id} will load its conversation history")
+        else:
+            # Clear session ID if not provided to start fresh
+            if "CHAT_SESSION_ID" in os.environ:
+                del os.environ["CHAT_SESSION_ID"]
+            print("[Agent] No session_id provided, starting fresh conversation")
         
         # For testing: return a simple response immediately
         if message.lower().strip() == "test":
@@ -72,7 +83,7 @@ async def process_message_stream(
         print(f"[Agent] Calling agent.chat with message: {message[:50]}...")
         
         # The agent's chat() method will handle session management based on CHAT_SESSION_ID
-        # We don't need to manually set _session_id here as it interferes with session reuse
+        # It will load conversation history internally for context
         
         # Use the agent's chat method
         # Note: The ADK agent may not support streaming natively,

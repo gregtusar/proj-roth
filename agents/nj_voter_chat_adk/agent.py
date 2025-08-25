@@ -284,12 +284,37 @@ class NJVoterChatAgent(Agent):
             # This ensures each chat conversation has its own ADK session
             chat_session_id = os.environ.get("CHAT_SESSION_ID")
             
-            # If we have a chat session ID and it's different from current, create new ADK session
+            # If we have a chat session ID and it's different from current, handle session properly
             if chat_session_id:
                 expected_session_id = f"chat_{chat_session_id}"
+                
+                # Check if we need to switch to a different session or create new one
                 if not hasattr(self, '_session_id') or self._session_id != expected_session_id:
+                    previous_session_id = getattr(self, '_session_id', None)
                     self._session_id = expected_session_id
-                    # Try to create session, but handle case where it might already exist
+                    
+                    # Load conversation history for context if this is an existing chat session
+                    debug_print(f"[DEBUG] Loading conversation history for session: {chat_session_id}")
+                    try:
+                        # Get the conversation history from persistent storage
+                        history = _run_asyncio(self._persistent_sessions.get_session_history(
+                            session_id=chat_session_id,
+                            user_id=user_id
+                        ))
+                        
+                        if history:
+                            debug_print(f"[DEBUG] Found {len(history)} messages in conversation history")
+                            # The history will be used to provide context for the current conversation
+                            # Store it for later use in the prompt
+                            self._conversation_history = history
+                        else:
+                            debug_print(f"[DEBUG] No conversation history found for session {chat_session_id}")
+                            self._conversation_history = []
+                    except Exception as e:
+                        debug_print(f"[DEBUG] Error loading conversation history: {e}")
+                        self._conversation_history = []
+                    
+                    # Try to create ADK session, but handle case where it might already exist
                     try:
                         session = _run_asyncio(self._session_service.create_session(
                             app_name="nj_voter_chat",
@@ -301,9 +326,11 @@ class NJVoterChatAgent(Agent):
                         debug_print(f"[DEBUG] Session creation returned: {e}, continuing with session_id: {self._session_id}")
                 else:
                     debug_print(f"[DEBUG] Reusing ADK session for chat: {self._session_id}")
+                    # Session already active, conversation history should already be loaded
             else:
                 # Fallback: create a new session each time if no chat session ID
                 self._session_id = f"session_{int(time.time())}_{os.getpid()}"
+                self._conversation_history = []  # No history for new sessions
                 try:
                     session = _run_asyncio(self._session_service.create_session(
                         app_name="nj_voter_chat",

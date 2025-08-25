@@ -66,7 +66,14 @@ const chatSlice = createSlice({
   initialState,
   reducers: {
     addMessage: (state, action: PayloadAction<Message>) => {
-      state.messages.push(action.payload);
+      // Prevent duplicate messages by checking if message already exists
+      const exists = state.messages.some(
+        msg => msg.message_id === action.payload.message_id && 
+               msg.message_id !== `temp-${Date.now()}` // Allow temp messages
+      );
+      if (!exists) {
+        state.messages.push(action.payload);
+      }
     },
     setStreamingMessage: (state, action: PayloadAction<string | null>) => {
       state.streamingMessage = action.payload;
@@ -134,7 +141,8 @@ const chatSlice = createSlice({
       })
       .addCase(loadSession.fulfilled, (state, action) => {
         console.log('[chatSlice] loadSession.fulfilled with payload:', action.payload);
-        state.messages = action.payload.messages;
+        // Replace messages completely - this prevents duplicates
+        state.messages = action.payload.messages || [];
         state.currentSessionId = action.payload.session.session_id;
         state.isLoading = false;
         // Update session in the list

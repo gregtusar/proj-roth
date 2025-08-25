@@ -21,6 +21,7 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://localhost:8000",
         "http://localhost:8080",
+        "https://gwanalytica.ai",
         "https://nj-voter-chat.web.app",
         "https://nj-voter-chat-app-nwv4o72vjq-uc.a.run.app",
         "https://nj-voter-chat-app-169579073940.us-central1.run.app",

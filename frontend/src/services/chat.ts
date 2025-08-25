@@ -5,14 +5,20 @@ export async function sendMessage(
   message: string,
   sessionId?: string
 ): Promise<Message> {
-  return apiClient.post<Message>('/chat/send', {
+  console.log('[chatService] sendMessage called:', { message, sessionId });
+  const result = await apiClient.post<Message>('/chat/send', {
     message,
     session_id: sessionId,
   });
+  console.log('[chatService] sendMessage result:', result);
+  return result;
 }
 
 export async function getChatSessions(): Promise<{ sessions: ChatSession[] }> {
-  return apiClient.get<{ sessions: ChatSession[] }>('/sessions/');
+  console.log('[chatService] getChatSessions called');
+  const result = await apiClient.get<{ sessions: ChatSession[] }>('/sessions/');
+  console.log('[chatService] getChatSessions result:', result);
+  return result;
 }
 
 export async function createSession(
@@ -29,9 +35,12 @@ export async function getSessionMessages(sessionId: string): Promise<{
   session: ChatSession;
   messages: Message[];
 }> {
-  return apiClient.get<{ session: ChatSession; messages: Message[] }>(
+  console.log('[chatService] getSessionMessages called with sessionId:', sessionId);
+  const result = await apiClient.get<{ session: ChatSession; messages: Message[] }>(
     `/sessions/${sessionId}`
   );
+  console.log('[chatService] getSessionMessages result:', result);
+  return result;
 }
 
 export async function updateSessionName(

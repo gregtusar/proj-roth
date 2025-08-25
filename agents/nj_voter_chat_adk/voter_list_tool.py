@@ -1,25 +1,23 @@
 """
-Tool for managing voter lists in BigQuery
+Tool for managing voter lists in Firestore
 """
 import uuid
 import logging
 from datetime import datetime
 from typing import Dict, List, Optional, Any
-from google.cloud import bigquery
+from google.cloud import firestore
 from google.cloud.exceptions import GoogleCloudError
 import json
 
 logger = logging.getLogger(__name__)
 
 class VoterListTool:
-    """Tool for saving and managing voter lists"""
+    """Tool for saving and managing voter lists in Firestore"""
     
     def __init__(self, project_id: str = "proj-roth"):
         self.project_id = project_id
-        self.dataset_id = "voter_data"
-        self.table_id = "voter_lists"
-        self.full_table_id = f"{project_id}.{self.dataset_id}.{self.table_id}"
-        self.client = bigquery.Client(project=project_id)
+        self.client = firestore.Client(project=project_id)
+        self.collection_name = "voter_lists"
     
     def save_voter_list(
         self,
@@ -56,42 +54,34 @@ class VoterListTool:
             list_id = str(uuid.uuid4())
             current_time = datetime.utcnow()
             
-            # Prepare the row to insert - convert datetime to ISO format string for JSON serialization
-            row = {
-                "list_id": list_id,
+            # Prepare the document for Firestore (using field names that match the backend)
+            doc_data = {
+                "id": list_id,  # Firestore uses 'id' not 'list_id'
                 "user_id": user_id,
                 "user_email": user_email,
-                "list_name": list_name,
-                "description_text": description_text,
-                "sql_query": sql_query,
+                "name": list_name,  # Firestore uses 'name' not 'list_name'
+                "description": description_text,  # Firestore uses 'description' not 'description_text'
+                "query": sql_query,  # Firestore uses 'query' not 'sql_query'
                 "row_count": row_count,
                 "is_shared": is_shared,
                 "is_active": True,
-                "created_at": current_time.isoformat(),  # Convert to ISO format string
-                "updated_at": current_time.isoformat(),  # Convert to ISO format string
+                "created_at": current_time,  # Firestore handles datetime objects natively
+                "updated_at": current_time,  # Firestore handles datetime objects natively
                 "created_by_model": model_name,
                 "query_execution_time_ms": execution_time_ms,
                 "access_count": 0,
                 "share_type": share_type
             }
             
-            # Insert the row
-            table = self.client.get_table(self.full_table_id)
-            errors = self.client.insert_rows_json(table, [row])
+            # Save to Firestore
+            doc_ref = self.client.collection(self.collection_name).document(list_id)
+            doc_ref.set(doc_data)
             
-            if errors:
-                logger.error(f"Failed to insert voter list: {errors}")
-                return {
-                    "success": False,
-                    "error": f"Failed to save list: {errors}",
-                    "list_id": None
-                }
-            
-            logger.info(f"Successfully saved voter list {list_id} for user {user_email}")
+            logger.info(f"Successfully saved voter list {list_id} to Firestore for user {user_email}")
             return {
                 "success": True,
                 "list_id": list_id,
-                "message": f"List '{list_name}' saved successfully"
+                "message": f"List '{list_name}' saved successfully to Firestore"
             }
             
         except Exception as e:
@@ -109,7 +99,7 @@ class VoterListTool:
         limit: int = 100
     ) -> List[Dict[str, Any]]:
         """
-        Get all lists for a user
+        Get all lists for a user from Firestore
         
         Args:
             user_id: User ID to get lists for
@@ -120,68 +110,30 @@ class VoterListTool:
             List of voter lists
         """
         try:
-            if include_shared:
-                query = f"""
-                SELECT 
-                    list_id,
-                    list_name,
-                    description_text,
-                    sql_query,
-                    row_count,
-                    created_at,
-                    updated_at,
-                    is_shared,
-                    share_type,
-                    access_count
-                FROM `{self.full_table_id}`
-                WHERE (user_id = @user_id OR is_shared = TRUE)
-                    AND is_active = TRUE
-                ORDER BY created_at DESC
-                LIMIT @limit
-                """
-            else:
-                query = f"""
-                SELECT 
-                    list_id,
-                    list_name,
-                    description_text,
-                    sql_query,
-                    row_count,
-                    created_at,
-                    updated_at,
-                    is_shared,
-                    share_type,
-                    access_count
-                FROM `{self.full_table_id}`
-                WHERE user_id = @user_id
-                    AND is_active = TRUE
-                ORDER BY created_at DESC
-                LIMIT @limit
-                """
+            # Query Firestore for user's lists
+            query = self.client.collection(self.collection_name)
+            query = query.where("user_id", "==", user_id)
+            query = query.where("is_active", "==", True)
+            query = query.order_by("created_at", direction=firestore.Query.DESCENDING)
+            query = query.limit(limit)
             
-            job_config = bigquery.QueryJobConfig(
-                query_parameters=[
-                    bigquery.ScalarQueryParameter("user_id", "STRING", user_id),
-                    bigquery.ScalarQueryParameter("limit", "INT64", limit),
-                ]
-            )
-            
-            query_job = self.client.query(query, job_config=job_config)
-            results = query_job.result()
+            docs = query.stream()
             
             lists = []
-            for row in results:
+            for doc in docs:
+                data = doc.to_dict()
+                # Convert Firestore field names back to expected format
                 lists.append({
-                    "list_id": row.list_id,
-                    "list_name": row.list_name,
-                    "description_text": row.description_text,
-                    "sql_query": row.sql_query,
-                    "row_count": row.row_count,
-                    "created_at": row.created_at.isoformat() if row.created_at else None,
-                    "updated_at": row.updated_at.isoformat() if row.updated_at else None,
-                    "is_shared": row.is_shared,
-                    "share_type": row.share_type,
-                    "access_count": row.access_count
+                    "list_id": data.get("id"),
+                    "list_name": data.get("name"),
+                    "description_text": data.get("description"),
+                    "sql_query": data.get("query"),
+                    "row_count": data.get("row_count"),
+                    "created_at": data.get("created_at"),
+                    "updated_at": data.get("updated_at"),
+                    "is_shared": data.get("is_shared"),
+                    "share_type": data.get("share_type"),
+                    "access_count": data.get("access_count", 0)
                 })
             
             return lists

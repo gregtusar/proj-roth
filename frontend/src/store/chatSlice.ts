@@ -30,7 +30,9 @@ export const loadChatSessions = createAsyncThunk(
 export const loadSession = createAsyncThunk(
   'chat/loadSession',
   async (sessionId: string) => {
+    console.log('[chatSlice] loadSession action called with sessionId:', sessionId);
     const response = await chatService.getSessionMessages(sessionId);
+    console.log('[chatSlice] loadSession response:', response);
     return response;
   }
 );
@@ -126,6 +128,7 @@ const chatSlice = createSlice({
         state.error = action.error.message || 'Failed to load chat sessions';
       })
       .addCase(loadSession.fulfilled, (state, action) => {
+        console.log('[chatSlice] loadSession.fulfilled with payload:', action.payload);
         state.messages = action.payload.messages;
         state.currentSessionId = action.payload.session.session_id;
         // Update session in the list
@@ -133,8 +136,10 @@ const chatSlice = createSlice({
         if (index !== -1) {
           state.sessions[index] = action.payload.session;
         }
+        console.log('[chatSlice] Updated state - currentSessionId:', state.currentSessionId, 'messages count:', state.messages.length);
       })
       .addCase(loadSession.rejected, (state, action) => {
+        console.error('[chatSlice] loadSession.rejected:', action.error);
         state.error = action.error.message || 'Failed to load session messages';
       })
       .addCase(createNewSession.fulfilled, (state, action) => {

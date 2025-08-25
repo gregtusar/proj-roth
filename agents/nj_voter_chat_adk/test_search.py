@@ -7,7 +7,7 @@ import sys
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from google_search_tool import GoogleSearchTool
+from .google_search_tool import GoogleSearchTool
 
 
 def test_search_tool():

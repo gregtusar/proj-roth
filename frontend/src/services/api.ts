@@ -1,6 +1,16 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+// Determine API URL based on environment
+let API_BASE_URL: string;
+if (window.location.hostname === 'localhost') {
+  API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+} else if (window.location.hostname === 'gwanalytica.ai') {
+  // Custom domain - use the actual Cloud Run backend
+  API_BASE_URL = 'https://nj-voter-chat-app-nwv4o72vjq-uc.a.run.app/api';
+} else {
+  // Cloud Run URL or other production - use relative path
+  API_BASE_URL = '/api';
+}
 
 class ApiClient {
   private client: AxiosInstance;
@@ -62,7 +72,9 @@ class ApiClient {
   }
 
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    console.log('[ApiClient] GET request to:', url);
     const response = await this.client.get<T>(url, config);
+    console.log('[ApiClient] GET response from', url, ':', response.data);
     return response.data;
   }
 
@@ -71,7 +83,9 @@ class ApiClient {
     data?: any,
     config?: AxiosRequestConfig
   ): Promise<T> {
+    console.log('[ApiClient] POST request to:', url, 'with data:', data);
     const response = await this.client.post<T>(url, data, config);
+    console.log('[ApiClient] POST response from', url, ':', response.data);
     return response.data;
   }
 

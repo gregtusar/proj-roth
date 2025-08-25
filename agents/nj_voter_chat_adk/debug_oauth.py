@@ -28,7 +28,7 @@ def test_oauth_flow():
     print("\n1. Loading OAuth secrets...")
     try:
         # Import directly without the agents prefix to avoid conflicts
-        from secret_manager import SecretManagerClient
+        from .secret_manager import SecretManagerClient
         sm_client = SecretManagerClient()
         
         client_id = os.getenv("GOOGLE_OAUTH_CLIENT_ID")

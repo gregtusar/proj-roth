@@ -103,7 +103,10 @@ const RecentChats: React.FC<RecentChatsProps> = ({ isCompact = false }) => {
   }, [openPopoverId]);
 
   const handleChatClick = (sessionId: string) => {
+    console.log('[RecentChats] handleChatClick called with sessionId:', sessionId);
+    console.log('[RecentChats] Navigating to:', `/chat/${sessionId}`);
     navigate(`/chat/${sessionId}`);
+    console.log('[RecentChats] Navigation called');
   };
 
   const handleDelete = (sessionId: string) => {
@@ -171,10 +174,15 @@ const RecentChats: React.FC<RecentChatsProps> = ({ isCompact = false }) => {
         <div key={session.session_id} style={{ position: 'relative' }}>
           <ChatItem
             onClick={(e) => {
-              // Don't navigate if clicking on the menu button
+              console.log('[ChatItem] onClick fired, event target:', e.target);
+              // Don't navigate if clicking on the menu button (check for data-menu-button attribute)
               const target = e.target as HTMLElement;
-              if (!target.closest('button')) {
+              console.log('[ChatItem] Checking if target is menu button');
+              if (!target.closest('[data-menu-button]')) {
+                console.log('[ChatItem] Not a menu button, calling handleChatClick');
                 handleChatClick(session.session_id);
+              } else {
+                console.log('[ChatItem] Target is menu button, not navigating');
               }
             }}
             kind={KIND.tertiary}
@@ -223,6 +231,7 @@ const RecentChats: React.FC<RecentChatsProps> = ({ isCompact = false }) => {
           <div style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)' }}>
             <div style={{ position: 'relative' }} data-menu-container>
               <Button
+                data-menu-button
                 kind={KIND.tertiary}
                 size={SIZE.mini}
                 overrides={{

@@ -5,6 +5,7 @@ import { RootState, AppDispatch } from './store';
 import { refreshToken } from './store/authSlice';
 import { loadChatSessions } from './store/chatSlice';
 import wsService from './services/websocket';
+import { logVersionInfo } from './config/version';
 
 // Components
 import AuthGuard from './components/Auth/AuthGuard';
@@ -20,6 +21,9 @@ function App() {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
+    // Log version info on app startup
+    logVersionInfo();
+    
     // Initialize dark mode preference
     const isDarkMode = localStorage.getItem('darkMode') === 'true';
     if (isDarkMode) {

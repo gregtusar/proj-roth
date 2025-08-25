@@ -9,6 +9,7 @@ import { clearMessages } from '../../store/chatSlice';
 import { logout } from '../../store/authSlice';
 import RecentChats from './RecentChats';
 import ToolsMenu from './ToolsMenu';
+import { getVersionDisplay } from '../../config/version';
 
 const SidebarContainer = styled('aside', ({ $isOpen, $isDarkMode }: { $isOpen: boolean; $isDarkMode: boolean }) => ({
   position: 'fixed',
@@ -54,6 +55,14 @@ const LogoText = styled('span', ({ $isOpen, $isDarkMode }: { $isOpen: boolean; $
   display: $isOpen ? 'block' : 'none',
   color: $isDarkMode ? '#f3f4f6' : '#111827',
   fontWeight: '600',
+}));
+
+const VersionText = styled('div', ({ $isOpen, $isDarkMode }: { $isOpen: boolean; $isDarkMode: boolean }) => ({
+  display: $isOpen ? 'block' : 'none',
+  fontSize: '11px',
+  color: $isDarkMode ? '#6b7280' : '#9ca3af',
+  marginTop: '2px',
+  fontWeight: '400',
 }));
 
 const Content = styled('div', {
@@ -140,11 +149,14 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <SidebarContainer $isOpen={isOpen}>
-      <Header $isOpen={isOpen}>
-        <Logo $isOpen={isOpen}>
+    <SidebarContainer $isOpen={isOpen} $isDarkMode={isDarkMode}>
+      <Header $isOpen={isOpen} $isDarkMode={isDarkMode}>
+        <Logo $isOpen={isOpen} $isDarkMode={isDarkMode}>
           <LogoImage src="/greywolf_logo.png" alt="Greywolf" />
-          <LogoText $isOpen={isOpen}>Greywolf Analytica</LogoText>
+          <div>
+            <LogoText $isOpen={isOpen} $isDarkMode={isDarkMode}>Greywolf Analytica</LogoText>
+            <VersionText $isOpen={isOpen} $isDarkMode={isDarkMode}>{getVersionDisplay()}</VersionText>
+          </div>
         </Logo>
         <Button
           onClick={handleToggle}

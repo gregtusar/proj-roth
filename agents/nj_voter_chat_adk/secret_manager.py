@@ -4,7 +4,7 @@ import os
 from typing import Optional
 from google.cloud import secretmanager
 from google.api_core import exceptions
-from debug_config import debug_print
+from .debug_config import debug_print
 
 
 class SecretManagerClient:

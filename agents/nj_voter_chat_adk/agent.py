@@ -6,12 +6,12 @@ import os
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 
-from config import MODEL, PROJECT_ID, REGION, SYSTEM_PROMPT
-from bigquery_tool import BigQueryReadOnlyTool
-from google_search_tool import GoogleSearchTool
-from geocoding_tool import GeocodingTool
-from voter_list_tool import VoterListTool
-from debug_config import debug_print, error_print
+from .config import MODEL, PROJECT_ID, REGION, SYSTEM_PROMPT
+from .bigquery_tool import BigQueryReadOnlyTool
+from .google_search_tool import GoogleSearchTool
+from .geocoding_tool import GeocodingTool
+from .voter_list_tool import VoterListTool
+from .debug_config import debug_print, error_print
 
 _bq_tool = None
 _search_tool = None
@@ -209,7 +209,7 @@ class NJVoterChatAgent(Agent):
         from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
         from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
         from google.adk.runners import Runner
-        from session_integration import SessionIntegration
+        from .session_integration import SessionIntegration
         
         self._session_service = InMemorySessionService()
         self._memory_service = InMemoryMemoryService()

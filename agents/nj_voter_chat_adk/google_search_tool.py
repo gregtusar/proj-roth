@@ -6,8 +6,8 @@ import os
 from datetime import datetime, timedelta
 import requests
 from urllib.parse import quote_plus
-from debug_config import debug_print, error_print
-from secret_manager import load_secret
+from .debug_config import debug_print, error_print
+from .secret_manager import load_secret
 
 
 class GoogleSearchTool:

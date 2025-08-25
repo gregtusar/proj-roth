@@ -13,10 +13,32 @@ class WebSocketService {
   private socket: Socket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
+  private isConnecting = false;
 
   connect(): void {
+    // Prevent multiple connection attempts
+    if (this.isConnecting || (this.socket && this.socket.connected)) {
+      console.log('[WebSocket] Already connected or connecting');
+      return;
+    }
+
+    this.isConnecting = true;
     const token = localStorage.getItem('access_token');
-    const wsUrl = process.env.REACT_APP_WS_URL || 'http://localhost:8080';
+    
+    // Determine WebSocket URL based on environment
+    let wsUrl: string;
+    if (window.location.hostname === 'localhost') {
+      // Local development
+      wsUrl = process.env.REACT_APP_WS_URL || 'http://localhost:8080';
+    } else if (window.location.hostname === 'gwanalytica.ai') {
+      // Custom domain - use the actual Cloud Run backend
+      wsUrl = 'https://nj-voter-chat-app-nwv4o72vjq-uc.a.run.app';
+    } else {
+      // Cloud Run URL or other production - use same origin
+      wsUrl = window.location.origin;
+    }
+
+    console.log('[WebSocket] Attempting to connect to:', wsUrl);
 
     this.socket = io(wsUrl, {
       auth: {
@@ -37,10 +59,17 @@ class WebSocketService {
     this.socket.on('connect', () => {
       console.log('WebSocket connected');
       this.reconnectAttempts = 0;
+      this.isConnecting = false;
     });
 
     this.socket.on('disconnect', () => {
       console.log('WebSocket disconnected');
+      this.isConnecting = false;
+    });
+
+    this.socket.on('connect_error', (error) => {
+      console.error('WebSocket connection error:', error);
+      this.isConnecting = false;
     });
 
     this.socket.on('message_start', () => {
@@ -157,10 +186,26 @@ class WebSocketService {
       this.socket.disconnect();
       this.socket = null;
     }
+    this.isConnecting = false;
+  }
+
+  reconnect(): void {
+    console.log('[WebSocket] Force reconnecting...');
+    this.disconnect();
+    setTimeout(() => {
+      this.connect();
+    }, 100);
   }
 
   isConnected(): boolean {
     return this.socket?.connected || false;
+  }
+
+  getConnectionStatus(): { connected: boolean; connecting: boolean } {
+    return {
+      connected: this.socket?.connected || false,
+      connecting: this.isConnecting
+    };
   }
 }
 

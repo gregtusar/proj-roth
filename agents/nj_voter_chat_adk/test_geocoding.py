@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Test the geocoding functionality."""
 
-from geocoding_tool import GeocodingTool
+from .geocoding_tool import GeocodingTool
 
 # Test without API key (will use fallback)
 tool = GeocodingTool()

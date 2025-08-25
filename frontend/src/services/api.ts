@@ -6,7 +6,7 @@ if (window.location.hostname === 'localhost') {
   API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 } else if (window.location.hostname === 'gwanalytica.ai') {
   // Custom domain - use the actual Cloud Run backend
-  API_BASE_URL = 'https://nj-voter-chat-app-nwv4o72vjq-uc.a.run.app/api';
+  API_BASE_URL = 'https://nj-voter-chat-app-169579073940.us-central1.run.app/api';
 } else {
   // Cloud Run URL or other production - use relative path
   API_BASE_URL = '/api';

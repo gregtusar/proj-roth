@@ -32,7 +32,7 @@ class WebSocketService {
       wsUrl = process.env.REACT_APP_WS_URL || 'http://localhost:8080';
     } else if (window.location.hostname === 'gwanalytica.ai') {
       // Custom domain - use the actual Cloud Run backend
-      wsUrl = 'https://nj-voter-chat-app-nwv4o72vjq-uc.a.run.app';
+      wsUrl = 'https://nj-voter-chat-app-169579073940.us-central1.run.app';
     } else {
       // Cloud Run URL or other production - use same origin
       wsUrl = window.location.origin;

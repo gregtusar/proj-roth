@@ -109,9 +109,11 @@ const RecentChats: React.FC<RecentChatsProps> = ({ isCompact = false }) => {
     console.log('[RecentChats] Navigation called');
   };
 
-  const handleDelete = (sessionId: string) => {
+  const handleDelete = async (sessionId: string) => {
     if (window.confirm('Are you sure you want to delete this chat? This action cannot be undone.')) {
-      dispatch(deleteSessionAsync(sessionId));
+      await dispatch(deleteSessionAsync(sessionId));
+      // Refresh the chat list after deletion
+      dispatch(loadChatSessions());
     }
   };
 
@@ -170,8 +172,8 @@ const RecentChats: React.FC<RecentChatsProps> = ({ isCompact = false }) => {
 
   return (
     <ChatList>
-      {sessions.slice(0, 10).map((session) => (
-        <div key={session.session_id} style={{ position: 'relative' }}>
+      {sessions.slice(0, 10).map((session, index) => (
+        <div key={session.session_id} style={{ position: 'relative', zIndex: sessions.length - index }}>
           <ChatItem
             onClick={(e) => {
               console.log('[ChatItem] onClick fired, event target:', e.target);
@@ -268,10 +270,11 @@ const RecentChats: React.FC<RecentChatsProps> = ({ isCompact = false }) => {
                     marginTop: '4px',
                     backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',
                     borderRadius: '8px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
                     minWidth: '120px',
-                    zIndex: 10000,
+                    zIndex: 99999,
                     overflow: 'hidden',
+                    border: isDarkMode ? '1px solid #374151' : '1px solid #e5e7eb',
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >

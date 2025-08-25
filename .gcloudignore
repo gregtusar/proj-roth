@@ -52,9 +52,9 @@ dist/
 # Node modules (will be reinstalled during build)
 **/node_modules/
 
-# Frontend source files to exclude
-frontend/src/
-frontend/public/
+# Frontend source files to exclude (keeping public for Docker build)
+# frontend/src/ - needed for Docker build
+# frontend/public/ - needed for Docker build
 frontend/.env*
 frontend/*.md
 

@@ -71,12 +71,8 @@ async def process_message_stream(
         
         print(f"[Agent] Calling agent.chat with message: {message[:50]}...")
         
-        # Reset the agent's session for each chat conversation
-        # This ensures each conversation has its own ADK session and token budget
-        if session_id:
-            # Force the agent to use a new session for this conversation
-            agent._session_id = f"chat_{session_id}"
-            print(f"[Agent] Set ADK session to: chat_{session_id}")
+        # The agent's chat() method will handle session management based on CHAT_SESSION_ID
+        # We don't need to manually set _session_id here as it interferes with session reuse
         
         # Use the agent's chat method
         # Note: The ADK agent may not support streaming natively,

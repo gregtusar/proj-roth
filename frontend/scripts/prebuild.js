@@ -12,8 +12,14 @@ export const buildInfo = {
 };
 `;
 
+// Ensure src directory exists
+const srcPath = path.join(__dirname, '..', 'src');
+if (!fs.existsSync(srcPath)) {
+  fs.mkdirSync(srcPath, { recursive: true });
+}
+
 // Write to buildInfo.ts
-const buildInfoPath = path.join(__dirname, '..', 'src', 'buildInfo.ts');
+const buildInfoPath = path.join(srcPath, 'buildInfo.ts');
 fs.writeFileSync(buildInfoPath, buildInfo);
 
 console.log(`Build info generated: v${packageJson.version} at ${new Date().toISOString()}`);

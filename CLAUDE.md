@@ -122,3 +122,8 @@ Use BigQuery's geography functions for spatial analysis:
 - Google Maps API key stored in Secret Manager as `google-maps-api-key`
 - Google Search API credentials in `google-search-api-key` and `google-search-cx`
 - Service account uses Application Default Credentials (ADC)
+
+always make sure you are in the right directory (the root) before attempting a build and deploy.
+
+always update the front end version number if changes to the front end code where made, before a build and/or deploy
+

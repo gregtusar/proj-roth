@@ -5,8 +5,8 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ .
-# Always rebuild to ensure latest version
-RUN npm run build
+# Build only if build directory doesn't exist (use pre-built if available)
+RUN if [ ! -d "build" ]; then npm run build; fi
 
 # Runtime stage
 FROM python:3.11-slim

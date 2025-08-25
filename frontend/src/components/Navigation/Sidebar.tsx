@@ -9,7 +9,7 @@ import { clearMessages } from '../../store/chatSlice';
 import { logout } from '../../store/authSlice';
 import RecentChats from './RecentChats';
 import ToolsMenu from './ToolsMenu';
-import { getVersionDisplay } from '../../config/version';
+import { getVersionDisplay, BUILD_TIME } from '../../config/version';
 
 const SidebarContainer = styled('aside', ({ $isOpen, $isDarkMode }: { $isOpen: boolean; $isDarkMode: boolean }) => ({
   position: 'fixed',
@@ -219,6 +219,16 @@ const Sidebar: React.FC = () => {
       </Content>
 
       <Footer>
+        {isOpen && (
+          <div style={{ 
+            padding: '8px 16px', 
+            fontSize: '11px', 
+            color: isDarkMode ? '#6b7280' : '#9ca3af',
+            borderTop: isDarkMode ? '1px solid #374151' : '1px solid #e5e7eb'
+          }}>
+            <div>{getVersionDisplay()} • Built: {new Date(BUILD_TIME).toLocaleString()}</div>
+          </div>
+        )}
         {user && (
           <UserInfo $isOpen={isOpen}>
             {user.picture && <UserAvatar src={user.picture} alt={user.name} />}

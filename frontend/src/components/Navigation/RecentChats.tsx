@@ -111,9 +111,13 @@ const RecentChats: React.FC<RecentChatsProps> = ({ isCompact = false }) => {
 
   const handleDelete = async (sessionId: string) => {
     if (window.confirm('Are you sure you want to delete this chat? This action cannot be undone.')) {
-      await dispatch(deleteSessionAsync(sessionId));
-      // Refresh the chat list after deletion
-      dispatch(loadChatSessions());
+      try {
+        await dispatch(deleteSessionAsync(sessionId)).unwrap();
+        // Refresh the chat list after deletion succeeds
+        await dispatch(loadChatSessions()).unwrap();
+      } catch (error) {
+        console.error('[RecentChats] Failed to delete session:', error);
+      }
     }
   };
 

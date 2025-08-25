@@ -5,9 +5,11 @@
  */
 
 import packageJson from '../../package.json';
+import { buildInfo } from '../buildInfo';
 
-export const APP_VERSION = packageJson.version;
+export const APP_VERSION = buildInfo.version || packageJson.version;
 export const APP_NAME = packageJson.name;
+export const BUILD_TIME = buildInfo.buildTime;
 
 /**
  * Get formatted version string for display
@@ -23,7 +25,7 @@ export const getVersionInfo = () => {
   return {
     version: APP_VERSION,
     name: APP_NAME,
-    buildTime: process.env.REACT_APP_BUILD_TIME || 'development',
+    buildTime: BUILD_TIME,
     environment: process.env.NODE_ENV,
   };
 };

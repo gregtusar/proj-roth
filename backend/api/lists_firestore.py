@@ -196,6 +196,34 @@ async def delete_list(
     
     return {"message": "List deleted successfully"}
 
+@router.post("/{list_id}/run")
+async def run_list_query(
+    list_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Run a saved list's query and return results"""
+    service = get_firestore_list_service()
+    
+    if not service.connected:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    # Get the list
+    lst = await service.get_list(list_id, current_user["id"])
+    
+    if not lst:
+        raise HTTPException(status_code=404, detail="List not found")
+    
+    # Execute the query with a reasonable limit if not present
+    query = lst.query
+    if "LIMIT" not in query.upper():
+        query = f"{query} LIMIT 1000"
+    
+    try:
+        result = await execute_query(query)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.post("/execute")
 async def execute_list_query(
     request: dict,

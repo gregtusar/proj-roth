@@ -127,10 +127,16 @@ const chatSlice = createSlice({
       .addCase(loadChatSessions.rejected, (state, action) => {
         state.error = action.error.message || 'Failed to load chat sessions';
       })
+      .addCase(loadSession.pending, (state) => {
+        // Clear messages while loading to prevent duplicates
+        state.messages = [];
+        state.isLoading = true;
+      })
       .addCase(loadSession.fulfilled, (state, action) => {
         console.log('[chatSlice] loadSession.fulfilled with payload:', action.payload);
         state.messages = action.payload.messages;
         state.currentSessionId = action.payload.session.session_id;
+        state.isLoading = false;
         // Update session in the list
         const index = state.sessions.findIndex(s => s.session_id === action.payload.session.session_id);
         if (index !== -1) {

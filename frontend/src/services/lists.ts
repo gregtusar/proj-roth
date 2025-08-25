@@ -2,7 +2,7 @@ import { VoterList, QueryResult } from '../types/lists';
 import apiClient from './api';
 
 export async function getUserLists(): Promise<VoterList[]> {
-  return apiClient.get<VoterList[]>('/lists');
+  return apiClient.get<VoterList[]>('/lists/');
 }
 
 export async function getList(listId: string): Promise<VoterList> {
@@ -12,7 +12,7 @@ export async function getList(listId: string): Promise<VoterList> {
 export async function createList(
   list: Partial<VoterList>
 ): Promise<VoterList> {
-  return apiClient.post<VoterList>('/lists', list);
+  return apiClient.post<VoterList>('/lists/', list);
 }
 
 export async function updateList(

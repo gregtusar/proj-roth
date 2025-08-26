@@ -51,13 +51,14 @@ const ChatContainer: React.FC = () => {
     if (!sessionId || sessionId === 'new') {
       // Clear for new chat
       dispatch(clearMessages());
-    } else {
-      // Always load the session when navigating to a specific session ID
-      // Don't check if it's the same - just load it to ensure we have the latest data
-      console.log('[ChatContainer] Loading session:', sessionId);
+    } else if (sessionId !== currentSessionId) {
+      // Only load if it's a different session to prevent duplicate loads
+      console.log('[ChatContainer] Loading different session:', sessionId);
       dispatch(loadSession(sessionId));
+    } else {
+      console.log('[ChatContainer] Same session, skipping load:', sessionId);
     }
-  }, [sessionId, dispatch]); // Dependencies
+  }, [sessionId, dispatch, currentSessionId]); // Dependencies
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

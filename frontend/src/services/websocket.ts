@@ -15,6 +15,8 @@ class WebSocketService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private isConnecting = false;
+  private activeSessionId: string | null = null;
+  private isLoadingSession = false;
 
   connect(): void {
     // Prevent multiple connection attempts
@@ -86,16 +88,31 @@ class WebSocketService {
     });
 
     this.socket.on('message', (message: any) => {
-      // Add message directly - backend ensures no duplicates
-      store.dispatch(addMessage(message));
+      // Only add message if it's for the current session and we're not loading
+      const state = store.getState();
+      if (!this.isLoadingSession && 
+          message.session_id === state.chat.currentSessionId) {
+        // Check for duplicate before adding
+        const exists = state.chat.messages.some(
+          (msg: any) => msg.message_id === message.message_id
+        );
+        if (!exists) {
+          store.dispatch(addMessage(message));
+        }
+      }
     });
 
     this.socket.on('message_confirmed', (message: any) => {
-      // Replace the temporary message with the confirmed one from backend
+      // Only process if it's for the current session and we're not loading
+      const state = store.getState();
+      if (this.isLoadingSession || message.session_id !== state.chat.currentSessionId) {
+        console.log('[WebSocket] Ignoring message_confirmed for different session');
+        return;
+      }
+      
       console.log('[WebSocket] Message confirmed:', message);
       
       // Find the temp message to replace
-      const state = store.getState();
       const tempMessage = state.chat.messages.find(
         (msg: any) => msg.message_id.startsWith('temp-') && 
                       msg.message_text === message.message_text &&
@@ -109,8 +126,13 @@ class WebSocketService {
           newMessage: message
         }));
       } else {
-        // If no temp message found, just add it (shouldn't happen normally)
-        store.dispatch(addMessage(message));
+        // Check if message already exists before adding
+        const exists = state.chat.messages.some(
+          (msg: any) => msg.message_id === message.message_id
+        );
+        if (!exists) {
+          store.dispatch(addMessage(message));
+        }
       }
     });
 
@@ -234,6 +256,33 @@ class WebSocketService {
       connected: this.socket?.connected || false,
       connecting: this.isConnecting
     };
+  }
+
+  setLoadingSession(loading: boolean): void {
+    this.isLoadingSession = loading;
+    console.log('[WebSocket] Session loading state:', loading);
+  }
+
+  setActiveSession(sessionId: string | null): void {
+    this.activeSessionId = sessionId;
+    console.log('[WebSocket] Active session set to:', sessionId);
+  }
+
+  clearMessageQueue(): void {
+    // Clear any pending WebSocket events for messages
+    if (this.socket) {
+      // Remove all message-related listeners temporarily
+      this.socket.removeAllListeners('message');
+      this.socket.removeAllListeners('message_confirmed');
+      this.socket.removeAllListeners('message_chunk');
+      this.socket.removeAllListeners('message_start');
+      this.socket.removeAllListeners('message_end');
+      
+      // Re-setup handlers after a brief delay to ensure queue is cleared
+      setTimeout(() => {
+        this.setupEventHandlers();
+      }, 100);
+    }
   }
 }
 

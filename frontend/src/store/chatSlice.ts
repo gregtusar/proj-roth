@@ -66,14 +66,7 @@ const chatSlice = createSlice({
   initialState,
   reducers: {
     addMessage: (state, action: PayloadAction<Message>) => {
-      // Prevent duplicate messages by checking if message already exists
-      const exists = state.messages.some(
-        msg => msg.message_id === action.payload.message_id && 
-               msg.message_id !== `temp-${Date.now()}` // Allow temp messages
-      );
-      if (!exists) {
-        state.messages.push(action.payload);
-      }
+      state.messages.push(action.payload);
     },
     setStreamingMessage: (state, action: PayloadAction<string | null>) => {
       state.streamingMessage = action.payload;
@@ -111,6 +104,12 @@ const chatSlice = createSlice({
         state.sessions[index] = action.payload;
       } else {
         state.sessions.unshift(action.payload);
+      }
+    },
+    replaceMessage: (state, action: PayloadAction<{ oldId: string; newMessage: Message }>) => {
+      const index = state.messages.findIndex(m => m.message_id === action.payload.oldId);
+      if (index !== -1) {
+        state.messages[index] = action.payload.newMessage;
       }
     },
   },
@@ -184,6 +183,7 @@ export const {
   updateStreamingMessage,
   finalizeStreamingMessage,
   updateSession,
+  replaceMessage,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

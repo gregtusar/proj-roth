@@ -7,6 +7,7 @@ import {
   finalizeStreamingMessage,
   setCurrentSession,
   updateSession,
+  replaceMessage,
 } from '../store/chatSlice';
 
 class WebSocketService {
@@ -85,31 +86,30 @@ class WebSocketService {
     });
 
     this.socket.on('message', (message: any) => {
-      // Only add non-duplicate messages
-      const state = store.getState();
-      const exists = state.chat.messages.some(
-        (msg: any) => msg.message_id === message.message_id
-      );
-      if (!exists) {
-        store.dispatch(addMessage(message));
-      }
+      // Add message directly - backend ensures no duplicates
+      store.dispatch(addMessage(message));
     });
 
     this.socket.on('message_confirmed', (message: any) => {
       // Replace the temporary message with the confirmed one from backend
       console.log('[WebSocket] Message confirmed:', message);
       
-      // Find and remove temp message, then add confirmed one
+      // Find the temp message to replace
       const state = store.getState();
-      const tempMessageIndex = state.chat.messages.findIndex(
+      const tempMessage = state.chat.messages.find(
         (msg: any) => msg.message_id.startsWith('temp-') && 
                       msg.message_text === message.message_text &&
                       msg.message_type === 'user'
       );
       
-      if (tempMessageIndex !== -1) {
-        // Message exists as temp, replace it
-        // We'll handle this by dispatching an action to replace the message
+      if (tempMessage) {
+        // Replace the temp message with the confirmed one
+        store.dispatch(replaceMessage({
+          oldId: tempMessage.message_id,
+          newMessage: message
+        }));
+      } else {
+        // If no temp message found, just add it (shouldn't happen normally)
         store.dispatch(addMessage(message));
       }
     });

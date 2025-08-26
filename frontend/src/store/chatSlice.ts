@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { ChatState, Message, ChatSession } from '../types/chat';
 import * as chatService from '../services/chat';
-import wsService from '../services/websocket';
 
 const initialState: ChatState = {
   messages: [],
@@ -83,13 +82,9 @@ const chatSlice = createSlice({
     clearMessages: (state) => {
       state.messages = [];
       state.currentSessionId = null;
-      // Notify WebSocket service
-      wsService.setActiveSession(null);
     },
     setCurrentSession: (state, action: PayloadAction<string | null>) => {
       state.currentSessionId = action.payload;
-      // Notify WebSocket service of session change
-      wsService.setActiveSession(action.payload);
     },
     updateStreamingMessage: (state, action: PayloadAction<string>) => {
       if (state.streamingMessage !== null) {
@@ -150,10 +145,6 @@ const chatSlice = createSlice({
         // Clear messages while loading to prevent duplicates
         state.messages = [];
         state.isLoading = true;
-        // Notify WebSocket service that we're loading a session
-        wsService.setLoadingSession(true);
-        // Clear any pending WebSocket messages
-        wsService.clearMessageQueue();
       })
       .addCase(loadSession.fulfilled, (state, action) => {
         console.log('[chatSlice] loadSession.fulfilled with payload:', action.payload);
@@ -166,17 +157,12 @@ const chatSlice = createSlice({
         if (index !== -1) {
           state.sessions[index] = action.payload.session;
         }
-        // Notify WebSocket service that loading is complete
-        wsService.setLoadingSession(false);
-        wsService.setActiveSession(action.payload.session.session_id);
         console.log('[chatSlice] Updated state - currentSessionId:', state.currentSessionId, 'messages count:', state.messages.length);
       })
       .addCase(loadSession.rejected, (state, action) => {
         console.error('[chatSlice] loadSession.rejected:', action.error);
         state.error = action.error.message || 'Failed to load session messages';
         state.isLoading = false;
-        // Reset WebSocket loading state on error
-        wsService.setLoadingSession(false);
       })
       .addCase(createNewSession.fulfilled, (state, action) => {
         state.sessions.unshift(action.payload);

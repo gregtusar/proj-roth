@@ -6,6 +6,7 @@ import { RootState, AppDispatch } from '../../store';
 import { loadSession, clearMessages } from '../../store/chatSlice';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
+import wsService from '../../services/websocket';
 
 const Container = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
   display: 'flex',
@@ -51,10 +52,21 @@ const ChatContainer: React.FC = () => {
     if (!sessionId || sessionId === 'new') {
       // Clear for new chat
       dispatch(clearMessages());
+      wsService.setActiveSession(null);
     } else if (sessionId !== currentSessionId) {
       // Only load if it's a different session to prevent duplicate loads
       console.log('[ChatContainer] Loading different session:', sessionId);
-      dispatch(loadSession(sessionId));
+      
+      // Notify WebSocket service that we're loading
+      wsService.setLoadingSession(true);
+      wsService.clearMessageQueue();
+      
+      // Load the session
+      dispatch(loadSession(sessionId)).then(() => {
+        // After loading is complete, update WebSocket service
+        wsService.setLoadingSession(false);
+        wsService.setActiveSession(sessionId);
+      });
     } else {
       console.log('[ChatContainer] Same session, skipping load:', sessionId);
     }

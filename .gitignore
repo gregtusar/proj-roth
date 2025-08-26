@@ -6,6 +6,10 @@ __pycache__/
 .Python
 *.py[cod]
 *$py.class
+.pytest_cache/
+*.egg-info/
+dist/
+build/
 
 # Logs
 *.log
@@ -20,6 +24,7 @@ outputs/*.ipynb
 # Temporary files
 *.tmp
 *.swp
+*.swo
 *~
 .DS_Store
 test.txt
@@ -28,6 +33,9 @@ test.txt
 *.bak
 *.backup
 *.old
+*.orig
+*_old*
+*_backup*
 
 # Credentials and keys
 *credentials*.json

@@ -90,15 +90,33 @@ class WebSocketService {
     this.socket.on('message', (message: any) => {
       // Only add message if it's for the current session and we're not loading
       const state = store.getState();
-      if (!this.isLoadingSession && 
-          message.session_id === state.chat.currentSessionId) {
-        // Check for duplicate before adding
-        const exists = state.chat.messages.some(
-          (msg: any) => msg.message_id === message.message_id
-        );
-        if (!exists) {
-          store.dispatch(addMessage(message));
-        }
+      
+      // Debug logging
+      console.log('[WebSocket] message event:', {
+        isLoadingSession: this.isLoadingSession,
+        messageSessionId: message.session_id,
+        currentSessionId: state.chat.currentSessionId,
+        activeSessionId: this.activeSessionId
+      });
+      
+      if (this.isLoadingSession) {
+        console.log('[WebSocket] Ignoring message - session is loading');
+        return;
+      }
+      
+      if (message.session_id !== state.chat.currentSessionId) {
+        console.log('[WebSocket] Ignoring message - different session');
+        return;
+      }
+      
+      // Check for duplicate before adding
+      const exists = state.chat.messages.some(
+        (msg: any) => msg.message_id === message.message_id
+      );
+      if (!exists) {
+        store.dispatch(addMessage(message));
+      } else {
+        console.log('[WebSocket] Ignoring duplicate message:', message.message_id);
       }
     });
 
@@ -269,20 +287,9 @@ class WebSocketService {
   }
 
   clearMessageQueue(): void {
-    // Clear any pending WebSocket events for messages
-    if (this.socket) {
-      // Remove all message-related listeners temporarily
-      this.socket.removeAllListeners('message');
-      this.socket.removeAllListeners('message_confirmed');
-      this.socket.removeAllListeners('message_chunk');
-      this.socket.removeAllListeners('message_start');
-      this.socket.removeAllListeners('message_end');
-      
-      // Re-setup handlers after a brief delay to ensure queue is cleared
-      setTimeout(() => {
-        this.setupEventHandlers();
-      }, 100);
-    }
+    // Don't remove listeners - just rely on the isLoadingSession flag
+    // Removing and re-adding listeners causes duplicates
+    console.log('[WebSocket] Clearing message queue (using loading flag, not removing listeners)');
   }
 }
 

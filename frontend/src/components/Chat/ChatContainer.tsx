@@ -45,32 +45,42 @@ const ChatContainer: React.FC = () => {
   const { currentSessionId } = useSelector((state: RootState) => state.chat);
   const { isDarkMode } = useSelector((state: RootState) => state.settings);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastLoadedSessionRef = useRef<string | null>(null);
 
   useEffect(() => {
-    console.log('[ChatContainer] Route changed to:', sessionId, 'Current session:', currentSessionId);
+    console.log('[ChatContainer] Route changed to:', sessionId, 'Last loaded:', lastLoadedSessionRef.current);
     
     if (!sessionId || sessionId === 'new') {
       // Clear for new chat
       dispatch(clearMessages());
       wsService.setActiveSession(null);
-    } else if (sessionId !== currentSessionId) {
-      // Only load if it's a different session to prevent duplicate loads
-      console.log('[ChatContainer] Loading different session:', sessionId);
+      lastLoadedSessionRef.current = null;
+    } else if (sessionId !== lastLoadedSessionRef.current) {
+      // Only load if we haven't already loaded this session
+      console.log('[ChatContainer] Loading session (not previously loaded):', sessionId);
+      lastLoadedSessionRef.current = sessionId;
       
       // Notify WebSocket service that we're loading
       wsService.setLoadingSession(true);
-      wsService.clearMessageQueue();
+      wsService.setActiveSession(null); // Clear active session during load
       
       // Load the session
-      dispatch(loadSession(sessionId)).then(() => {
-        // After loading is complete, update WebSocket service
-        wsService.setLoadingSession(false);
-        wsService.setActiveSession(sessionId);
-      });
+      dispatch(loadSession(sessionId))
+        .unwrap()
+        .then(() => {
+          // After loading is complete, update WebSocket service
+          wsService.setLoadingSession(false);
+          wsService.setActiveSession(sessionId);
+        })
+        .catch((error) => {
+          console.error('[ChatContainer] Failed to load session:', error);
+          wsService.setLoadingSession(false);
+          lastLoadedSessionRef.current = null; // Reset on error
+        });
     } else {
-      console.log('[ChatContainer] Same session, skipping load:', sessionId);
+      console.log('[ChatContainer] Already loaded this session, skipping:', sessionId);
     }
-  }, [sessionId, dispatch, currentSessionId]); // Dependencies
+  }, [sessionId, dispatch]); // Remove currentSessionId from dependencies
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

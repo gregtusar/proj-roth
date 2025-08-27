@@ -185,7 +185,12 @@ DATABASE_MANIFEST = {
             "description": "RECOMMENDED: Complete voter information with all joins done for you",
             "base_tables": ["voters", "individuals", "addresses"],
             "key_fields": {
-                "All fields from voters table": "Plus...",
+                "All fields from voters table including": "...",
+                "county_name": "County of residence from voters table (NOT 'county' - use 'county_name')",
+                "demo_party": "Party affiliation from voters table",
+                "demo_age": "Age from voters table",
+                "demo_gender": "Gender from voters table ('M' for Male, 'F' for Female, or NULL - NOT 'MALE' or 'FEMALE')",
+                "demo_race": "Race/ethnicity from voters table",
                 "standardized_name": "Full name in 'LASTNAME, FIRSTNAME' format",
                 "name_first": "First name from individuals",
                 "name_middle": "Middle name from individuals",
@@ -203,6 +208,7 @@ DATABASE_MANIFEST = {
                 "USE THIS VIEW for most voter queries - it has everything joined",
                 "Includes full voter info, names, addresses, and geocoding",
                 "No need to write complex joins - this view does it for you",
+                "IMPORTANT: Use 'county_name' NOT 'county' for filtering by county",
                 "IMPORTANT: Use 'city' field not 'municipal_name' which is often NULL",
                 "Search by name using: WHERE standardized_name LIKE '%LASTNAME, FIRSTNAME%'"
             ]
@@ -435,6 +441,7 @@ DATABASE_MANIFEST = {
         "demo_race field contains BOTH race AND ethnicity (e.g., Latino, Hispanic, Asian, Black, White)",
         "Names in standardized fields use 'LASTNAME, FIRSTNAME' format",
         "Always use 'city' field instead of 'municipal_name' (which has many NULLs)",
+        "Use 'county_name' NOT 'county' when querying voters or voter_geo_view (addresses table has 'county' but voter tables use 'county_name')",
         "All 264K addresses have preserved geocoding (latitude/longitude)",
         "Only 24% of donations matched to voters - query donations table for unmatched",
         "Use voter_geo_view for most queries - it has everything pre-joined",
@@ -506,8 +513,10 @@ def format_for_llm():
     
     output.append("\n=== FINAL REMINDERS ===")
     output.append("• The geography field in addresses table is 'geo_location' NOT 'geo'")
+    output.append("• Use 'county_name' NOT 'county' when querying voters or voter_geo_view")
     output.append("• Join individuals to addresses through individual_addresses table")
     output.append("• demo_race contains ethnicity (Latino/Hispanic) not just race")
     output.append("• Always prefix tables with 'voter_data.' (e.g., voter_data.voters)")
+    output.append("• demo_gender values are 'M' or 'F' (NOT 'MALE' or 'FEMALE')")
     
     return "\n".join(output)

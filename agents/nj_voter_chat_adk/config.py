@@ -11,7 +11,7 @@ except ImportError:
 # Import database manifest
 try:
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-    from database_manifest import format_for_llm
+    from config.database_manifest import format_for_llm
     DATABASE_CONTEXT = format_for_llm()
 except ImportError:
     DATABASE_CONTEXT = "Database manifest not available"

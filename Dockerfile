@@ -29,6 +29,9 @@ RUN pip install --no-cache-dir google-genai>=0.4.0 googlemaps>=4.10.0 google-adk
 # Copy backend code
 COPY backend/ ./backend/
 
+# Copy config directory (includes database_manifest.py)
+COPY config/ ./config/
+
 # Copy ADK agent code
 COPY agents/nj_voter_chat_adk/ ./agents/nj_voter_chat_adk/
 

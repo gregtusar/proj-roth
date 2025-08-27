@@ -58,6 +58,7 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ list }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isRunningQuery, setIsRunningQuery] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Update query when list changes
   React.useEffect(() => {
@@ -75,10 +76,31 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ list }) => {
   };
 
   const handleSave = async () => {
+    console.log('[QueryEditor] handleSave called');
+    console.log('[QueryEditor] Current query:', query);
+    console.log('[QueryEditor] Original query:', list.query);
+    console.log('[QueryEditor] Has changes:', query !== list.query);
+    
     if (query !== list.query) {
-      await dispatch(updateList({ listId: list.id, updates: { query } })).unwrap();
+      setIsSaving(true);
+      try {
+        console.log('[QueryEditor] Dispatching updateList with:', { listId: list.id, query });
+        const result = await dispatch(updateList({ listId: list.id, updates: { query } })).unwrap();
+        console.log('[QueryEditor] Successfully saved query update, result:', result);
+        setIsEditing(false);
+        // Show success feedback
+        alert('Query saved successfully!');
+      } catch (error) {
+        console.error('[QueryEditor] Failed to save query:', error);
+        alert(`Failed to save query: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      } finally {
+        setIsSaving(false);
+      }
+    } else {
+      // No changes to save, just exit edit mode
+      console.log('[QueryEditor] No changes to save, exiting edit mode');
+      setIsEditing(false);
     }
-    setIsEditing(false);
   };
 
   const handleCancel = () => {
@@ -153,10 +175,21 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ list }) => {
             </>
           ) : (
             <>
-              <Button onClick={handleCancel} kind={KIND.tertiary} size={SIZE.mini}>
+              <Button 
+                onClick={handleCancel} 
+                kind={KIND.tertiary} 
+                size={SIZE.mini}
+                disabled={isSaving}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleSave} kind={KIND.primary} size={SIZE.mini}>
+              <Button 
+                onClick={handleSave} 
+                kind={KIND.primary} 
+                size={SIZE.mini}
+                isLoading={isSaving}
+                disabled={isSaving}
+              >
                 Save
               </Button>
             </>
@@ -167,17 +200,24 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ list }) => {
       <StyledEditor>
         <Editor
           value={query}
-          onValueChange={setQuery}
+          onValueChange={(code) => {
+            console.log('[QueryEditor] Editor value changed, isEditing:', isEditing);
+            if (isEditing) {
+              setQuery(code);
+            }
+          }}
           highlight={highlightSQL}
           padding={10}
           disabled={!isEditing}
           style={{
             fontFamily: '"Fira Code", "Fira Mono", monospace',
             fontSize: 13,
-            backgroundColor: '#1e1e1e',
+            backgroundColor: isEditing ? '#2a2a2a' : '#1e1e1e',
             color: '#d4d4d4',
             minHeight: '100px',
             borderRadius: '4px',
+            cursor: isEditing ? 'text' : 'not-allowed',
+            opacity: isEditing ? 1 : 0.8,
           }}
         />
       </StyledEditor>

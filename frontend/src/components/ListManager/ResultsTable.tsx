@@ -1,13 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { styled } from 'baseui';
-import {
-  StyledTable,
-  StyledHead,
-  StyledHeadCell,
-  StyledBody,
-  StyledRow,
-  StyledCell,
-} from 'baseui/table';
 import { Button, KIND, SIZE } from 'baseui/button';
 import { Input, SIZE as InputSize } from 'baseui/input';
 import { Pagination } from 'baseui/pagination';
@@ -43,6 +35,56 @@ const Controls = styled('div', {
 const TableContainer = styled('div', {
   overflowX: 'auto',
   marginBottom: '16px',
+  maxWidth: '100%',
+  border: '1px solid #e0e0e0',
+  borderRadius: '4px',
+});
+
+const Table = styled('table', {
+  width: '100%',
+  minWidth: 'max-content',
+  borderCollapse: 'collapse',
+  fontSize: '14px',
+});
+
+const TableHead = styled('thead', {
+  backgroundColor: '#f5f5f5',
+  borderBottom: '2px solid #e0e0e0',
+});
+
+const TableHeadCell = styled('th', {
+  padding: '12px 16px',
+  textAlign: 'left',
+  fontWeight: 600,
+  whiteSpace: 'nowrap',
+  minWidth: '120px',
+  borderRight: '1px solid #e0e0e0',
+  ':last-child': {
+    borderRight: 'none',
+  },
+});
+
+const TableBody = styled('tbody', {
+  '& tr:hover': {
+    backgroundColor: '#f9f9f9',
+  },
+});
+
+const TableRow = styled('tr', {
+  borderBottom: '1px solid #e0e0e0',
+  ':last-child': {
+    borderBottom: 'none',
+  },
+});
+
+const TableCell = styled('td', {
+  padding: '10px 16px',
+  whiteSpace: 'nowrap',
+  minWidth: '120px',
+  borderRight: '1px solid #e0e0e0',
+  ':last-child': {
+    borderRight: 'none',
+  },
 });
 
 const PaginationContainer = styled('div', {
@@ -141,26 +183,30 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
       </Header>
 
       <TableContainer>
-        <StyledTable>
-          <StyledHead>
-            {results.columns.map((column, index) => (
-              <StyledHeadCell key={index}>{column}</StyledHeadCell>
-            ))}
-          </StyledHead>
-          <StyledBody>
+        <Table>
+          <TableHead>
+            <TableRow>
+              {results.columns.map((column, index) => (
+                <TableHeadCell key={`header-${index}`}>
+                  {column}
+                </TableHeadCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
             {paginatedRows.map((row, rowIndex) => (
-              <StyledRow key={rowIndex}>
-                {row.map((cell, cellIndex) => (
-                  <StyledCell key={cellIndex}>
-                    {cell !== null && cell !== undefined
-                      ? String(cell)
+              <TableRow key={`row-${rowIndex}`}>
+                {results.columns.map((_, cellIndex) => (
+                  <TableCell key={`cell-${rowIndex}-${cellIndex}`}>
+                    {row[cellIndex] !== null && row[cellIndex] !== undefined
+                      ? String(row[cellIndex])
                       : '—'}
-                  </StyledCell>
+                  </TableCell>
                 ))}
-              </StyledRow>
+              </TableRow>
             ))}
-          </StyledBody>
-        </StyledTable>
+          </TableBody>
+        </Table>
       </TableContainer>
 
       {totalPages > 1 && (

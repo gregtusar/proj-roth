@@ -36,6 +36,7 @@ class FirestoreListService:
         name: str,
         description: Optional[str] = None,
         query: str = "",
+        prompt: Optional[str] = None,
         row_count: int = 0
     ) -> VoterList:
         """Create a new voter list"""
@@ -51,6 +52,7 @@ class FirestoreListService:
             "name": name,
             "description": description or "",
             "query": query,
+            "prompt": prompt,
             "row_count": row_count,
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
@@ -124,6 +126,7 @@ class FirestoreListService:
         name: Optional[str] = None,
         description: Optional[str] = None,
         query: Optional[str] = None,
+        prompt: Optional[str] = None,
         row_count: Optional[int] = None
     ) -> bool:
         """Update a voter list"""
@@ -149,6 +152,8 @@ class FirestoreListService:
             update_data["description"] = description
         if query is not None:
             update_data["query"] = query
+        if prompt is not None:
+            update_data["prompt"] = prompt
         if row_count is not None:
             update_data["row_count"] = row_count
         

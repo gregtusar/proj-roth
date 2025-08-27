@@ -10,6 +10,7 @@ from google.auth.transport import requests
 from google.oauth2 import id_token
 
 from core.config import settings
+from services.firestore_user_service import get_firestore_user_service
 
 router = APIRouter()
 
@@ -37,7 +38,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire, "type": "access"})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
@@ -60,7 +61,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         user_id: str = payload.get("sub")
         if user_id is None:
             raise credentials_exception
-        return {"id": user_id, "email": payload.get("email")}
+        
+        # Try to fetch full user data from Firestore
+        user_service = get_firestore_user_service()
+        user_data = await user_service.get_user(user_id)
+        
+        if user_data:
+            return user_data
+        else:
+            # Fallback to basic info from JWT
+            return {"id": user_id, "email": payload.get("email")}
     except JWTError:
         raise credentials_exception
 
@@ -126,7 +136,9 @@ async def google_auth_callback(request: GoogleAuthRequest):
                 data={"sub": user["id"], "email": user["email"]}
             )
             
-            # TODO: Save user to Firestore if new user
+            # Save user to Firestore
+            user_service = get_firestore_user_service()
+            await user_service.save_user(user)
             
             return AuthResponse(
                 user=user,
@@ -167,11 +179,16 @@ async def refresh_access_token(request: RefreshRequest):
             expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         )
         
-        # TODO: Fetch user from Firestore
-        user = {
-            "id": user_id,
-            "email": email
-        }
+        # Fetch user from Firestore
+        user_service = get_firestore_user_service()
+        user = await user_service.get_user(user_id)
+        
+        if not user:
+            # Fallback if user not found
+            user = {
+                "id": user_id,
+                "email": email
+            }
         
         return AuthResponse(
             user=user,

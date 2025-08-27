@@ -84,9 +84,26 @@ const authSlice = createSlice({
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
       })
+      .addCase(refreshToken.pending, (state) => {
+        state.isLoading = true;
+      })
       .addCase(refreshToken.fulfilled, (state, action) => {
         state.token = action.payload.access_token;
+        state.user = action.payload.user;
+        state.isAuthenticated = true;
+        state.isLoading = false;
         localStorage.setItem('access_token', action.payload.access_token);
+        if (action.payload.refresh_token) {
+          localStorage.setItem('refresh_token', action.payload.refresh_token);
+        }
+      })
+      .addCase(refreshToken.rejected, (state) => {
+        state.isLoading = false;
+        state.isAuthenticated = false;
+        state.token = null;
+        state.user = null;
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
       });
   },
 });

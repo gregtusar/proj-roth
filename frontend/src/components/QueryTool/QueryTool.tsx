@@ -28,6 +28,7 @@ import {
 import { Editor } from '@monaco-editor/react';
 import ResultsTable from '../ListManager/ResultsTable';
 import { useAuthCheck } from '../../hooks/useAuthCheck';
+import apiClient from '../../services/api';
 
 interface QueryResult {
   rows: any[];
@@ -72,24 +73,12 @@ const QueryTool: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch('/api/generate-sql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ prompt })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to generate SQL');
-      }
-
-      const data = await response.json();
+      const data = await apiClient.post<{ sql: string }>('/generate-sql', { prompt });
       setSql(data.sql);
       setIsEditingSQL(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate SQL');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.detail || err.message || 'Failed to generate SQL';
+      setError(errorMessage);
     } finally {
       setGenerating(false);
     }
@@ -110,34 +99,15 @@ const QueryTool: React.FC = () => {
       
       const countSQL = `SELECT COUNT(*) as total FROM (${sql.trim().replace(/;?\s*$/, '')}) as subquery`;
 
-      const [dataResponse, countResponse] = await Promise.all([
-        fetch('/api/execute-query', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ sql: paginatedSQL })
-        }),
-        fetch('/api/execute-query', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ sql: countSQL })
-        })
+      const [data, countData] = await Promise.all([
+        apiClient.post<any>('/execute-query', { sql: paginatedSQL }),
+        apiClient.post<any>('/execute-query', { sql: countSQL })
       ]);
 
-      if (!dataResponse.ok) {
-        const errorData = await dataResponse.json();
-        throw new Error(errorData.detail || 'Failed to execute query');
-      }
-
-      const data = await dataResponse.json();
       let totalCount = 0;
       
-      if (countResponse.ok) {
-        const countData = await countResponse.json();
-        totalCount = countData.rows?.[0]?.total || data.rows.length;
+      if (countData?.rows?.[0]?.total) {
+        totalCount = countData.rows[0].total;
       }
 
       setResults({
@@ -192,41 +162,32 @@ const QueryTool: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch('/api/lists', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: saveDialog.listName,
-          description: saveDialog.description || prompt,
-          query: sql,
-          prompt: prompt
-        })
+      await apiClient.post('/lists/', {
+        name: saveDialog.listName,
+        description: saveDialog.description || prompt,
+        query: sql,
+        prompt: prompt
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to save list');
-      }
 
       setSaveDialog({ open: false, listName: '', description: '' });
       navigate('/lists');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save list');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.detail || err.message || 'Failed to save list';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (prompt && !sql) {
-      const timer = setTimeout(() => {
-        generateSQL();
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [prompt]);
+  // Disabled auto-generation to avoid errors while typing
+  // useEffect(() => {
+  //   if (prompt && !sql) {
+  //     const timer = setTimeout(() => {
+  //       generateSQL();
+  //     }, 1000);
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [prompt]);
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 3 }}>

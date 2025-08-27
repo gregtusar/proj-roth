@@ -13,7 +13,7 @@ echo "================================================"
 # Configuration
 PROJECT_ID=${PROJECT_ID:-proj-roth}
 REGION=${REGION:-us-central1}
-SERVICE_NAME="nj-voter-chat"
+SERVICE_NAME="nj-voter-chat-app"
 FRONTEND_DIR="frontend"
 BACKEND_DIR="backend"
 
@@ -101,7 +101,7 @@ build_docker_image() {
     TIMESTAMP=$(date +%s)
     GIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "no-git")
     IMAGE_TAG="${GIT_HASH}-${TIMESTAMP}"
-    IMAGE_URL="us-central1-docker.pkg.dev/${PROJECT_ID}/${SERVICE_NAME}/${SERVICE_NAME}"
+    IMAGE_URL="us-central1-docker.pkg.dev/${PROJECT_ID}/nj-voter-chat/nj-voter-chat"
     
     echo "Building image: ${IMAGE_URL}:${IMAGE_TAG}"
     

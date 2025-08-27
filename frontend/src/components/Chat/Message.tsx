@@ -131,6 +131,13 @@ const Message: React.FC<MessageProps> = ({ message, isStreaming = false }) => {
   
   // Get user initials from email or name
   const getUserInitials = () => {
+    if (user?.name) {
+      const parts = user.name.split(' ');
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      }
+      return user.name[0].toUpperCase();
+    }
     if (user?.email) {
       const parts = user.email.split('@')[0].split('.');
       if (parts.length >= 2) {
@@ -141,7 +148,8 @@ const Message: React.FC<MessageProps> = ({ message, isStreaming = false }) => {
     return 'U';
   };
   
-  const avatarSrc = isUser ? undefined : '/greywolf_logo.png';
+  // Use Google profile picture for user if available, otherwise undefined (will show initials)
+  const avatarSrc = isUser ? user?.picture : '/greywolf_logo.png';
   const avatarName = isUser ? getUserInitials() : 'Greywolf';
 
   return (
@@ -153,7 +161,12 @@ const Message: React.FC<MessageProps> = ({ message, isStreaming = false }) => {
         overrides={{
           Root: {
             style: {
-              backgroundColor: isUser ? '#0066cc' : '#f3f4f6',
+              backgroundColor: isUser && !user?.picture ? '#0066cc' : '#f3f4f6',
+            },
+          },
+          Avatar: {
+            style: {
+              objectFit: 'cover',
             },
           },
         }}

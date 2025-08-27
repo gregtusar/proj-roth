@@ -41,6 +41,7 @@ async def get_user_lists(current_user: dict = Depends(get_current_user)):
                     name=lst.name,
                     description=lst.description,
                     query=lst.query,
+                    prompt=getattr(lst, 'prompt', None),
                     row_count=lst.row_count,
                     created_at=lst.created_at.isoformat() if lst.created_at else datetime.utcnow().isoformat(),
                     updated_at=lst.updated_at.isoformat() if lst.updated_at else datetime.utcnow().isoformat()
@@ -76,6 +77,7 @@ async def get_list(
         name=lst.name,
         description=lst.description,
         query=lst.query,
+        prompt=getattr(lst, 'prompt', None),
         row_count=lst.row_count,
         created_at=lst.created_at.isoformat(),
         updated_at=lst.updated_at.isoformat()
@@ -113,6 +115,7 @@ async def create_list(
         name=list_data.name,
         description=list_data.description,
         query=list_data.query,
+        prompt=list_data.prompt,
         row_count=row_count
     )
     
@@ -121,6 +124,7 @@ async def create_list(
         name=lst.name,
         description=lst.description,
         query=lst.query,
+        prompt=getattr(lst, 'prompt', None),
         row_count=lst.row_count,
         created_at=lst.created_at.isoformat(),
         updated_at=lst.updated_at.isoformat()
@@ -159,6 +163,7 @@ async def update_list(
         name=update_data.name,
         description=update_data.description,
         query=update_data.query,
+        prompt=update_data.prompt,
         row_count=row_count
     )
     
@@ -173,6 +178,7 @@ async def update_list(
         name=lst.name,
         description=lst.description,
         query=lst.query,
+        prompt=getattr(lst, 'prompt', None),
         row_count=lst.row_count,
         created_at=lst.created_at.isoformat(),
         updated_at=lst.updated_at.isoformat()
@@ -213,10 +219,8 @@ async def run_list_query(
     if not lst:
         raise HTTPException(status_code=404, detail="List not found")
     
-    # Execute the query with a reasonable limit if not present
+    # Execute the query as-is
     query = lst.query
-    if "LIMIT" not in query.upper():
-        query = f"{query} LIMIT 1000"
     
     try:
         result = await execute_query(query)
@@ -239,9 +243,7 @@ async def execute_list_query(
     if not query.strip().upper().startswith("SELECT"):
         raise HTTPException(status_code=400, detail="Only SELECT queries are allowed")
     
-    # Add limit if not present
-    if "LIMIT" not in query.upper():
-        query = f"{query} LIMIT {limit}"
+    # Execute query as-is without adding automatic limits
     
     try:
         result = await execute_query(query)

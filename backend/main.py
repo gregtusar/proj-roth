@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.config import settings
-from api import auth, chat, lists_firestore as lists, agent, maps, sessions
+from api import auth, chat, lists_firestore as lists, agent, maps, sessions, query
 from core.websocket import sio, sio_app
 
 @asynccontextmanager
@@ -47,6 +47,7 @@ app.include_router(sessions.router, prefix="/api/sessions", tags=["Sessions"])
 app.include_router(lists.router, prefix="/api/lists", tags=["Lists"])
 app.include_router(agent.router, prefix="/api/agent", tags=["Agent"])
 app.include_router(maps.router, prefix="/api/maps", tags=["Maps"])
+app.include_router(query.router, prefix="/api", tags=["Query"])
 
 # Mount Socket.IO app
 app.mount("/socket.io", sio_app)

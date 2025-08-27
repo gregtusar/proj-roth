@@ -1,6 +1,6 @@
 {
   "name": "greywolf-analytica-frontend",
-  "version": "1.0.14",
+  "version": "1.0.21",
   "private": true,
   "dependencies": {
     "@reduxjs/toolkit": "^1.9.7",

@@ -25,7 +25,7 @@ const ChatTitle = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => (
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
-  maxWidth: 'calc(100% - 40px)', // Leave space for menu button
+  maxWidth: '100%', // Use full width of container
   paddingRight: '8px',
 }));
 
@@ -210,7 +210,7 @@ const RecentChats: React.FC<RecentChatsProps> = ({ isCompact = false }) => {
             }}
           >
             <ChatItemContainer>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0, maxWidth: 'calc(100% - 40px)' }}>
                 {editingSessionId === session.session_id ? (
                   <EditableTitle
                     $isDarkMode={isDarkMode}

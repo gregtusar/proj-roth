@@ -460,29 +460,54 @@ def format_for_llm():
     output.append("=== NJ VOTER DATABASE MANIFEST ===\n")
     output.append(DATABASE_MANIFEST["overview"])
     
+    # Include ALL important notes upfront as critical rules
+    output.append("\n=== CRITICAL SQL GENERATION RULES ===")
+    for i, note in enumerate(DATABASE_MANIFEST["important_notes"], 1):
+        output.append(f"{i}. {note}")
+    
     output.append("\n=== KEY TABLES ===")
     for table_name, table_info in DATABASE_MANIFEST["tables"].items():
         output.append(f"\n{table_name}: {table_info['description']}")
+        if "primary_key" in table_info:
+            output.append(f"  Primary Key: {table_info['primary_key']}")
+        if "foreign_keys" in table_info:
+            output.append(f"  Foreign Keys: {', '.join(table_info['foreign_keys'])}")
         if "key_fields" in table_info:
-            for field, desc in list(table_info["key_fields"].items())[:5]:
+            # Show more key fields
+            for field, desc in list(table_info["key_fields"].items())[:8]:
                 output.append(f"  - {field}: {desc}")
         if "hints" in table_info:
-            output.append(f"  Hints: {table_info['hints'][0]}")
+            # Show ALL hints, not just the first one
+            output.append("  Important hints:")
+            for hint in table_info["hints"]:
+                output.append(f"    • {hint}")
     
     output.append("\n=== RECOMMENDED VIEWS ===")
     for view_name, view_info in DATABASE_MANIFEST["views"].items():
         output.append(f"\n{view_name}: {view_info['description']}")
+        if "base_tables" in view_info:
+            output.append(f"  Base tables: {', '.join(view_info['base_tables'])}")
         if "hints" in view_info:
-            output.append(f"  Key hint: {view_info['hints'][0]}")
+            for hint in view_info["hints"]:
+                output.append(f"  • {hint}")
     
-    output.append("\n=== QUERY PATTERNS ===")
+    output.append("\n=== QUERY PATTERNS WITH SQL EXAMPLES ===")
     for pattern_name, pattern_info in DATABASE_MANIFEST["query_patterns"].items():
         output.append(f"\n{pattern_name}: {pattern_info['description']}")
+        if "example" in pattern_info:
+            # Include the actual SQL example
+            output.append(f"  SQL Example:{pattern_info['example']}")
         if "notes" in pattern_info:
             output.append(f"  Note: {pattern_info['notes']}")
     
-    output.append("\n=== CRITICAL REMINDERS ===")
-    for note in DATABASE_MANIFEST["important_notes"][:8]:
-        output.append(f"• {note}")
+    output.append("\n=== PERFORMANCE TIPS ===")
+    for tip in DATABASE_MANIFEST["performance_tips"]:
+        output.append(f"• {tip}")
+    
+    output.append("\n=== FINAL REMINDERS ===")
+    output.append("• The geography field in addresses table is 'geo_location' NOT 'geo'")
+    output.append("• Join individuals to addresses through individual_addresses table")
+    output.append("• demo_race contains ethnicity (Latino/Hispanic) not just race")
+    output.append("• Always prefix tables with 'voter_data.' (e.g., voter_data.voters)")
     
     return "\n".join(output)

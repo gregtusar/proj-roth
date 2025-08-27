@@ -254,7 +254,7 @@ const VideoLibrary: React.FC = () => {
               }}
             />
           </Grid>
-          <Grid item xs={12} sm={3} md={2}>
+          <Grid item xs={12} sm={4} md={3}>
             <FormControl fullWidth>
               <InputLabel>Campaign</InputLabel>
               <Select
@@ -269,7 +269,7 @@ const VideoLibrary: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={3} md={2}>
+          <Grid item xs={12} sm={4} md={2}>
             <FormControl fullWidth>
               <InputLabel>Status</InputLabel>
               <Select
@@ -284,7 +284,7 @@ const VideoLibrary: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={12} md={4}>
+          <Grid item xs={12} sm={12} md={3}>
             <Typography variant="body2" color="text.secondary">
               {videos.length} video{videos.length !== 1 ? 's' : ''} found
             </Typography>

@@ -19,7 +19,7 @@ def get_gemini_api_key():
     """Load Gemini API key from Google Secret Manager"""
     try:
         secret_client = secretmanager.SecretManagerServiceClient()
-        name = f"projects/{settings.GOOGLE_CLOUD_PROJECT}/secrets/gemini-api-key/versions/latest"
+        name = f"projects/{settings.GOOGLE_CLOUD_PROJECT}/secrets/api-key/versions/latest"
         response = secret_client.access_secret_version(request={"name": name})
         return response.payload.data.decode("UTF-8").strip()
     except Exception as e:
@@ -51,17 +51,14 @@ class QueryResult(BaseModel):
     rows: List[Dict[str, Any]]
     totalCount: Optional[int] = None
 
-SYSTEM_PROMPT = """You are a SQL expert for New Jersey voter data analysis. Generate BigQuery SQL queries based on natural language descriptions.
-
-Important context:
-- Main table: `proj-roth.voter_data.voters` (622,000+ NJ voters)
-- Key fields: id, name_first, name_last, demo_party, addr_residential_city, addr_residential_zip5, location (GEOGRAPHY type)
-- Voting history fields: history_2020_general, history_2022_general, etc. (values: 'Y', 'N', or NULL)
-- All voters are in NJ Congressional District 07
-- Use ST_DWITHIN() for proximity searches with location field
-
-Generate only SELECT queries. Include appropriate WHERE clauses and LIMIT if needed.
-Return ONLY the SQL query, no explanations."""
+# Import centralized schema
+try:
+    from core.voter_schema import SYSTEM_PROMPT_CACHED as SYSTEM_PROMPT
+except ImportError:
+    # Fallback if schema file doesn't exist yet
+    SYSTEM_PROMPT = """You are a SQL expert for New Jersey voter data analysis. 
+    Table: proj-roth.voter_data.voters
+    Generate only SELECT queries with appropriate WHERE clauses and LIMIT."""
 
 @router.post("/generate-sql", response_model=GenerateSQLResponse)
 async def generate_sql(request: GenerateSQLRequest, current_user: dict = Depends(get_current_user)):

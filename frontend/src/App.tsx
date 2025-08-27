@@ -17,6 +17,7 @@ import ListManager from './components/ListManager/ListManager';
 import StreetMap from './components/StreetMap/StreetMap';
 import Settings from './components/Settings/Settings';
 import QueryTool from './components/QueryTool/QueryTool';
+import VideoAssets from './components/VideoAssets/VideoAssets';
 
 function App() {
   const dispatch = useDispatch<AppDispatch>();
@@ -96,6 +97,7 @@ function App() {
         <Route path="chat/:sessionId" element={<ChatContainer />} />
         <Route path="query" element={<QueryTool />} />
         <Route path="lists" element={<ListManager />} />
+        <Route path="videos" element={<VideoAssets />} />
         <Route path="street-map" element={<StreetMap />} />
         <Route path="settings" element={<Settings />} />
       </Route>

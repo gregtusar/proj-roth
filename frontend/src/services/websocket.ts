@@ -104,7 +104,8 @@ class WebSocketService {
         return;
       }
       
-      if (message.session_id !== state.chat.currentSessionId) {
+      // Allow messages for new sessions being created (currentSessionId might be null initially)
+      if (state.chat.currentSessionId && message.session_id !== state.chat.currentSessionId) {
         console.log('[WebSocket] Ignoring message - different session');
         return;
       }
@@ -123,9 +124,21 @@ class WebSocketService {
     this.socket.on('message_confirmed', (message: any) => {
       // Only process if it's for the current session and we're not loading
       const state = store.getState();
-      if (this.isLoadingSession || message.session_id !== state.chat.currentSessionId) {
-        console.log('[WebSocket] Ignoring message_confirmed for different session');
+      
+      // Allow message_confirmed for new sessions being created
+      if (this.isLoadingSession) {
+        console.log('[WebSocket] Ignoring message_confirmed - session is loading');
         return;
+      }
+      
+      // For new sessions, currentSessionId might be set just before this event
+      // So we should be more lenient with the check
+      if (state.chat.currentSessionId && message.session_id !== state.chat.currentSessionId) {
+        console.log('[WebSocket] Warning: message_confirmed for different session', {
+          messageSession: message.session_id,
+          currentSession: state.chat.currentSessionId
+        });
+        // Don't return here - the session might have just been created
       }
       
       console.log('[WebSocket] Message confirmed:', message);
@@ -178,9 +191,21 @@ class WebSocketService {
       const state = store.getState();
       state.chat.messages.forEach((msg: any) => {
         if (msg.session_id === 'pending') {
-          msg.session_id = data.session_id;
+          // Replace the message with updated session_id
+          store.dispatch(replaceMessage({
+            oldId: msg.message_id,
+            newMessage: { ...msg, session_id: data.session_id }
+          }));
         }
       });
+      
+      // Navigate to the new session route to ensure proper state
+      // This prevents the duplicate routing issue when staying on /chat/new
+      if (window.location.pathname === '/chat/new' || window.location.pathname === '/chat') {
+        // Use browser history API to update URL without triggering React Router
+        // This prevents re-rendering issues
+        window.history.replaceState(null, '', `/chat/${data.session_id}`);
+      }
     });
 
     this.socket.on('session_updated', (session: any) => {

@@ -264,6 +264,11 @@ main() {
                 SKIP_DEPLOY=true
                 shift
                 ;;
+            --frontend-only)
+                echo "For frontend-only updates, use: scripts/quick_frontend_deploy.sh"
+                echo "It's optimized for faster frontend deployments with Docker layer caching"
+                exit 0
+                ;;
             --help)
                 echo "Usage: $0 [options]"
                 echo "Options:"
@@ -271,7 +276,10 @@ main() {
                 echo "  --skip-frontend  Skip frontend build"
                 echo "  --skip-backend   Skip backend verification"
                 echo "  --skip-deploy    Skip Cloud Run deployment (only build)"
+                echo "  --frontend-only  Show info about frontend-only deployments"
                 echo "  --help          Show this help message"
+                echo ""
+                echo "For faster frontend-only updates, use: scripts/quick_frontend_deploy.sh"
                 exit 0
                 ;;
             *)

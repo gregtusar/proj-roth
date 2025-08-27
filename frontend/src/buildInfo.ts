@@ -1,5 +1,5 @@
 // This file is auto-generated at build time
 export const buildInfo = {
-  version: '1.0.12',
-  buildTime: '2025-08-26T21:46:28.246Z',
+  version: '1.0.13',
+  buildTime: '2025-08-27T02:33:47.457Z',
 };

@@ -48,13 +48,15 @@ const ChatContainer: React.FC = () => {
   const lastLoadedSessionRef = useRef<string | null>(null);
 
   useEffect(() => {
-    console.log('[ChatContainer] Route changed to:', sessionId, 'Last loaded:', lastLoadedSessionRef.current);
+    console.log('[ChatContainer] Route changed to:', sessionId, 'Current sessionId:', currentSessionId, 'Last loaded:', lastLoadedSessionRef.current);
     
     if (!sessionId || sessionId === 'new') {
-      // Clear for new chat
-      dispatch(clearMessages());
-      wsService.setActiveSession(null);
-      lastLoadedSessionRef.current = null;
+      // Clear for new chat only if we're not already in a new session
+      if (currentSessionId !== null) {
+        dispatch(clearMessages());
+        wsService.setActiveSession(null);
+        lastLoadedSessionRef.current = null;
+      }
     } else if (sessionId !== lastLoadedSessionRef.current) {
       // Only load if we haven't already loaded this session
       console.log('[ChatContainer] Loading session (not previously loaded):', sessionId);
@@ -79,8 +81,10 @@ const ChatContainer: React.FC = () => {
         });
     } else {
       console.log('[ChatContainer] Already loaded this session, skipping:', sessionId);
+      // Make sure WebSocket knows the active session
+      wsService.setActiveSession(sessionId);
     }
-  }, [sessionId, dispatch]); // Remove currentSessionId from dependencies
+  }, [sessionId, dispatch, currentSessionId]); // Include currentSessionId to track state
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

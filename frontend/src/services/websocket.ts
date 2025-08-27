@@ -63,6 +63,17 @@ class WebSocketService {
       console.log('WebSocket connected');
       this.reconnectAttempts = 0;
       this.isConnecting = false;
+      
+      // Check if we need to recover any incomplete messages
+      const state = store.getState();
+      if (state.chat.currentSessionId && state.chat.isStreaming) {
+        console.log('[WebSocket] Reconnected during streaming, requesting recovery');
+        const lastMessage = state.chat.messages[state.chat.messages.length - 1];
+        this.socket?.emit('recover_message', {
+          session_id: state.chat.currentSessionId,
+          last_message_id: lastMessage?.message_id
+        });
+      }
     });
 
     this.socket.on('disconnect', () => {
@@ -208,6 +219,18 @@ class WebSocketService {
 
     this.socket.on('session_updated', (session: any) => {
       store.dispatch(updateSession(session));
+    });
+
+    this.socket.on('message_recovery', (data: any) => {
+      console.log('[WebSocket] Message recovery received:', data);
+      if (data.recovered_text) {
+        // Update the streaming message with recovered content
+        store.dispatch(setStreamingMessage(data.recovered_text));
+        if (data.is_complete) {
+          // If the message was complete, finalize it
+          store.dispatch(finalizeStreamingMessage());
+        }
+      }
     });
 
     this.socket.on('error', (error: any) => {

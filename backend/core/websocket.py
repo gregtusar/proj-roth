@@ -4,12 +4,16 @@ import json
 import asyncio
 from core.config import settings
 
-# Create Socket.IO server
+# Create Socket.IO server with extended timeout settings for Cloud Run
 sio = socketio.AsyncServer(
     async_mode='asgi',
     cors_allowed_origins=settings.CORS_ORIGINS,
     logger=settings.DEBUG,
-    engineio_logger=settings.DEBUG
+    engineio_logger=settings.DEBUG,
+    # Extended ping/pong settings to prevent disconnections
+    ping_interval=25,  # Send ping every 25 seconds (Cloud Run timeout is 60s)
+    ping_timeout=120,  # Wait 120 seconds for pong response
+    max_http_buffer_size=10 * 1024 * 1024  # 10MB buffer for large messages
 )
 
 # Create Socket.IO ASGI app
@@ -18,8 +22,9 @@ sio_app = socketio.ASGIApp(
     socketio_path='/socket.io'
 )
 
-# Store active connections
+# Store active connections and in-flight messages
 connections = {}
+in_flight_messages = {}  # Track messages being streamed per session
 
 @sio.event
 async def connect(sid, environ, auth):
@@ -145,15 +150,38 @@ async def send_message(sid, data):
         # Import agent and process message
         from services.agent_service import process_message_stream
         
+        # Track this message as in-flight for recovery purposes
+        message_key = f"{session_id}:{user_msg.message_id if 'user_msg' in locals() else 'unknown'}"
+        in_flight_messages[message_key] = {
+            'sid': sid,
+            'session_id': session_id,
+            'user_message': message,
+            'partial_response': '',
+            'timestamp': asyncio.get_event_loop().time()
+        }
+        
         # Collect full response for saving
         full_response = ""
         print(f"[WebSocket] Starting to stream response for message: {message[:50]}...")
-        async for chunk in process_message_stream(message, session_id, user_id, user_email):
-            full_response += chunk
-            print(f"[WebSocket] Emitting chunk: {chunk[:20]}...")
-            await sio.emit('message_chunk', chunk, room=sid)
-            await asyncio.sleep(0.01)  # Small delay for smoother streaming
-        print(f"[WebSocket] Finished streaming. Total response: {len(full_response)} chars")
+        try:
+            async for chunk in process_message_stream(message, session_id, user_id, user_email):
+                full_response += chunk
+                # Update in-flight tracking
+                if message_key in in_flight_messages:
+                    in_flight_messages[message_key]['partial_response'] = full_response
+                print(f"[WebSocket] Emitting chunk: {chunk[:20]}...")
+                # Check if client is still connected before emitting
+                if sid in connections:
+                    await sio.emit('message_chunk', chunk, room=sid)
+                    await asyncio.sleep(0.01)  # Small delay for smoother streaming
+                else:
+                    print(f"[WebSocket] Client {sid} disconnected during streaming, stopping")
+                    break
+            print(f"[WebSocket] Finished streaming. Total response: {len(full_response)} chars")
+        finally:
+            # Clean up in-flight tracking
+            if message_key in in_flight_messages:
+                del in_flight_messages[message_key]
         
         # Save assistant response to session
         await session_service.add_message(
@@ -169,6 +197,35 @@ async def send_message(sid, data):
     except Exception as e:
         print(f"Error processing message: {e}")
         await sio.emit('error', {'error': str(e)}, room=sid)
+
+@sio.event
+async def recover_message(sid, data):
+    """Recover an incomplete message after reconnection"""
+    session_id = data.get('session_id')
+    last_message_id = data.get('last_message_id')
+    
+    print(f"[WebSocket] Recovery requested for session {session_id}, last message {last_message_id}")
+    
+    # Check if we have any in-flight messages for this session
+    for key, msg_data in list(in_flight_messages.items()):
+        if msg_data['session_id'] == session_id:
+            # Found an incomplete message, resume sending the remaining part
+            partial_response = msg_data.get('partial_response', '')
+            if partial_response:
+                print(f"[WebSocket] Recovering {len(partial_response)} chars of response")
+                await sio.emit('message_recovery', {
+                    'session_id': session_id,
+                    'recovered_text': partial_response,
+                    'is_complete': False  # We don't know if it was fully generated
+                }, room=sid)
+            break
+    else:
+        # No in-flight message found, client has all messages
+        await sio.emit('message_recovery', {
+            'session_id': session_id,
+            'recovered_text': '',
+            'is_complete': True
+        }, room=sid)
 
 @sio.event
 async def typing_start(sid, data):

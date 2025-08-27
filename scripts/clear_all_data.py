@@ -89,8 +89,7 @@ def clear_bigquery():
         # Tables to clear
         tables_to_clear = [
             "proj-roth.voter_data.chat_sessions",
-            "proj-roth.voter_data.voter_lists",
-            "proj-roth.voter_data.prompt_history"  # In case it exists
+            "proj-roth.voter_data.voter_lists"
         ]
         
         for table_id in tables_to_clear:

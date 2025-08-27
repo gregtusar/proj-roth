@@ -31,10 +31,7 @@ class Settings(BaseSettings):
     GOOGLE_CLOUD_PROJECT: str = "proj-roth"
     GOOGLE_CLOUD_REGION: str = "us-central1"
     
-    # Database Selection for Chat
-    USE_FIRESTORE_FOR_CHAT: bool = True  # Use GCP Firestore (recommended)
-    USE_MONGODB_FOR_CHAT: bool = False  # Use MongoDB if available
-    MONGODB_URI: Optional[str] = None  # MongoDB connection string if using MongoDB
+    # Firestore is used exclusively for chat storage
     
     # Authentication
     SECRET_KEY: str = "your-secret-key-here-change-in-production"

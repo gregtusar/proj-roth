@@ -75,34 +75,13 @@ async def send_message(sid, data):
         
         print(f"[WebSocket] User info - ID: {user_id}, Email: {user_email}")
         
-        # Import session service - prioritize Firestore, then MongoDB, then BigQuery
-        from core.config import settings
-        session_service = None
+        # Import Firestore session service
+        from services.firestore_chat_service import get_firestore_chat_service
+        session_service = get_firestore_chat_service()
         
-        # Try Firestore first
-        if settings.USE_FIRESTORE_FOR_CHAT:
-            try:
-                from services.firestore_chat_service import get_firestore_chat_service
-                firestore_service = get_firestore_chat_service()
-                if firestore_service.connected:
-                    session_service = firestore_service
-            except Exception as e:
-                print(f"Firestore not available: {e}")
-        
-        # Try MongoDB if Firestore not available
-        if session_service is None and settings.USE_MONGODB_FOR_CHAT:
-            try:
-                from services.mongodb_chat_service import get_mongodb_chat_service
-                mongo_service = get_mongodb_chat_service()
-                if mongo_service.connected:
-                    session_service = mongo_service
-            except Exception as e:
-                print(f"MongoDB not available: {e}")
-        
-        # Fall back to BigQuery
-        if session_service is None:
-            from services.chat_session_service import get_chat_session_service
-            session_service = get_chat_session_service()
+        if not session_service.connected:
+            print("[WebSocket] Warning: Firestore chat service not connected. Session persistence may not work.")
+            # Continue anyway - allow chat to work without persistence
         
         # Create or use existing session
         if not session_id:

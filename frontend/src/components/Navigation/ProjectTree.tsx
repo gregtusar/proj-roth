@@ -72,7 +72,7 @@ const ProjectTree: React.FC<ProjectTreeProps> = ({ isCompact = false }) => {
       name: 'Tools',
       icon: '🛠️',
       children: [
-        { id: 'bigquery', name: 'BigQuery', icon: '🗄️' },
+        { id: 'firestore', name: 'Firestore', icon: '🔥' },
         { id: 'maps', name: 'Google Maps', icon: '🗺️' },
         { id: 'search', name: 'Search', icon: '🔍' },
       ],

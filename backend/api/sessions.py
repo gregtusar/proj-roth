@@ -6,42 +6,19 @@ from models.chat_session import (
     CreateSessionRequest, UpdateSessionRequest,
     SessionListResponse, SessionMessagesResponse, ChatSession
 )
-from core.config import settings
 
 router = APIRouter()
 
 def get_session_service():
-    """Get the appropriate session service based on configuration"""
-    # Try Firestore first (GCP native solution)
-    if settings.USE_FIRESTORE_FOR_CHAT:
-        try:
-            from services.firestore_chat_service import get_firestore_chat_service
-            service = get_firestore_chat_service()
-            if service.connected:
-                print("Using Firestore for chat persistence")
-                return service
-            else:
-                print("Firestore not available, checking other options")
-        except Exception as e:
-            print(f"Error initializing Firestore service: {e}")
-    
-    # Try MongoDB if configured
-    if settings.USE_MONGODB_FOR_CHAT:
-        try:
-            from services.mongodb_chat_service import get_mongodb_chat_service
-            service = get_mongodb_chat_service()
-            if service.connected:
-                print("Using MongoDB for chat persistence")
-                return service
-            else:
-                print("MongoDB not available, falling back to BigQuery")
-        except Exception as e:
-            print(f"Error initializing MongoDB service: {e}")
-    
-    # Fall back to BigQuery
-    print("Using BigQuery for chat persistence (fallback)")
-    from services.chat_session_service import get_chat_session_service
-    return get_chat_session_service()
+    """Get the Firestore chat service"""
+    from services.firestore_chat_service import get_firestore_chat_service
+    service = get_firestore_chat_service()
+    if not service.connected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Chat service is not available. Please check Firestore configuration."
+        )
+    return service
 
 @router.get("/", response_model=SessionListResponse)
 async def get_sessions(current_user: dict = Depends(get_current_user)):

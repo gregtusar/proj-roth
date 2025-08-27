@@ -26,22 +26,12 @@ class VideoAssetService:
             self.firestore_client = firestore.AsyncClient(project=self.project_id)
             self.videos_collection = self.firestore_client.collection('video_assets')
             
-            # Initialize Storage client
+            # Initialize Storage client (but don't create bucket yet)
             self.storage_client = storage.Client(project=self.project_id)
             self.bucket_name = f"{self.project_id}-campaign-assets"
             
-            # Try to get or create bucket
-            try:
-                self.bucket = self.storage_client.bucket(self.bucket_name)
-                if not self.bucket.exists():
-                    self.bucket = self.storage_client.create_bucket(
-                        self.bucket_name,
-                        location="us-central1"
-                    )
-                    logger.info(f"Created GCS bucket: {self.bucket_name}")
-            except exceptions.Conflict:
-                # Bucket already exists
-                self.bucket = self.storage_client.bucket(self.bucket_name)
+            # Just reference the bucket, don't try to create it
+            self.bucket = self.storage_client.bucket(self.bucket_name)
             
             self.connected = True
             logger.info(f"[Video Assets] Service initialized for project: {self.project_id}")

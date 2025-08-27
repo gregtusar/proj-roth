@@ -95,8 +95,10 @@ const QueryTool: React.FC = () => {
 
     try {
       const offset = (currentPage - 1) * currentPageSize;
+      // Remove any existing LIMIT clause and add our own with pagination
+      const baseSql = sql.trim().replace(/;?\s*$/, '').replace(/\s+LIMIT\s+\d+(\s+OFFSET\s+\d+)?$/i, '');
       // Fetch one extra row to determine if there are more pages
-      const paginatedSQL = `${sql.trim().replace(/;?\s*$/, '')} LIMIT ${currentPageSize + 1} OFFSET ${offset}`;
+      const paginatedSQL = `${baseSql} LIMIT ${currentPageSize + 1} OFFSET ${offset}`;
       
       const data = await apiClient.post<any>('/execute-query', { sql: paginatedSQL });
 

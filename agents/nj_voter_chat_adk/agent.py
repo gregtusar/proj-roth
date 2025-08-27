@@ -3,6 +3,13 @@ import asyncio
 import inspect
 import time
 import os
+import sys
+from pathlib import Path
+
+# Add project root to path to import database_manifest
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from database_manifest import DATABASE_MANIFEST, format_for_llm
+
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 

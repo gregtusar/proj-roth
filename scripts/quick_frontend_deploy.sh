@@ -91,17 +91,17 @@ quick_docker_build() {
     TIMESTAMP=$(date +%s)
     GIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "no-git")
     IMAGE_TAG="fe-${GIT_HASH}-${TIMESTAMP}"
-    IMAGE_URL="us-central1-docker.pkg.dev/${PROJECT_ID}/nj-voter-chat/nj-voter-chat"
+    IMAGE_URL="us-central1-docker.pkg.dev/${PROJECT_ID}/nj-voter-chat-app/nj-voter-chat-app"
     
     echo "Building image: ${IMAGE_URL}:${IMAGE_TAG}"
     echo "Note: This uses Docker layer caching for faster builds"
     
-    # Submit build to Cloud Build with caching
+    # Submit build to Cloud Build
+    # Note: Removed --cache-from as it's not supported by gcloud builds submit
     gcloud builds submit \
         --tag "${IMAGE_URL}:${IMAGE_TAG}" \
         --project ${PROJECT_ID} \
         --timeout=10m \
-        --cache-from "${IMAGE_URL}:latest" \
         .
     
     if [ $? -eq 0 ]; then

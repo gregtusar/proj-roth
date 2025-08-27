@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Body
 from fastapi.responses import JSONResponse
 from typing import List, Optional
 import logging
@@ -136,11 +136,15 @@ async def get_video(
 
 @router.post("/upload-url")
 async def get_upload_url(
-    filename: str,
-    content_type: str = "video/mp4",
+    request: dict = Body(...),
     current_user: dict = Depends(get_current_user)
 ):
     """Get a signed URL for direct browser upload to GCS"""
+    filename = request.get("filename")
+    content_type = request.get("content_type", "video/mp4")
+    
+    if not filename:
+        raise HTTPException(status_code=400, detail="Filename is required")
     service = get_video_asset_service()
     
     if not service.connected:

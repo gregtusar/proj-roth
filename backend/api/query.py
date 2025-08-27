@@ -51,14 +51,39 @@ class QueryResult(BaseModel):
     rows: List[Dict[str, Any]]
     totalCount: Optional[int] = None
 
-# Import centralized schema
+# Import database manifest and schema
 try:
-    from core.voter_schema import SYSTEM_PROMPT_CACHED as SYSTEM_PROMPT
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+    from database_manifest import format_for_llm
+    DATABASE_CONTEXT = format_for_llm()
 except ImportError:
-    # Fallback if schema file doesn't exist yet
-    SYSTEM_PROMPT = """You are a SQL expert for New Jersey voter data analysis. 
-    Table: proj-roth.voter_data.voters
-    Generate only SELECT queries with appropriate WHERE clauses and LIMIT."""
+    DATABASE_CONTEXT = ""
+
+# Import centralized schema as fallback
+try:
+    from core.voter_schema import SYSTEM_PROMPT_CACHED as SCHEMA_PROMPT
+except ImportError:
+    SCHEMA_PROMPT = ""
+
+# Build comprehensive SQL generation prompt
+SYSTEM_PROMPT = f"""You are a SQL expert for New Jersey voter data analysis.
+
+{DATABASE_CONTEXT}
+
+CRITICAL SQL GENERATION RULES:
+1. Generate only SELECT queries - no INSERT, UPDATE, DELETE, CREATE, etc.
+2. Use the recommended views (voter_geo_view, donor_view) whenever possible
+3. Do NOT add LIMIT clauses unless the user explicitly requests limiting results
+4. Party values must be exact: 'REPUBLICAN', 'DEMOCRAT', 'UNAFFILIATED' 
+5. Use ST_* functions for all spatial/geographic queries
+6. Join tables using master_id or address_id as documented
+7. For voter queries, prefer voter_geo_view which has everything pre-joined
+8. For donation queries, prefer donor_view which includes voter matching
+
+Generate clean SQL without markdown formatting or explanations.
+{SCHEMA_PROMPT if not DATABASE_CONTEXT else ''}"""
 
 @router.post("/generate-sql", response_model=GenerateSQLResponse)
 async def generate_sql(request: GenerateSQLRequest, current_user: dict = Depends(get_current_user)):

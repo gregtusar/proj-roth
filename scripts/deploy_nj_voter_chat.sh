@@ -3,8 +3,8 @@ set -euo pipefail
 
 PROJECT_ID="${PROJECT_ID:-proj-roth}"
 REGION="${REGION:-us-central1}"
-REPO_NAME="${REPO_NAME:-nj-voter-chat}"
-IMAGE_NAME="${IMAGE_NAME:-nj-voter-chat}"
+REPO_NAME="${REPO_NAME:-nj-voter-chat-app}"
+IMAGE_NAME="${IMAGE_NAME:-nj-voter-chat-app}"
 SERVICE_NAME="${SERVICE_NAME:-nj-voter-chat-app}"
 SA_EMAIL="${SA_EMAIL:-agent-runner@${PROJECT_ID}.iam.gserviceaccount.com}"
 

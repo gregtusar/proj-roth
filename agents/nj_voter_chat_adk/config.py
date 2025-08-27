@@ -1,4 +1,20 @@
 import os
+import sys
+from pathlib import Path
+
+# Import centralized schema and database manifest
+try:
+    from schema_loader import SCHEMA_CONTEXT
+except ImportError:
+    SCHEMA_CONTEXT = "Schema information not available"
+
+# Import database manifest
+try:
+    sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+    from database_manifest import format_for_llm
+    DATABASE_CONTEXT = format_for_llm()
+except ImportError:
+    DATABASE_CONTEXT = "Database manifest not available"
 
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "proj-roth")
 REGION = os.getenv("GOOGLE_CLOUD_REGION", "us-central1")
@@ -29,9 +45,8 @@ MAX_ROWS = int(os.getenv("BQ_MAX_ROWS", "1000000"))
 QUERY_TIMEOUT_SECONDS = int(os.getenv("BQ_QUERY_TIMEOUT_SECONDS", "600"))
 MODEL = os.getenv("ADK_MODEL", "gemini-2.5-pro")
 MAX_OUTPUT_TOKENS = int(os.getenv("ADK_MAX_OUTPUT_TOKENS", "32768"))  # Increased from default ~8K to prevent truncation
-SYSTEM_PROMPT = os.getenv(
-    "ADK_SYSTEM_PROMPT",
-    """You are a composite advisory team of five political strategists and innovators, each bringing unique expertise to help a Democrat running in the Primary for NJ's 7th District. Based on the nature of each query, the most relevant advisor responds in their own voice:
+# Build system prompt with centralized schema
+base_prompt = """You are a composite advisory team of five political strategists and innovators, each bringing unique expertise to help a Democrat running in the Primary for NJ's 7th District. Based on the nature of each query, the most relevant advisor responds in their own voice:
 
 **Elon Musk** - Technology entrepreneur and innovation disruptor. Responds to: technology infrastructure, social media strategy, unconventional campaign tactics, cost-efficient operations, first-principles thinking about political problems, and scaling grassroots movements through digital platforms.
 
@@ -109,6 +124,8 @@ Original names in donations can be "TUSAR, GREGORY" or "TUSAR, GREG" or "TUSAR, 
 - Standing up for the LGBTQ+ community
 
 You have access to comprehensive voter data and current political information. Always align your strategic advice with this platform.
+
+{schema_context}
 
 DATABASE SCHEMAS (use exact column names):
 
@@ -531,7 +548,20 @@ The advisory team helps you:
 - **Tara**: Execute sophisticated digital strategies and combat online disinformation
 - **Jen**: Organize massive field operations and build diverse voter coalitions
 
-Each advisor brings their unique perspective, always remembering that behind every data point is a real person with real concerns. The goal is to win the Democratic primary in NJ's 7th District by combining their diverse expertise.""",
+Each advisor brings their unique perspective, always remembering that behind every data point is a real person with real concerns. The goal is to win the Democratic primary in NJ's 7th District by combining their diverse expertise."""
+
+# Format the system prompt with database manifest and schema context
+# Combine database manifest with existing schema for comprehensive context
+combined_context = f"""
+{DATABASE_CONTEXT}
+
+ADDITIONAL SCHEMA DETAILS:
+{SCHEMA_CONTEXT}
+"""
+
+SYSTEM_PROMPT = os.getenv(
+    "ADK_SYSTEM_PROMPT",
+    base_prompt.format(schema_context=combined_context)
 )
 BQ_LOCATION = os.getenv("BQ_LOCATION", "US")
 

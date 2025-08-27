@@ -95,24 +95,27 @@ const QueryTool: React.FC = () => {
 
     try {
       const offset = (currentPage - 1) * currentPageSize;
-      const paginatedSQL = `${sql.trim().replace(/;?\s*$/, '')} LIMIT ${currentPageSize} OFFSET ${offset}`;
+      // Fetch one extra row to determine if there are more pages
+      const paginatedSQL = `${sql.trim().replace(/;?\s*$/, '')} LIMIT ${currentPageSize + 1} OFFSET ${offset}`;
       
-      const countSQL = `SELECT COUNT(*) as total FROM (${sql.trim().replace(/;?\s*$/, '')}) as subquery`;
+      const data = await apiClient.post<any>('/execute-query', { sql: paginatedSQL });
 
-      const [data, countData] = await Promise.all([
-        apiClient.post<any>('/execute-query', { sql: paginatedSQL }),
-        apiClient.post<any>('/execute-query', { sql: countSQL })
-      ]);
+      // Check if we got more rows than requested (indicates more pages)
+      const hasMore = data.rows && data.rows.length > currentPageSize;
+      const actualRows = hasMore ? data.rows.slice(0, currentPageSize) : data.rows;
 
-      let totalCount = 0;
-      
-      if (countData?.rows?.[0]?.total) {
-        totalCount = countData.rows[0].total;
+      // Estimate total count based on current page and whether there are more results
+      // This is an approximation but avoids the expensive COUNT query
+      let estimatedTotal = offset + actualRows.length;
+      if (hasMore) {
+        // If there are more rows, we don't know the exact count
+        // Show at least enough for the next page
+        estimatedTotal = offset + currentPageSize + 1;
       }
 
       setResults({
-        rows: data.rows,
-        totalCount,
+        rows: actualRows,
+        totalCount: estimatedTotal,
         page: currentPage,
         pageSize: currentPageSize
       });
@@ -323,13 +326,10 @@ const QueryTool: React.FC = () => {
           </Box>
           <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
             <ResultsTable
-              data={results.rows}
-              totalCount={results.totalCount}
-              page={page}
-              pageSize={pageSize}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
-              loading={loading}
+              results={{
+                columns: results.rows.length > 0 ? Object.keys(results.rows[0]) : [],
+                rows: results.rows.map(row => Object.values(row))
+              }}
             />
           </Box>
         </Paper>

@@ -99,8 +99,9 @@ DATABASE_MANIFEST = {
             },
             "hints": [
                 "All 264K addresses have been geocoded with preserved lat/lng",
-                "Use geo_location field with ST_* functions for spatial analysis",
+                "IMPORTANT: Use 'geo_location' field (NOT 'geo') with ST_* functions for spatial analysis",
                 "Join with voters or donations using address_id",
+                "To get addresses for individuals: JOIN individual_addresses ON individuals.master_id = individual_addresses.master_id THEN JOIN addresses ON individual_addresses.address_id = addresses.address_id",
                 "Distance conversions: 1 mile = 1609.34 meters, 1 km = 1000 meters"
             ]
         },
@@ -372,6 +373,31 @@ DATABASE_MANIFEST = {
                 ORDER BY total_contributed DESC
             """,
             "notes": "major_donors view pre-filters for $1000+ total contributions"
+        },
+        
+        "donors_by_geography": {
+            "description": "Find donors within a specific geographic area",
+            "example": """
+                -- CORRECT: Find donors within 1 mile of a location
+                SELECT
+                    i.standardized_name,
+                    i.master_id,
+                    SUM(d.contribution_amount) AS total_contributions
+                FROM voter_data.donations d
+                INNER JOIN voter_data.individuals i ON d.master_id = i.master_id
+                INNER JOIN voter_data.individual_addresses ia ON i.master_id = ia.master_id
+                INNER JOIN voter_data.addresses a ON ia.address_id = a.address_id
+                WHERE ST_DWITHIN(
+                    a.geo_location,  -- NOTE: Field is 'geo_location' not 'geo'
+                    ST_GEOGPOINT(-74.65, 40.70),
+                    1609.34  -- 1 mile in meters
+                )
+                AND d.master_id IS NOT NULL  -- Only matched donations
+                GROUP BY i.standardized_name, i.master_id
+                HAVING SUM(d.contribution_amount) > 1000
+                ORDER BY total_contributions DESC
+            """,
+            "notes": "Must join through individual_addresses to link individuals to addresses correctly"
         },
         
         "voting_frequency_analysis": {

@@ -199,13 +199,11 @@ class WebSocketService {
         }
       });
       
-      // Navigate to the new session route to ensure proper state
-      // This prevents the duplicate routing issue when staying on /chat/new
-      if (window.location.pathname === '/chat/new' || window.location.pathname === '/chat') {
-        // Use browser history API to update URL without triggering React Router
-        // This prevents re-rendering issues
-        window.history.replaceState(null, '', `/chat/${data.session_id}`);
-      }
+      // Set the active session for WebSocket message filtering
+      this.activeSessionId = data.session_id;
+      
+      // Navigation is now handled by the useSessionNavigation hook in ChatContainer
+      // This ensures React Router is properly updated
     });
 
     this.socket.on('session_updated', (session: any) => {

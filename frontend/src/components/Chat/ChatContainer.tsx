@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { styled } from 'baseui';
 import { RootState, AppDispatch } from '../../store';
 import { loadSession, clearMessages } from '../../store/chatSlice';
+import { useSessionNavigation } from '../../hooks/useSessionNavigation';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import wsService from '../../services/websocket';
@@ -47,12 +48,16 @@ const ChatContainer: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastLoadedSessionRef = useRef<string | null>(null);
 
+  // Use the session navigation hook to handle navigation when sessions are created
+  useSessionNavigation();
+
   useEffect(() => {
     console.log('[ChatContainer] Route changed to:', sessionId, 'Current sessionId:', currentSessionId, 'Last loaded:', lastLoadedSessionRef.current);
     
     if (!sessionId || sessionId === 'new') {
-      // Clear for new chat only if we're not already in a new session
-      if (currentSessionId !== null) {
+      // Clear for new chat only if we don't have a current session
+      // This prevents clearing when a session is being created
+      if (!currentSessionId) {
         dispatch(clearMessages());
         wsService.setActiveSession(null);
         lastLoadedSessionRef.current = null;

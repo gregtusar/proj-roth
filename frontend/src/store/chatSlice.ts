@@ -120,6 +120,11 @@ const chatSlice = createSlice({
         state.messages[index] = action.payload.newMessage;
       }
     },
+    sessionCreatedSuccess: (state, action: PayloadAction<{ session_id: string; session_name: string }>) => {
+      // This action is dispatched when a new session is created
+      // The actual navigation will be handled by a component listening to this
+      state.currentSessionId = action.payload.session_id;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -193,6 +198,7 @@ export const {
   finalizeStreamingMessage,
   updateSession,
   replaceMessage,
+  sessionCreatedSuccess,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

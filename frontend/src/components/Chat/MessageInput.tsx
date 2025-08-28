@@ -5,7 +5,7 @@ import { Textarea, SIZE } from 'baseui/textarea';
 import { Button, KIND, SIZE as ButtonSize } from 'baseui/button';
 import { Checkbox } from 'baseui/checkbox';
 import { RootState, AppDispatch, store } from '../../store';
-import { addMessage, toggleVerboseMode, clearReasoningEvents } from '../../store/chatSlice';
+import { addMessage, toggleVerboseMode, clearReasoningEvents, addReasoningEvent } from '../../store/chatSlice';
 import wsService from '../../services/websocket';
 import { Message } from '../../types/chat';
 import ReasoningDisplay from './ReasoningDisplay';

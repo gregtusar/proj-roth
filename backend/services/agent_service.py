@@ -81,47 +81,145 @@ async def process_message_stream(
             return
         
         print(f"[Agent] Calling agent.chat with message: {message[:50]}...")
+        print(f"[Agent] Session ID: {session_id}")
+        print(f"[Agent] Using agent: {type(agent).__name__}")
         
         # The agent's chat() method will handle session management based on CHAT_SESSION_ID
         # It will load conversation history internally for context
         
-        # Use the agent's chat method
-        # Note: The ADK agent may not support streaming natively,
-        # so we'll simulate it by yielding chunks
-        result = await asyncio.to_thread(
-            agent.chat,
-            message
-        )
+        # Use the agent's chat method with retry logic for robustness
+        max_attempts = 3
+        result = None
+        last_error = None
         
-        print(f"[Agent] Got result from agent: {type(result)} - {str(result)[:100]}...")
+        for attempt in range(1, max_attempts + 1):
+            print(f"[Agent] Chat attempt {attempt}/{max_attempts}")
+            try:
+                result = await asyncio.to_thread(
+                    agent.chat,
+                    message
+                )
+                print(f"[Agent] Chat attempt {attempt} succeeded")
+                break
+            except Exception as e:
+                last_error = e
+                print(f"[Agent] Chat attempt {attempt} failed: {e}")
+                if attempt < max_attempts:
+                    print(f"[Agent] Retrying in 0.5 seconds...")
+                    await asyncio.sleep(0.5)
+                else:
+                    print(f"[Agent] All chat attempts failed, using last error")
+                    raise last_error
         
-        # Extract the response from the result
-        if isinstance(result, dict):
-            response = result.get("output", "")
+        print(f"[Agent] Got result from agent: {type(result)}")
+        print(f"[Agent] Result preview: {str(result)[:200]}...")
+        
+        # Use the robust response extraction function from agent.py for consistency
+        from agents.nj_voter_chat_adk.agent import extract_response_text
+        
+        print(f"[Agent] Using robust extraction method for consistency...")
+        response = extract_response_text(result, attempt_num=1, max_attempts=3)
+        
+        # Final validation and cleanup
+        if not response or not response.strip():
+            error_msg = f"Empty response extracted after {max_attempts} attempts. Agent type: {type(agent).__name__}, Result type: {type(result)}"
+            print(f"[Agent] ERROR: {error_msg}")
+            
+            # Try one more extraction method for debugging
+            if hasattr(result, '__dict__'):
+                print(f"[Agent] Result attributes: {list(result.__dict__.keys())}")
+            
+            # Provide user-friendly error with retry suggestion
+            response = "I'm having trouble generating a response right now. This might be a temporary issue. Please try your question again, or try rephrasing it."
         else:
-            response = str(result)
+            response = response.strip()
+            print(f"[Agent] Successfully extracted response: {len(response)} characters")
         
-        # If we got an empty response, provide feedback
-        if not response:
-            response = "I'm having trouble generating a response. Please try again or check the server logs."
-            print("[Agent] Warning: Empty response from agent")
+        print(f"[Agent] Final response validation passed, starting stream")
+        print(f"[Agent] Response preview: {response[:100]}...")
         
-        print(f"[Agent] Streaming response: {len(response)} characters")
-        
-        # Simulate streaming by yielding chunks
+        # Now stream the validated response
         chunk_size = 20  # Characters per chunk
+        total_chunks = (len(response) + chunk_size - 1) // chunk_size
+        
         for i in range(0, len(response), chunk_size):
+            chunk_num = (i // chunk_size) + 1
             chunk = response[i:i + chunk_size]
+            print(f"[Agent] Streaming chunk {chunk_num}/{total_chunks}: '{chunk[:10]}...'")
             yield chunk
             await asyncio.sleep(0.05)  # Small delay for streaming effect
         
-        print("[Agent] Finished streaming response")
+        print("[Agent] Finished streaming response successfully")
             
     except Exception as e:
         print(f"[Agent] Error: {e}")
         import traceback
         traceback.print_exc()
         yield f"Error: {str(e)}"
+
+async def validate_response_before_streaming(message: str, session_id: Optional[str] = None, user_id: str = "anonymous", user_email: str = "anonymous@example.com") -> tuple[bool, str]:
+    """
+    Validate that the agent can generate a proper response before starting streaming.
+    This prevents message_start from being emitted for responses that will fail.
+    
+    Returns:
+        tuple[bool, str]: (is_valid, validation_message)
+    """
+    print(f"[Agent Validation] Starting pre-validation for message: {message[:50]}...")
+    
+    try:
+        # Get the agent instance
+        agent = get_agent()
+        if not agent:
+            return False, "Agent instance not available"
+        
+        print(f"[Agent Validation] Agent instance obtained: {type(agent).__name__}")
+        
+        # Set session ID if provided
+        if session_id:
+            os.environ['CHAT_SESSION_ID'] = session_id
+            print(f"[Agent Validation] Set session ID: {session_id}")
+        
+        # Try to get a response from the agent with timeout
+        result = None
+        try:
+            # Use shorter timeout for validation
+            result = await asyncio.wait_for(
+                asyncio.to_thread(agent.chat, message),
+                timeout=30.0  # 30 second timeout for validation
+            )
+        except asyncio.TimeoutError:
+            return False, "Agent response timeout during validation (30s)"
+        except Exception as e:
+            return False, f"Agent error during validation: {str(e)}"
+        
+        print(f"[Agent Validation] Got result from agent: {type(result)}")
+        
+        # Use the robust response extraction function for consistency
+        from agents.nj_voter_chat_adk.agent import extract_response_text
+        
+        print(f"[Agent Validation] Using robust extraction method...")
+        response = extract_response_text(result, attempt_num=1, max_attempts=3)
+        
+        # Validate the extracted response
+        if not response or not response.strip():
+            return False, f"Empty response during validation. Agent type: {type(agent).__name__}, Result type: {type(result)}"
+        
+        response_length = len(response.strip())
+        if response_length < 5:  # Very short responses might indicate issues
+            return False, f"Response too short during validation ({response_length} chars): '{response}'"
+        
+        print(f"[Agent Validation] Validation passed: {response_length} characters")
+        print(f"[Agent Validation] Response preview: {response[:100]}...")
+        
+        return True, f"Response validated successfully ({response_length} characters)"
+        
+    except Exception as e:
+        error_msg = f"Validation error: {str(e)}"
+        print(f"[Agent Validation] {error_msg}")
+        import traceback
+        traceback.print_exc()
+        return False, error_msg
 
 async def invoke_agent_tool(tool_name: str, args: dict) -> dict:
     """

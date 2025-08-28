@@ -28,6 +28,91 @@ def _set_websocket(ws):
     global _current_websocket
     _current_websocket = ws
 
+def extract_response_text(result, attempt_num=1, max_attempts=3):
+    """
+    Robust response extraction function with multiple fallback methods.
+    
+    Args:
+        result: The response object from the ADK agent
+        attempt_num: Current attempt number for logging
+        max_attempts: Maximum number of extraction attempts
+        
+    Returns:
+        str: Extracted response text or error message
+    """
+    debug_print(f"[EXTRACT] Attempt {attempt_num}/{max_attempts} - Extracting response from {type(result)}")
+    
+    # Method 1: Standard ADK response with content.parts
+    if hasattr(result, 'content') and hasattr(result.content, 'parts'):
+        debug_print(f"[EXTRACT] Method 1: Found content with {len(result.content.parts)} parts")
+        text_parts = []
+        
+        for i, part in enumerate(result.content.parts):
+            part_text_length = len(part.text) if hasattr(part, 'text') and part.text else 0
+            debug_print(f"[EXTRACT] Part {i}: has_text={hasattr(part, 'text')}, text_length={part_text_length}")
+            
+            if hasattr(part, 'text') and part.text:
+                text_parts.append(part.text.strip())
+        
+        if text_parts:
+            final_response = '\n'.join(text_parts)
+            debug_print(f"[EXTRACT] Method 1 SUCCESS: Extracted {len(final_response)} characters")
+            debug_print(f"[EXTRACT] Response preview: {final_response[:200]}...")
+            return final_response
+        else:
+            debug_print(f"[EXTRACT] Method 1 FAILED: No text content in parts")
+    
+    # Method 2: Direct text attribute
+    if hasattr(result, 'text') and result.text:
+        debug_print(f"[EXTRACT] Method 2 SUCCESS: Direct text attribute, {len(result.text)} characters")
+        return result.text.strip()
+    
+    # Method 3: Response as dict with various possible keys
+    if isinstance(result, dict):
+        debug_print(f"[EXTRACT] Method 3: Dict response with keys: {list(result.keys())}")
+        
+        # Try common response keys
+        for key in ['output', 'response', 'text', 'content', 'message', 'answer']:
+            if key in result and result[key]:
+                debug_print(f"[EXTRACT] Method 3 SUCCESS: Found content in '{key}' key")
+                return str(result[key]).strip()
+    
+    # Method 4: List of responses (batch responses)
+    if isinstance(result, list) and result:
+        debug_print(f"[EXTRACT] Method 4: List response with {len(result)} items")
+        
+        # Try to extract from first item if it has expected structure
+        first_item = result[0]
+        if hasattr(first_item, 'content'):
+            return extract_response_text(first_item, attempt_num, max_attempts)
+        elif isinstance(first_item, str):
+            debug_print(f"[EXTRACT] Method 4 SUCCESS: String in list")
+            return first_item.strip()
+    
+    # Method 5: String conversion fallback
+    if result is not None:
+        result_str = str(result).strip()
+        if result_str and result_str != 'None' and len(result_str) > 0:
+            debug_print(f"[EXTRACT] Method 5 SUCCESS: String conversion, {len(result_str)} characters")
+            return result_str
+    
+    # Method 6: Check for nested response attributes
+    for attr in ['response', 'output', 'result', 'data']:
+        if hasattr(result, attr):
+            nested_result = getattr(result, attr)
+            if nested_result:
+                debug_print(f"[EXTRACT] Method 6: Trying nested attribute '{attr}'")
+                return extract_response_text(nested_result, attempt_num, max_attempts)
+    
+    # All methods failed
+    error_msg = f"[EXTRACT] All extraction methods failed for {type(result)}"
+    debug_print(error_msg)
+    
+    if hasattr(result, '__dict__'):
+        debug_print(f"[EXTRACT] Object attributes: {list(result.__dict__.keys())}")
+    
+    return None
+
 def _emit_reasoning_event(event_type: str, data: Dict[str, Any]):
     """Emit a reasoning event through the websocket if available"""
     global _current_websocket
@@ -622,39 +707,50 @@ class NJVoterChatAgent(Agent):
             else:
                 result = agen
             
-            if hasattr(result, 'content') and hasattr(result.content, 'parts'):
-                debug_print(f"[DEBUG] Result has content with {len(result.content.parts)} parts")
-                text_parts = []
-                for i, part in enumerate(result.content.parts):
-                    debug_print(f"[DEBUG] Part {i}: has_text={hasattr(part, 'text')}, text_length={len(part.text) if hasattr(part, 'text') and part.text else 0}")
-                    if hasattr(part, 'text') and part.text:
-                        text_parts.append(part.text)
-                
-                if text_parts:
-                    final_response = '\n'.join(text_parts)
-                    debug_print(f"[DEBUG] Extracted text response: {final_response[:200]}...")
-                    debug_print(f"[DEBUG] Response indicates system instruction awareness: {'data assistant' in final_response.lower() or 'bigquery' in final_response.lower()}")
-                    
-                    if persistent_session_id:
-                        try:
-                            _run_asyncio(self._persistent_sessions.add_message(
-                                session_id=persistent_session_id,
-                                user_id=user_id,
-                                message_type="assistant",
-                                message_text=final_response
-                            ))
-                        except Exception as e:
-                            print(f"Error storing assistant response: {e}")
-                    
-                    return final_response
-                else:
-                    print(f"[WARNING] No text content found in response parts: {result.content.parts}")
-                    error_msg = "No response content available."
-                    return error_msg
+            # Use robust response extraction with retry logic
+            max_extraction_attempts = 3
+            final_response = None
             
-            print(f"[WARNING] Unexpected response structure: {type(result)}")
-            response = str(result)
-            return response
+            for attempt in range(1, max_extraction_attempts + 1):
+                debug_print(f"[CHAT] Response extraction attempt {attempt}/{max_extraction_attempts}")
+                
+                final_response = extract_response_text(result, attempt, max_extraction_attempts)
+                
+                if final_response and len(final_response.strip()) > 0:
+                    break
+                
+                if attempt < max_extraction_attempts:
+                    debug_print(f"[CHAT] Extraction attempt {attempt} failed, retrying...")
+                    # Small delay before retry
+                    import time
+                    time.sleep(0.1)
+            
+            # Validate extracted response
+            if final_response and len(final_response.strip()) > 0:
+                debug_print(f"[CHAT] Successfully extracted response: {len(final_response)} characters")
+                debug_print(f"[CHAT] Response preview: {final_response[:200]}...")
+                debug_print(f"[CHAT] Response indicates system instruction awareness: {'data assistant' in final_response.lower() or 'bigquery' in final_response.lower()}")
+                
+                # Store response in persistent session if configured
+                if persistent_session_id:
+                    try:
+                        _run_asyncio(self._persistent_sessions.add_message(
+                            session_id=persistent_session_id,
+                            user_id=user_id,
+                            message_type="assistant",
+                            message_text=final_response
+                        ))
+                        debug_print(f"[CHAT] Response stored in session {persistent_session_id}")
+                    except Exception as e:
+                        error_print(f"[ERROR] Failed to store assistant response: {e}")
+                
+                return final_response
+            else:
+                # All extraction attempts failed
+                error_print(f"[ERROR] Failed to extract valid response after {max_extraction_attempts} attempts")
+                error_print(f"[ERROR] Result type: {type(result)}")
+                error_msg = "I'm having trouble generating a proper response. The agent appears to be working but response extraction failed. Please try your request again."
+                return error_msg
             
         except Exception as e:
             error_print(f"[ERROR] ADK Runner invocation failed: {e}")

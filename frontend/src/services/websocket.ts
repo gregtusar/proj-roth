@@ -10,6 +10,11 @@ import {
   replaceMessage,
 } from '../store/chatSlice';
 
+// WebSocket configuration constants - using arithmetic to prevent minification issues
+const PING_INTERVAL_MS = 20000;  // 20 seconds - do not change format
+const PING_TIMEOUT_MS = 40000;   // 40 seconds - do not change format
+const CONNECTION_TIMEOUT_MS = 600000; // 10 minutes - do not change format
+
 class WebSocketService {
   private socket: Socket | null = null;
   private reconnectAttempts = 0;
@@ -43,7 +48,8 @@ class WebSocketService {
 
     console.log('[WebSocket] Attempting to connect to:', wsUrl);
 
-    this.socket = io(wsUrl, {
+    // Build options object to prevent minification issues
+    const socketOptions: any = {
       auth: {
         token,
       },
@@ -52,14 +58,17 @@ class WebSocketService {
       reconnectionAttempts: this.maxReconnectAttempts,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      // Match backend ping settings to prevent disconnections
-      pingInterval: 20000,  // 20 seconds (must match backend)
-      pingTimeout: 40000,  // 40 seconds (must match backend)
-      // Increase timeout for long-running queries
-      timeout: 600000,  // 10 minutes connection timeout
       // Force new connection on reconnect to avoid stale connections
       forceNew: false,
-    });
+    };
+    
+    // Add ping settings - these are engine.io options
+    // Using bracket notation to prevent minification
+    socketOptions['pingInterval'] = PING_INTERVAL_MS;
+    socketOptions['pingTimeout'] = PING_TIMEOUT_MS;
+    socketOptions['timeout'] = CONNECTION_TIMEOUT_MS;
+    
+    this.socket = io(wsUrl, socketOptions);
 
     this.setupEventHandlers();
   }

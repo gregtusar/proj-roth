@@ -115,8 +115,8 @@ class WebSocketService {
 
     this.socket.on('message_end', () => {
       store.dispatch(finalizeStreamingMessage());
-      // Clear reasoning events when message completes
-      store.dispatch(clearReasoningEvents());
+      // Don't clear reasoning events - keep them for debugging
+      // store.dispatch(clearReasoningEvents());
     });
     
     // Handle reasoning events for verbose mode

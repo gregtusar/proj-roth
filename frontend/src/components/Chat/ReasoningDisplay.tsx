@@ -10,7 +10,7 @@ const VerboseContainer = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean 
   border: `1px solid ${$isDarkMode ? '#374151' : '#e5e7eb'}`,
   borderRadius: '8px',
   marginBottom: '12px',
-  maxHeight: '240px',
+  maxHeight: '400px', // Increased from 240px
   display: 'flex',
   flexDirection: 'column',
   transition: 'all 0.3s ease',
@@ -118,88 +118,204 @@ const ReasoningDisplay: React.FC = () => {
     // Format the event data in a human-readable way
     if (type === 'tool_start') {
       if (data.tool === 'bigquery_select' && data.query) {
-        // Clean up SQL for display
-        const cleanQuery = data.query
+        // Show full SQL query with proper formatting
+        const formattedQuery = data.query
           .replace(/\s+/g, ' ')
-          .trim()
-          .substring(0, 200);
-        return `Executing SQL: ${cleanQuery}${data.query.length > 200 ? '...' : ''}`;
+          .trim();
+        return (
+          <div style={{ fontFamily: 'monospace', fontSize: '11px' }}>
+            <div style={{ marginBottom: '4px', fontWeight: 'bold' }}>SQL Query:</div>
+            <div style={{ 
+              backgroundColor: isDarkMode ? '#111827' : '#f3f4f6',
+              padding: '8px',
+              borderRadius: '4px',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-all',
+              maxHeight: '200px',
+              overflowY: 'auto'
+            }}>
+              {formattedQuery}
+            </div>
+            {data.parameters && (
+              <div style={{ marginTop: '4px' }}>
+                <span style={{ fontWeight: 'bold' }}>Parameters:</span> {JSON.stringify(data.parameters, null, 2)}
+              </div>
+            )}
+          </div>
+        );
       }
-      if (data.tool === 'google_search' && data.query) {
-        return `Searching Google for: "${data.query}"`;
+      if (data.tool === 'google_search') {
+        return (
+          <div>
+            <div>Searching Google for: "{data.query || 'Unknown query'}"</div>
+            {data.num_results && <div style={{ fontSize: '10px', marginTop: '2px' }}>Max results: {data.num_results}</div>}
+          </div>
+        );
       }
-      if (data.tool === 'geocode_address' && data.address) {
-        return `Geocoding address: ${data.address}`;
+      if (data.tool === 'geocode_address') {
+        return (
+          <div>
+            <div>Geocoding address: {data.address || 'Unknown address'}</div>
+            {data.bounds && <div style={{ fontSize: '10px', marginTop: '2px' }}>Bounds: {JSON.stringify(data.bounds)}</div>}
+          </div>
+        );
       }
       if (data.tool === 'save_voter_list') {
-        return `Saving voter list: ${data.name || 'Untitled'}`;
+        return (
+          <div>
+            <div>Saving voter list: {data.name || 'Untitled'}</div>
+            {data.description && <div style={{ fontSize: '10px', marginTop: '2px' }}>Description: {data.description}</div>}
+            {data.query && (
+              <div style={{ fontSize: '10px', marginTop: '2px' }}>
+                <details>
+                  <summary style={{ cursor: 'pointer' }}>Show query</summary>
+                  <pre style={{ fontSize: '10px', marginTop: '4px' }}>{data.query}</pre>
+                </details>
+              </div>
+            )}
+          </div>
+        );
       }
-      return `Starting tool: ${data.tool || 'Unknown'}`;
+      // Show all parameters for unknown tools
+      return (
+        <div>
+          <div>Starting tool: {data.tool || 'Unknown'}</div>
+          {Object.keys(data).length > 1 && (
+            <div style={{ fontSize: '10px', marginTop: '4px' }}>
+              <details>
+                <summary style={{ cursor: 'pointer' }}>Show parameters</summary>
+                <pre style={{ fontSize: '10px', marginTop: '4px' }}>{JSON.stringify(data, null, 2)}</pre>
+              </details>
+            </div>
+          )}
+        </div>
+      );
     }
     
     if (type === 'tool_result') {
+      const results = [];
+      
       if (data.rows !== undefined) {
-        return `Query returned ${data.rows.toLocaleString()} rows`;
+        results.push(`Query returned ${data.rows.toLocaleString()} rows`);
       }
       if (data.results_count !== undefined) {
-        return `Found ${data.results_count} results`;
+        results.push(`Found ${data.results_count} results`);
       }
-      if (data.result && typeof data.result === 'string') {
-        return data.result.substring(0, 100) + (data.result.length > 100 ? '...' : '');
+      if (data.columns && Array.isArray(data.columns)) {
+        results.push(`Columns: ${data.columns.slice(0, 5).join(', ')}${data.columns.length > 5 ? '...' : ''}`);
       }
-      return 'Tool completed successfully';
+      if (data.execution_time) {
+        results.push(`Execution time: ${data.execution_time.toFixed(2)}s`);
+      }
+      if (data.result) {
+        const resultStr = typeof data.result === 'string' ? data.result : JSON.stringify(data.result, null, 2);
+        results.push(
+          <details style={{ marginTop: '4px' }}>
+            <summary style={{ cursor: 'pointer' }}>Show result data</summary>
+            <pre style={{ fontSize: '10px', marginTop: '4px', maxHeight: '150px', overflowY: 'auto' }}>
+              {resultStr}
+            </pre>
+          </details>
+        );
+      }
+      if (data.error) {
+        results.push(<span style={{ color: '#ef4444' }}>Error: {data.error}</span>);
+      }
+      
+      return results.length > 0 ? (
+        <div style={{ fontSize: '11px' }}>
+          {results.map((item, idx) => (
+            <div key={idx} style={{ marginTop: idx > 0 ? '2px' : 0 }}>{item}</div>
+          ))}
+        </div>
+      ) : 'Tool completed';
     }
     
     if (type === 'tool_error') {
-      return `Error: ${data.error || 'Unknown error occurred'}`;
+      return (
+        <div style={{ color: '#ef4444' }}>
+          <div style={{ fontWeight: 'bold' }}>Error occurred:</div>
+          <div style={{ fontSize: '11px', marginTop: '4px' }}>{data.error || 'Unknown error'}</div>
+          {data.details && (
+            <details style={{ marginTop: '4px' }}>
+              <summary style={{ cursor: 'pointer', fontSize: '10px' }}>Show details</summary>
+              <pre style={{ fontSize: '10px', marginTop: '4px' }}>{JSON.stringify(data.details, null, 2)}</pre>
+            </details>
+          )}
+        </div>
+      );
     }
 
     if (type === 'adk_event') {
       const eventNum = data.event_number || '?';
       const eventType = data.event_type || 'unknown';
       
-      // Parse different event types
-      if (eventType === 'start') {
-        return `ADK Chain Started (Event #${eventNum})`;
-      }
-      if (eventType === 'preview') {
-        // Try to extract meaningful info from preview content
-        if (typeof data.content === 'string') {
-          if (data.content.includes('"error":')) {
-            const errorMatch = data.content.match(/"error":\s*"([^"]+)"/);
-            if (errorMatch) {
-              return `❌ Error: ${errorMatch[1].replace(/\\"/g, '"')}`;
-            }
-          }
-          if (data.content.includes('function_response')) {
-            const funcMatch = data.content.match(/name='([^']+)'/);
-            const funcName = funcMatch ? funcMatch[1] : 'function';
-            return `Processing ${funcName} (${data.size_tokens || 0} tokens)`;
-          }
-        }
-        return `ADK Preview #${eventNum} (${data.size_tokens || 0} tokens)`;
-      }
-      if (eventType === 'completion') {
-        const totalTokens = data.total_size_tokens || data.size_tokens || 0;
-        return `✅ ADK Complete (${totalTokens.toLocaleString()} total tokens)`;
-      }
-      
-      return `ADK Event #${eventNum}: ${eventType}`;
+      return (
+        <div>
+          <div style={{ fontWeight: 'bold' }}>ADK Event #{eventNum}: {eventType}</div>
+          {data.size_tokens && (
+            <div style={{ fontSize: '10px' }}>Tokens: {data.size_tokens.toLocaleString()}</div>
+          )}
+          {data.total_size_tokens && (
+            <div style={{ fontSize: '10px' }}>Total tokens: {data.total_size_tokens.toLocaleString()}</div>
+          )}
+          {data.content && (
+            <details style={{ marginTop: '4px' }}>
+              <summary style={{ cursor: 'pointer', fontSize: '10px' }}>Show raw content</summary>
+              <pre style={{ 
+                fontSize: '10px', 
+                marginTop: '4px',
+                backgroundColor: isDarkMode ? '#111827' : '#f3f4f6',
+                padding: '4px',
+                borderRadius: '4px',
+                maxHeight: '200px',
+                overflowY: 'auto',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all'
+              }}>
+                {typeof data.content === 'string' ? data.content : JSON.stringify(data.content, null, 2)}
+              </pre>
+            </details>
+          )}
+        </div>
+      );
     }
     
     // Try to extract meaningful data from generic objects
     if (data.total_events !== undefined) {
-      return `Chain complete: ${data.total_events} events, ${(data.total_size_tokens || 0).toLocaleString()} tokens`;
+      return (
+        <div>
+          <div>Chain complete: {data.total_events} events</div>
+          {data.total_size_tokens && (
+            <div style={{ fontSize: '10px' }}>Total tokens: {data.total_size_tokens.toLocaleString()}</div>
+          )}
+          {data.total_size_chars && (
+            <div style={{ fontSize: '10px' }}>Total characters: {data.total_size_chars.toLocaleString()}</div>
+          )}
+        </div>
+      );
     }
     
-    // Fallback - show key info if available
-    const keys = Object.keys(data).slice(0, 3);
-    if (keys.length > 0) {
-      const preview = keys.map(k => `${k}: ${JSON.stringify(data[k]).substring(0, 50)}`).join(', ');
-      return preview.length > 100 ? preview.substring(0, 100) + '...' : preview;
-    }
-    
-    return 'Processing...';
+    // For unknown event types, show all data
+    return (
+      <div>
+        <div style={{ fontSize: '11px' }}>Event type: {type}</div>
+        <details style={{ marginTop: '4px' }}>
+          <summary style={{ cursor: 'pointer', fontSize: '10px' }}>Show full data</summary>
+          <pre style={{ 
+            fontSize: '10px', 
+            marginTop: '4px',
+            backgroundColor: isDarkMode ? '#111827' : '#f3f4f6',
+            padding: '4px',
+            borderRadius: '4px',
+            maxHeight: '200px',
+            overflowY: 'auto'
+          }}>
+            {JSON.stringify(data, null, 2)}
+          </pre>
+        </details>
+      </div>
+    );
   };
 
   return (

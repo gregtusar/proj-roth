@@ -188,7 +188,9 @@ def bigquery_select(sql: str) -> Dict[str, Any]:
     # Emit reasoning event if we're in a streaming context
     _emit_reasoning_event("tool_start", {
         "tool": "bigquery_select", 
-        "query": sql[:500] + ("..." if len(sql) > 500 else "")
+        "query": sql,  # Send full query for debugging
+        "truncated": len(sql) > 1000,
+        "query_length": len(sql)
     })
     
     try:
@@ -272,8 +274,9 @@ def google_search(query: str, num_results: int = 5) -> Dict[str, Any]:
     # Emit reasoning event
     _emit_reasoning_event("tool_start", {
         "tool": "google_search",
-        "query": query[:200] + ("..." if len(query) > 200 else ""),
-        "num_results": num_results
+        "query": query,  # Send full query
+        "num_results": num_results,
+        "query_length": len(query)
     })
     
     try:
@@ -453,19 +456,22 @@ class NJVoterChatAgent(Agent):
                     event_type = chunk.__class__.__name__
                     print(f"[ADK EVENT {chunk_count}] Type: {event_type}, Size: {len(chunk_str)} chars")
                     
-                    # Emit ADK reasoning event
+                    # Emit ADK reasoning event with full content for debugging
                     _emit_reasoning_event("adk_event", {
                         "event_number": chunk_count,
                         "event_type": event_type,
                         "size_chars": len(chunk_str),
-                        "size_tokens": len(chunk_str) // 4
+                        "size_tokens": len(chunk_str) // 4,
+                        "content": chunk_str,  # Send full content for debugging
+                        "truncated": len(chunk_str) > 2000
                     })
                     
                     # Check for tool calls
                     if 'tool' in chunk_str.lower() or 'function' in chunk_str.lower():
                         print(f"[TOOL ACTIVITY DETECTED] {chunk_str[:500]}")
                         _emit_reasoning_event("adk_tool_activity", {
-                            "preview": chunk_str[:500]
+                            "content": chunk_str,  # Full content for debugging
+                            "preview": chunk_str[:500] if len(chunk_str) > 500 else chunk_str
                         })
                 
                 last = chunk

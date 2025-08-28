@@ -106,7 +106,7 @@ interface ResultsTableProps {
 const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage] = useState(25);
+  const [rowsPerPage] = useState(10);
 
   // Filter rows based on search
   const filteredRows = useMemo(() => {

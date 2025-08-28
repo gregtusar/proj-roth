@@ -51,6 +51,14 @@ class WebSocketService {
       reconnection: true,
       reconnectionAttempts: this.maxReconnectAttempts,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      // Match backend ping settings to prevent disconnections
+      pingInterval: 20000,  // 20 seconds (must match backend)
+      pingTimeout: 40000,  // 40 seconds (must match backend)
+      // Increase timeout for long-running queries
+      timeout: 600000,  // 10 minutes connection timeout
+      // Force new connection on reconnect to avoid stale connections
+      forceNew: false,
     });
 
     this.setupEventHandlers();

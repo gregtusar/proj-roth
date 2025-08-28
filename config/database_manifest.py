@@ -195,7 +195,7 @@ DATABASE_MANIFEST = {
                 "name_first": "First name from individuals",
                 "name_middle": "Middle name from individuals",
                 "name_last": "Last name from individuals", 
-                "standardized_address": "Full address from addresses",
+                "standardized_address": "Full address from addresses (USE THIS for complete address - there is NO 'full_address' field)",
                 "street_number": "From addresses",
                 "street_name": "From addresses",
                 "city": "From addresses (USE THIS not municipal_name)",
@@ -210,6 +210,7 @@ DATABASE_MANIFEST = {
                 "No need to write complex joins - this view does it for you",
                 "IMPORTANT: Use 'county_name' NOT 'county' for filtering by county",
                 "IMPORTANT: Use 'city' field not 'municipal_name' which is often NULL",
+                "IMPORTANT: Use 'standardized_address' for full address (there is NO 'full_address' field)",
                 "Search by name using: WHERE standardized_name LIKE '%LASTNAME, FIRSTNAME%'"
             ]
         },

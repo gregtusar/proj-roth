@@ -11,8 +11,8 @@ sio = socketio.AsyncServer(
     logger=settings.DEBUG,
     engineio_logger=settings.DEBUG,
     # Extended ping/pong settings to prevent disconnections
-    ping_interval=25,  # Send ping every 25 seconds (Cloud Run timeout is 60s)
-    ping_timeout=120,  # Wait 120 seconds for pong response
+    ping_interval=20,  # Send ping every 20 seconds (well under Cloud Run's 60s timeout)
+    ping_timeout=40,  # Wait 40 seconds for pong response
     max_http_buffer_size=10 * 1024 * 1024  # 10MB buffer for large messages
 )
 

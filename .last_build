@@ -1,2 +1,2 @@
-IMAGE_TAG=27328223-1756335880
-IMAGE_URL=us-central1-docker.pkg.dev/proj-roth/nj-voter-chat/nj-voter-chat
+IMAGE_TAG=981d44c3-1756339421
+IMAGE_URL=us-central1-docker.pkg.dev/proj-roth/nj-voter-chat-app/nj-voter-chat-app

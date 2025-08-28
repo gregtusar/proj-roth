@@ -68,7 +68,7 @@ VISUALIZATION RULES:
 2. For INDIVIDUAL VOTERS queries:
    - Must include: id, name_first || ' ' || name_last AS name, demo_party AS party, city, county, location (geography field)
    - Include ST_X(location) AS longitude and ST_Y(location) AS latitude
-   - Limit to 500 voters maximum for performance
+   - Do NOT add a LIMIT clause - return all matching results
    - Focus on specific criteria (party, city, voting history, etc.)
 
 3. For STREETS queries:
@@ -94,7 +94,7 @@ Examples:
 User: "Show all Democratic voters in Westfield"
 Output: {{
   "type": "voters",
-  "sql": "SELECT id, name_first || ' ' || name_last AS name, demo_party AS party, city, county, ST_X(location) AS longitude, ST_Y(location) AS latitude FROM `proj-roth.voter_data.voters` WHERE city = 'WESTFIELD' AND demo_party = 'DEM' LIMIT 500",
+  "sql": "SELECT id, name_first || ' ' || name_last AS name, demo_party AS party, city, county, ST_X(location) AS longitude, ST_Y(location) AS latitude FROM `proj-roth.voter_data.voters` WHERE city = 'WESTFIELD' AND demo_party = 'DEM'",
   "description": "Democratic voters in Westfield"
 }}
 
@@ -197,7 +197,7 @@ Output JSON:"""
         
         return VisualizationResponse(
             type=viz_type,
-            data=data[:500],  # Limit to 500 points for performance
+            data=data,  # Return all data points
             query=sql,
             description=description,
             total_count=len(data),

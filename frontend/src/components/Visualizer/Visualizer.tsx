@@ -291,6 +291,35 @@ const Visualizer: React.FC = () => {
                 <br />
                 <strong>Results:</strong> {visualizationData.total_count.toLocaleString()} {visualizationData.type}
               </QueryInfo>
+              
+              {/* SQL Query Display */}
+              <div style={{
+                marginTop: '16px',
+                marginBottom: '16px',
+                padding: '12px',
+                backgroundColor: isDarkMode ? '#111827' : '#f9fafb',
+                borderRadius: '6px',
+                border: isDarkMode ? '1px solid #374151' : '1px solid #e5e7eb',
+              }}>
+                <div style={{ 
+                  fontSize: '12px', 
+                  fontWeight: 600,
+                  color: isDarkMode ? '#9ca3af' : '#6b7280',
+                  marginBottom: '8px'
+                }}>
+                  SQL Query:
+                </div>
+                <pre style={{
+                  margin: 0,
+                  fontSize: '11px',
+                  color: isDarkMode ? '#d1d5db' : '#4b5563',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  fontFamily: 'Monaco, Consolas, "Courier New", monospace',
+                }}>
+                  {visualizationData.query}
+                </pre>
+              </div>
 
               {sampleData.length > 0 && (
                 <>

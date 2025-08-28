@@ -142,6 +142,7 @@ deploy_frontend() {
         --platform managed \
         --region ${REGION} \
         --project ${PROJECT_ID} \
+        --timeout 600 \
         --no-traffic
     
     if [ $? -eq 0 ]; then

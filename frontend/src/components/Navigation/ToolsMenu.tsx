@@ -40,6 +40,7 @@ const ToolsMenu: React.FC<ToolsMenuProps> = ({ isCompact = false }) => {
     { id: 'campaign', icon: '📢', label: 'Campaign Manager', path: '/campaign' },
     { id: 'abtesting', icon: '🧪', label: 'A/B Testing Tool', path: '/ab-testing' },
     { id: 'streetmap', icon: '🗺️', label: 'Street Map', path: '/street-map' },
+    { id: 'visualizer', icon: '🎯', label: 'Visualizer', path: '/visualizer' },
     { id: 'settings', icon: '⚙️', label: 'Settings', path: '/settings' },
   ];
 

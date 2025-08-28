@@ -10,7 +10,6 @@ from api.auth import get_current_user
 from services.video_asset_service import get_video_asset_service
 from services.video_processing_simple import process_video_background
 from models.video_asset import (
-    CreateVideoRequest,
     UpdateVideoRequest,
     VideoListResponse,
     VideoDetailResponse,
@@ -192,10 +191,8 @@ async def get_upload_url(
 
 @router.post("/")
 async def create_video(
-    request: CreateVideoRequest,
-    gcs_path: str,
-    original_filename: str,
-    background_tasks: BackgroundTasks,
+    request: dict = Body(...),
+    background_tasks: BackgroundTasks = None,
     current_user: dict = Depends(get_current_user)
 ):
     """Create a new video asset after successful upload"""
@@ -204,25 +201,33 @@ async def create_video(
     if not service.connected:
         raise HTTPException(status_code=503, detail="Service not available")
     
+    # Extract parameters from request body
+    gcs_path = request.get("gcs_path")
+    original_filename = request.get("original_filename")
+    
+    if not gcs_path or not original_filename:
+        raise HTTPException(status_code=400, detail="Missing required fields: gcs_path and original_filename")
+    
     try:
         # Create video asset record
         video = await service.create_video_asset(
             user_id=current_user["id"],
             user_email=current_user["email"],
-            title=request.title,
+            title=request.get("title", ""),
             original_filename=original_filename,
             gcs_path=gcs_path,
-            description=request.description,
-            tags=request.tags,
-            campaign=request.campaign
+            description=request.get("description"),
+            tags=request.get("tags", []),
+            campaign=request.get("campaign")
         )
         
-        # Queue background processing
-        background_tasks.add_task(
-            process_video_background,
-            video_id=video.id,
-            gcs_path=gcs_path
-        )
+        # Queue background processing if background_tasks is available
+        if background_tasks:
+            background_tasks.add_task(
+                process_video_background,
+                video_id=video.id,
+                gcs_path=gcs_path
+            )
         
         return {
             "id": video.id,

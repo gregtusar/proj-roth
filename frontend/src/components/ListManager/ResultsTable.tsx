@@ -127,6 +127,16 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
   }, [filteredRows, currentPage, rowsPerPage]);
 
   const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+  
+  // Debug logging
+  console.log('[ResultsTable] Debug info:', {
+    totalRows: results.rows.length,
+    filteredRows: filteredRows.length,
+    rowsPerPage,
+    totalPages,
+    currentPage,
+    showPagination: totalPages > 1
+  });
 
   // Prepare CSV data
   const csvData = useMemo(() => {
@@ -209,19 +219,27 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ results }) => {
         </Table>
       </TableContainer>
 
-      {totalPages > 1 && (
+      {filteredRows.length > 0 && (
         <PaginationContainer>
-          <Pagination
-            numPages={totalPages}
-            currentPage={currentPage}
-            onPageChange={({ nextPage }) => setCurrentPage(nextPage)}
-            size={SIZE.compact}
-          />
-          <InfoText>
-            Showing {((currentPage - 1) * rowsPerPage + 1).toLocaleString()} -{' '}
-            {Math.min(currentPage * rowsPerPage, filteredRows.length).toLocaleString()}{' '}
-            of {filteredRows.length.toLocaleString()} rows
-          </InfoText>
+          {totalPages > 1 ? (
+            <>
+              <Pagination
+                numPages={totalPages}
+                currentPage={currentPage}
+                onPageChange={({ nextPage }) => setCurrentPage(nextPage)}
+                size={SIZE.compact}
+              />
+              <InfoText>
+                Showing {((currentPage - 1) * rowsPerPage + 1).toLocaleString()} -{' '}
+                {Math.min(currentPage * rowsPerPage, filteredRows.length).toLocaleString()}{' '}
+                of {filteredRows.length.toLocaleString()} rows
+              </InfoText>
+            </>
+          ) : (
+            <InfoText style={{ textAlign: 'center', width: '100%' }}>
+              Showing all {filteredRows.length.toLocaleString()} rows
+            </InfoText>
+          )}
         </PaginationContainer>
       )}
 

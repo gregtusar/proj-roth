@@ -160,6 +160,15 @@ async def get_upload_url(
             content_type=content_type
         )
         
+        # Check if we should use proxy upload instead
+        if upload_url == "USE_PROXY_UPLOAD":
+            return {
+                "upload_url": "USE_PROXY_UPLOAD",
+                "gcs_path": gcs_path,
+                "expires_in": 3600,
+                "proxy_endpoint": "/api/videos/upload-file"
+            }
+        
         return {
             "upload_url": upload_url,
             "gcs_path": gcs_path,
@@ -168,7 +177,18 @@ async def get_upload_url(
         
     except Exception as e:
         logger.error(f"Error generating upload URL: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to generate upload URL: {str(e)}")
+        # Instead of failing completely, fall back to proxy upload
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        safe_filename = filename.replace(" ", "_").replace("/", "_")
+        gcs_path = f"videos/raw/{timestamp}_{safe_filename}"
+        
+        return {
+            "upload_url": "USE_PROXY_UPLOAD",
+            "gcs_path": gcs_path,
+            "expires_in": 3600,
+            "proxy_endpoint": "/api/videos/upload-file",
+            "error_fallback": True
+        }
 
 @router.post("/")
 async def create_video(

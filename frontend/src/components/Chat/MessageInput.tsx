@@ -3,10 +3,13 @@ import { useDispatch, useSelector } from 'react-redux';
 import { styled } from 'baseui';
 import { Textarea, SIZE } from 'baseui/textarea';
 import { Button, KIND, SIZE as ButtonSize } from 'baseui/button';
+import { Checkbox } from 'baseui/checkbox';
 import { RootState, AppDispatch, store } from '../../store';
-import { addMessage } from '../../store/chatSlice';
+import { addMessage, toggleVerboseMode, clearReasoningEvents } from '../../store/chatSlice';
 import wsService from '../../services/websocket';
 import { Message } from '../../types/chat';
+import ReasoningDisplay from './ReasoningDisplay';
+import { Terminal } from 'lucide-react';
 
 const Container = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
   padding: '16px 24px',
@@ -33,10 +36,20 @@ const CharCount = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => (
   transition: 'color 0.3s ease',
 }));
 
+const VerboseToggleContainer = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  marginBottom: '12px',
+  fontSize: '14px',
+  color: $isDarkMode ? '#a0a0a0' : '#666',
+  transition: 'color 0.3s ease',
+}));
+
 const MessageInput: React.FC = () => {
   const [message, setMessage] = useState('');
   const dispatch = useDispatch<AppDispatch>();
-  const { messages, isLoading, currentSessionId } = useSelector(
+  const { messages, isLoading, currentSessionId, verboseMode, currentReasoning } = useSelector(
     (state: RootState) => state.chat
   );
   const { isDarkMode } = useSelector((state: RootState) => state.settings);
@@ -44,6 +57,9 @@ const MessageInput: React.FC = () => {
 
   const handleSend = () => {
     if (!message.trim() || isLoading) return;
+
+    // Clear previous reasoning events when starting new message
+    dispatch(clearReasoningEvents());
 
     // Don't add message to store yet - wait for backend confirmation
     // This ensures we have the correct session_id
@@ -82,6 +98,40 @@ const MessageInput: React.FC = () => {
 
   return (
     <Container $isDarkMode={isDarkMode}>
+      {/* Verbose mode toggle */}
+      <VerboseToggleContainer $isDarkMode={isDarkMode}>
+        <Checkbox
+          checked={verboseMode}
+          onChange={e => dispatch(toggleVerboseMode())}
+          overrides={{
+            Root: {
+              style: {
+                marginRight: '8px',
+              },
+            },
+            Label: {
+              style: {
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              },
+            },
+          }}
+        >
+          <Terminal size={16} />
+          Verbose Mode
+        </Checkbox>
+        {verboseMode && (
+          <span style={{ fontSize: '12px', marginLeft: '8px' }}>
+            (Shows agent reasoning and tool usage)
+          </span>
+        )}
+      </VerboseToggleContainer>
+      
+      {/* Reasoning display - shows above input when active */}
+      {isLoading && currentReasoning && <ReasoningDisplay />}
+      
       <InputContainer>
         <StyledTextarea
           inputRef={inputRef}

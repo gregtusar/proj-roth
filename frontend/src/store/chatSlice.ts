@@ -9,6 +9,9 @@ const initialState: ChatState = {
   isLoading: false,
   streamingMessage: null,
   error: null,
+  verboseMode: false,
+  reasoningEvents: [],
+  currentReasoning: null,
 };
 
 export const sendMessage = createAsyncThunk(
@@ -125,6 +128,23 @@ const chatSlice = createSlice({
       // The actual navigation will be handled by a component listening to this
       state.currentSessionId = action.payload.session_id;
     },
+    toggleVerboseMode: (state) => {
+      state.verboseMode = !state.verboseMode;
+    },
+    setVerboseMode: (state, action: PayloadAction<boolean>) => {
+      state.verboseMode = action.payload;
+    },
+    addReasoningEvent: (state, action: PayloadAction<{ type: string; data: Record<string, any>; timestamp: number }>) => {
+      state.reasoningEvents.push(action.payload);
+      state.currentReasoning = action.payload;
+    },
+    clearReasoningEvents: (state) => {
+      state.reasoningEvents = [];
+      state.currentReasoning = null;
+    },
+    setCurrentReasoning: (state, action: PayloadAction<{ type: string; data: Record<string, any>; timestamp: number } | null>) => {
+      state.currentReasoning = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -199,6 +219,11 @@ export const {
   updateSession,
   replaceMessage,
   sessionCreatedSuccess,
+  toggleVerboseMode,
+  setVerboseMode,
+  addReasoningEvent,
+  clearReasoningEvents,
+  setCurrentReasoning,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

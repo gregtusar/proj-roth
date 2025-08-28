@@ -149,6 +149,20 @@ async def send_message(sid, data):
         
         # Import agent and process message
         from services.agent_service import process_message_stream
+        from agents.nj_voter_chat_adk.agent import _set_websocket
+        
+        # Set the websocket reference for reasoning events
+        # Create a wrapper to emit to specific sid
+        class WebSocketWrapper:
+            def __init__(self, sio_instance, sid_target):
+                self.sio = sio_instance
+                self.sid = sid_target
+            
+            async def emit(self, event, data):
+                await self.sio.emit(event, data, room=self.sid)
+        
+        wrapper = WebSocketWrapper(sio, sid)
+        _set_websocket(wrapper)
         
         # Track this message as in-flight for recovery purposes
         message_key = f"{session_id}:{user_msg.message_id if 'user_msg' in locals() else 'unknown'}"

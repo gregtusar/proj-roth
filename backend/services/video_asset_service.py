@@ -368,17 +368,51 @@ class VideoAssetService:
         safe_filename = filename.replace(" ", "_").replace("/", "_")
         gcs_path = f"videos/raw/{timestamp}_{safe_filename}"
         
-        blob = self.bucket.blob(gcs_path)
-        
-        # Generate signed URL for upload
-        url = blob.generate_signed_url(
-            version="v4",
-            expiration=expiration,
-            method="PUT",
-            content_type=content_type
-        )
-        
-        return url, gcs_path
+        try:
+            # Try to create a service account client with impersonation
+            from google.auth import impersonated_credentials
+            from google.auth import default
+            
+            # Get default credentials
+            source_credentials, project = default()
+            
+            # Service account to impersonate (the default service account)
+            target_service_account = f"{self.project_id}@appspot.gserviceaccount.com"
+            
+            # Create impersonated credentials
+            target_credentials = impersonated_credentials.Credentials(
+                source_credentials=source_credentials,
+                target_principal=target_service_account,
+                target_scopes=['https://www.googleapis.com/auth/cloud-platform'],
+                lifetime=3600
+            )
+            
+            # Create a new storage client with impersonated credentials
+            impersonated_client = storage.Client(
+                project=self.project_id,
+                credentials=target_credentials
+            )
+            
+            # Get blob with impersonated client
+            blob = impersonated_client.bucket(self.bucket_name).blob(gcs_path)
+            
+            # Generate signed URL
+            url = blob.generate_signed_url(
+                version="v4",
+                expiration=expiration,
+                method="PUT",
+                content_type=content_type
+            )
+            
+            logger.info(f"Successfully generated signed URL using impersonation for {gcs_path}")
+            return url, gcs_path
+            
+        except Exception as e:
+            logger.warning(f"Failed to generate signed URL with impersonation: {e}")
+            
+            # Fallback: Return a marker that tells the frontend to use the proxy upload
+            # This will trigger the frontend to use the /upload-file endpoint instead
+            return "USE_PROXY_UPLOAD", gcs_path
     
     def get_public_url(self, gcs_path: str) -> str:
         """Get public URL for a GCS object"""

@@ -122,38 +122,105 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadComplete, onClose }) 
         upload_url: string;
         gcs_path: string;
         expires_in: number;
+        proxy_endpoint?: string;
+        error_fallback?: boolean;
       }>('/videos/upload-url', {
         filename: file.name,
         content_type: file.type
       });
 
-      // Step 2: Upload file directly to GCS
-      const xhr = new XMLHttpRequest();
-      
-      await new Promise<void>((resolve, reject) => {
-        xhr.upload.addEventListener('progress', (e) => {
-          if (e.lengthComputable) {
-            const progress = Math.round((e.loaded / e.total) * 100);
-            setUploadingFiles(prev =>
-              prev.map(u => u.file === file ? { ...u, progress } : u)
-            );
+      // Step 2: Upload file - either directly to GCS or via proxy
+      if (uploadUrlResponse.upload_url === 'USE_PROXY_UPLOAD') {
+        // Use proxy upload endpoint
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('title', metadata.title);
+        formData.append('description', metadata.description || '');
+        formData.append('tags', metadata.tags.join(','));
+        if (metadata.campaign) {
+          formData.append('campaign', metadata.campaign);
+        }
+
+        const xhr = new XMLHttpRequest();
+        
+        const proxyResponse = await new Promise<any>((resolve, reject) => {
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+              const progress = Math.round((e.loaded / e.total) * 100);
+              setUploadingFiles(prev =>
+                prev.map(u => u.file === file ? { ...u, progress } : u)
+              );
+            }
+          });
+
+          xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+              try {
+                const response = JSON.parse(xhr.responseText);
+                resolve(response);
+              } catch (e) {
+                reject(new Error('Failed to parse server response'));
+              }
+            } else {
+              reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
+          });
+
+          xhr.addEventListener('error', () => reject(new Error('Upload failed')));
+
+          // Get auth token for proxy upload
+          const token = localStorage.getItem('auth_token');
+          
+          xhr.open('POST', '/api/videos/upload-file');
+          if (token) {
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
           }
+          xhr.send(formData);
         });
+        
+        // Mark as complete (proxy endpoint handles everything)
+        setUploadingFiles(prev =>
+          prev.map(u => u.file === file 
+            ? { ...u, status: 'complete', videoId: proxyResponse.id }
+            : u
+          )
+        );
 
-        xhr.addEventListener('load', () => {
-          if (xhr.status === 200) {
-            resolve();
-          } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
-          }
+        if (onUploadComplete) {
+          onUploadComplete(proxyResponse.id);
+        }
+        
+        return; // Exit early, proxy handled everything
+        
+      } else {
+        // Original direct upload to GCS
+        const xhr = new XMLHttpRequest();
+        
+        await new Promise<void>((resolve, reject) => {
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+              const progress = Math.round((e.loaded / e.total) * 100);
+              setUploadingFiles(prev =>
+                prev.map(u => u.file === file ? { ...u, progress } : u)
+              );
+            }
+          });
+
+          xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+              resolve();
+            } else {
+              reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
+          });
+
+          xhr.addEventListener('error', () => reject(new Error('Upload failed')));
+
+          xhr.open('PUT', uploadUrlResponse.upload_url);
+          xhr.setRequestHeader('Content-Type', file.type);
+          xhr.send(file);
         });
-
-        xhr.addEventListener('error', () => reject(new Error('Upload failed')));
-
-        xhr.open('PUT', uploadUrlResponse.upload_url);
-        xhr.setRequestHeader('Content-Type', file.type);
-        xhr.send(file);
-      });
+      }
 
       // Step 3: Create video asset record
       setUploadingFiles(prev =>

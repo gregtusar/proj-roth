@@ -20,6 +20,34 @@ from .geocoding_tool import GeocodingTool
 from .voter_list_tool import VoterListTool
 from .debug_config import debug_print, error_print
 
+# Global reference to the current websocket for reasoning events
+_current_websocket = None
+
+def _set_websocket(ws):
+    """Set the current websocket for streaming reasoning events"""
+    global _current_websocket
+    _current_websocket = ws
+
+def _emit_reasoning_event(event_type: str, data: Dict[str, Any]):
+    """Emit a reasoning event through the websocket if available"""
+    global _current_websocket
+    if _current_websocket:
+        try:
+            # Check if we're in an async context
+            try:
+                loop = asyncio.get_running_loop()
+                # We're in an async context, create task
+                asyncio.create_task(_current_websocket.emit('reasoning_event', {
+                    'type': event_type,
+                    'data': data,
+                    'timestamp': time.time()
+                }))
+            except RuntimeError:
+                # No async loop, we're in sync context - just log for now
+                debug_print(f"[DEBUG] Reasoning event (sync): {event_type} - {data}")
+        except Exception as e:
+            debug_print(f"[DEBUG] Failed to emit reasoning event: {e}")
+
 _bq_tool = None
 _search_tool = None
 _geocoding_tool = None
@@ -62,12 +90,43 @@ def bigquery_select(sql: str) -> Dict[str, Any]:
                        original SQL, and mapped SQL. If an error occurs, returns error information
                        instead of raising an exception.
     """
+    print(f"\n[TOOL INVOKED] bigquery_select")
+    print(f"[SQL QUERY] {sql[:500]}...")
+    
+    # Emit reasoning event if we're in a streaming context
+    _emit_reasoning_event("tool_start", {
+        "tool": "bigquery_select", 
+        "query": sql[:500] + ("..." if len(sql) > 500 else "")
+    })
+    
     try:
         result = _get_bq_tool().run(sql)
         debug_print(f"[DEBUG] BigQuery tool returned: {type(result)}, keys: {result.keys() if isinstance(result, dict) else 'N/A'}")
+        
+        # Log result size
+        if isinstance(result, dict):
+            row_count = result.get('row_count', 0)
+            result_str = str(result)
+            print(f"[TOOL RESULT] Rows returned: {row_count}")
+            print(f"[TOOL RESULT SIZE] {len(result_str)} characters / ~{len(result_str)//4} tokens")
+            if len(result_str) > 100000:
+                print(f"[WARNING] Large result: {len(result_str)} characters!")
+            
+            # Emit reasoning event with results summary
+            _emit_reasoning_event("tool_result", {
+                "tool": "bigquery_select",
+                "rows": row_count,
+                "size_chars": len(result_str),
+                "size_tokens": len(result_str) // 4
+            })
+        
         return result
     except Exception as e:
         error_print(f"[ERROR] BigQuery tool execution failed: {e}")
+        _emit_reasoning_event("tool_error", {
+            "tool": "bigquery_select",
+            "error": str(e)
+        })
         return {
             "error": f"BigQuery tool execution failed: {str(e)}",
             "sql": sql,
@@ -114,13 +173,41 @@ def google_search(query: str, num_results: int = 5) -> Dict[str, Any]:
         Dict[str, Any]: Search results including title, snippet, and link for each result.
                        Returns error information if search fails or API is not configured.
     """
+    print(f"\n[TOOL INVOKED] google_search")
+    print(f"[SEARCH QUERY] {query[:200]}")
+    print(f"[NUM RESULTS] {num_results}")
+    
+    # Emit reasoning event
+    _emit_reasoning_event("tool_start", {
+        "tool": "google_search",
+        "query": query[:200] + ("..." if len(query) > 200 else ""),
+        "num_results": num_results
+    })
+    
     try:
         # Use the NJ-specific search method to ensure NJ context
         result = _get_search_tool().search_nj_specific(query, num_results)
         debug_print(f"[DEBUG] Google search returned {result.get('result_count', 0)} results for query: {query[:100]}")
+        
+        # Log result size
+        result_str = str(result)
+        print(f"[TOOL RESULT SIZE] {len(result_str)} characters / ~{len(result_str)//4} tokens")
+        
+        # Emit reasoning event with results
+        _emit_reasoning_event("tool_result", {
+            "tool": "google_search",
+            "results_count": result.get('result_count', 0),
+            "size_chars": len(result_str),
+            "size_tokens": len(result_str) // 4
+        })
+        
         return result
     except Exception as e:
         error_print(f"[ERROR] Google search failed: {e}")
+        _emit_reasoning_event("tool_error", {
+            "tool": "google_search",
+            "error": str(e)
+        })
         return {
             "error": f"Google search failed: {str(e)}",
             "query": query,
@@ -201,7 +288,10 @@ class NJVoterChatAgent(Agent):
         os.environ["GOOGLE_CLOUD_PROJECT"] = PROJECT_ID
         os.environ["GOOGLE_CLOUD_LOCATION"] = REGION
         
+        # Log system prompt size
+        print(f"[SYSTEM PROMPT SIZE] {len(SYSTEM_PROMPT)} characters / ~{len(SYSTEM_PROMPT)//4} tokens")
         debug_print(f"[DEBUG] Initializing agent with instruction: {SYSTEM_PROMPT[:100]}...")
+        
         super().__init__(
             name="nj_voter_chat", 
             model=MODEL, 
@@ -254,8 +344,41 @@ class NJVoterChatAgent(Agent):
 
         async def _consume_async_gen(agen):
             last = None
+            chunk_count = 0
+            total_size = 0
             async for chunk in agen:
+                chunk_count += 1
+                chunk_str = str(chunk)
+                total_size += len(chunk_str)
+                
+                # Log significant events
+                if hasattr(chunk, '__class__'):
+                    event_type = chunk.__class__.__name__
+                    print(f"[ADK EVENT {chunk_count}] Type: {event_type}, Size: {len(chunk_str)} chars")
+                    
+                    # Emit ADK reasoning event
+                    _emit_reasoning_event("adk_event", {
+                        "event_number": chunk_count,
+                        "event_type": event_type,
+                        "size_chars": len(chunk_str),
+                        "size_tokens": len(chunk_str) // 4
+                    })
+                    
+                    # Check for tool calls
+                    if 'tool' in chunk_str.lower() or 'function' in chunk_str.lower():
+                        print(f"[TOOL ACTIVITY DETECTED] {chunk_str[:500]}")
+                        _emit_reasoning_event("adk_tool_activity", {
+                            "preview": chunk_str[:500]
+                        })
+                
                 last = chunk
+            
+            print(f"[ADK COMPLETE] Total events: {chunk_count}, Total size: {total_size} chars / ~{total_size//4} tokens")
+            _emit_reasoning_event("adk_complete", {
+                "total_events": chunk_count,
+                "total_size_chars": total_size,
+                "total_size_tokens": total_size // 4
+            })
             return last
 
         # Get user context
@@ -352,16 +475,24 @@ class NJVoterChatAgent(Agent):
                 role="user",
                 parts=[types.Part(text=prompt)]
             )
-            debug_print(f"[DEBUG] User prompt being sent with proper ADK message format: {prompt[:200]}...")
             
+            # Log token estimation for the prompt
+            print(f"\n[AGENT INVOCATION] Starting ADK agent processing")
+            print(f"[USER PROMPT] {prompt[:200]}{'...' if len(prompt) > 200 else ''}")
+            print(f"[PROMPT SIZE] {len(prompt)} characters / ~{len(prompt)//4} tokens")
+            print(f"[SESSION ID] {self._session_id}")
+            
+            debug_print(f"[DEBUG] User prompt being sent with proper ADK message format: {prompt[:200]}...")
             debug_print(f"[DEBUG] Message content structure: {message_content}")
             debug_print(f"[DEBUG] Session ID: {self._session_id}, User ID: {self._user_id}")
-            
             debug_print(f"[DEBUG] About to call runner.run_async with RunConfig")
             
             # Configure generation parameters via RunConfig
             max_tokens = int(os.environ.get("ADK_MAX_OUTPUT_TOKENS", "32768"))
             run_config = RunConfig()
+            
+            # Log RunConfig details
+            print(f"[RUN CONFIG] max_llm_calls: {run_config.max_llm_calls}")
             
             # Set generation parameters if available in RunConfig
             if hasattr(run_config, 'generation_config'):

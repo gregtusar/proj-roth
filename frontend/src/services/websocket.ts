@@ -8,6 +8,8 @@ import {
   setCurrentSession,
   updateSession,
   replaceMessage,
+  addReasoningEvent,
+  clearReasoningEvents,
 } from '../store/chatSlice';
 
 // WebSocket configuration constants - using arithmetic to prevent minification issues
@@ -113,6 +115,13 @@ class WebSocketService {
 
     this.socket.on('message_end', () => {
       store.dispatch(finalizeStreamingMessage());
+      // Clear reasoning events when message completes
+      store.dispatch(clearReasoningEvents());
+    });
+    
+    // Handle reasoning events for verbose mode
+    this.socket.on('reasoning_event', (event: any) => {
+      store.dispatch(addReasoningEvent(event));
     });
 
     this.socket.on('message', (message: any) => {

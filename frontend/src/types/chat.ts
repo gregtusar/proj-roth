@@ -31,6 +31,12 @@ export interface ChatSession {
   metadata?: Record<string, any>;
 }
 
+export interface ReasoningEvent {
+  type: string;
+  data: Record<string, any>;
+  timestamp: number;
+}
+
 export interface ChatState {
   messages: Message[];
   sessions: ChatSession[];
@@ -38,4 +44,7 @@ export interface ChatState {
   isLoading: boolean;
   streamingMessage: string | null;
   error: string | null;
+  verboseMode: boolean;
+  reasoningEvents: ReasoningEvent[];
+  currentReasoning: ReasoningEvent | null;
 }

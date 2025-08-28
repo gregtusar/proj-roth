@@ -130,7 +130,7 @@ const MessageInput: React.FC = () => {
       </VerboseToggleContainer>
       
       {/* Reasoning display - shows above input when active */}
-      {isLoading && currentReasoning && <ReasoningDisplay />}
+      {verboseMode && <ReasoningDisplay />}
       
       <InputContainer>
         <StyledTextarea

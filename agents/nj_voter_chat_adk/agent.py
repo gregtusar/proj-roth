@@ -53,6 +53,10 @@ def extract_response_text(result, attempt_num=1, max_attempts=3):
             
             if hasattr(part, 'text') and part.text:
                 text_parts.append(part.text.strip())
+            elif hasattr(part, 'text') and part.text == '':
+                # Log when we get an explicitly empty text response from ADK
+                debug_print(f"[EXTRACT] WARNING: Part {i} has empty text - ADK returned no content")
+                error_print(f"[EXTRACT] ADK returned empty response. This often happens when the model cannot process the request.")
         
         if text_parts:
             final_response = '\n'.join(text_parts)
@@ -61,6 +65,9 @@ def extract_response_text(result, attempt_num=1, max_attempts=3):
             return final_response
         else:
             debug_print(f"[EXTRACT] Method 1 FAILED: No text content in parts")
+            # Check if we got empty parts (ADK returned but with no content)
+            if any(hasattr(part, 'text') and part.text == '' for part in result.content.parts):
+                error_print(f"[EXTRACT] ADK returned empty text parts - likely a processing error")
     
     # Method 2: Direct text attribute
     if hasattr(result, 'text') and result.text:
@@ -428,6 +435,8 @@ class NJVoterChatAgent(Agent):
                 return asyncio.run(coro)
 
         async def _consume_async_gen(agen):
+            # Collect ALL chunks, not just the last one!
+            all_chunks = []
             last = None
             chunk_count = 0
             total_size = 0
@@ -435,6 +444,9 @@ class NJVoterChatAgent(Agent):
                 chunk_count += 1
                 chunk_str = str(chunk)
                 total_size += len(chunk_str)
+                
+                # Store ALL chunks for proper processing
+                all_chunks.append(chunk)
                 
                 # Log significant events
                 if hasattr(chunk, '__class__'):
@@ -464,6 +476,19 @@ class NJVoterChatAgent(Agent):
                 "total_size_chars": total_size,
                 "total_size_tokens": total_size // 4
             })
+            
+            # CRITICAL FIX: Return the chunk with actual content, not just the last chunk
+            # Try to find a chunk with meaningful content
+            for chunk in all_chunks:
+                if hasattr(chunk, 'content') and hasattr(chunk.content, 'parts'):
+                    # Check if this chunk has non-empty text
+                    for part in chunk.content.parts:
+                        if hasattr(part, 'text') and part.text and part.text.strip():
+                            print(f"[ADK] Found content chunk with {len(part.text)} chars")
+                            return chunk
+            
+            # If no content chunk found, return the last chunk (original behavior)
+            print(f"[ADK] No content chunk found, returning last chunk")
             return last
 
         # Get user context
@@ -749,7 +774,17 @@ class NJVoterChatAgent(Agent):
                 # All extraction attempts failed
                 error_print(f"[ERROR] Failed to extract valid response after {max_extraction_attempts} attempts")
                 error_print(f"[ERROR] Result type: {type(result)}")
-                error_msg = "I'm having trouble generating a proper response. The agent appears to be working but response extraction failed. Please try your request again."
+                
+                # Check if this was an ADK empty response
+                if hasattr(result, 'content') and hasattr(result.content, 'parts'):
+                    if any(hasattr(part, 'text') and part.text == '' for part in result.content.parts):
+                        error_msg = ("I received an empty response from the model. This sometimes happens with complex queries involving donors or financial data. "
+                                   "Please try rephrasing your request, or break it down into simpler parts. "
+                                   "For example, you could first search for voters in Bernardsville, then filter by party affiliation.")
+                        return error_msg
+                
+                # Generic extraction failure
+                error_msg = "I'm having trouble generating a proper response. The agent appears to be working but couldn't extract the response. Please try your request again."
                 return error_msg
             
         except Exception as e:

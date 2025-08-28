@@ -157,69 +157,6 @@ async def process_message_stream(
         traceback.print_exc()
         yield f"Error: {str(e)}"
 
-async def validate_response_before_streaming(message: str, session_id: Optional[str] = None, user_id: str = "anonymous", user_email: str = "anonymous@example.com") -> tuple[bool, str]:
-    """
-    Validate that the agent can generate a proper response before starting streaming.
-    This prevents message_start from being emitted for responses that will fail.
-    
-    Returns:
-        tuple[bool, str]: (is_valid, validation_message)
-    """
-    print(f"[Agent Validation] Starting pre-validation for message: {message[:50]}...")
-    
-    try:
-        # Get the agent instance
-        agent = get_agent()
-        if not agent:
-            return False, "Agent instance not available"
-        
-        print(f"[Agent Validation] Agent instance obtained: {type(agent).__name__}")
-        
-        # Set session ID if provided
-        if session_id:
-            os.environ['CHAT_SESSION_ID'] = session_id
-            print(f"[Agent Validation] Set session ID: {session_id}")
-        
-        # Try to get a response from the agent with timeout
-        result = None
-        try:
-            # Use shorter timeout for validation
-            result = await asyncio.wait_for(
-                asyncio.to_thread(agent.chat, message),
-                timeout=30.0  # 30 second timeout for validation
-            )
-        except asyncio.TimeoutError:
-            return False, "Agent response timeout during validation (30s)"
-        except Exception as e:
-            return False, f"Agent error during validation: {str(e)}"
-        
-        print(f"[Agent Validation] Got result from agent: {type(result)}")
-        
-        # Use the robust response extraction function for consistency
-        from agents.nj_voter_chat_adk.agent import extract_response_text
-        
-        print(f"[Agent Validation] Using robust extraction method...")
-        response = extract_response_text(result, attempt_num=1, max_attempts=3)
-        
-        # Validate the extracted response
-        if not response or not response.strip():
-            return False, f"Empty response during validation. Agent type: {type(agent).__name__}, Result type: {type(result)}"
-        
-        response_length = len(response.strip())
-        if response_length < 5:  # Very short responses might indicate issues
-            return False, f"Response too short during validation ({response_length} chars): '{response}'"
-        
-        print(f"[Agent Validation] Validation passed: {response_length} characters")
-        print(f"[Agent Validation] Response preview: {response[:100]}...")
-        
-        return True, f"Response validated successfully ({response_length} characters)"
-        
-    except Exception as e:
-        error_msg = f"Validation error: {str(e)}"
-        print(f"[Agent Validation] {error_msg}")
-        import traceback
-        traceback.print_exc()
-        return False, error_msg
 
 async def invoke_agent_tool(tool_name: str, args: dict) -> dict:
     """

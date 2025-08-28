@@ -145,7 +145,7 @@ async def send_message(sid, data):
             traceback.print_exc()
         
         # Import agent and process message
-        from services.agent_service import process_message_stream, validate_response_before_streaming
+        from services.agent_service import process_message_stream
         from agents.nj_voter_chat_adk.agent import _set_websocket
         
         # Set the websocket reference for reasoning events
@@ -161,42 +161,23 @@ async def send_message(sid, data):
         wrapper = WebSocketWrapper(sio, sid)
         _set_websocket(wrapper)
         
-        # PRE-VALIDATE the response before starting streaming
-        # This prevents message_start from being emitted for responses that will fail
-        print(f"[WebSocket] Pre-validating response for message: {message[:50]}...")
+        # Start streaming response
+        await sio.emit('message_start', room=sid)
         
+        # Track this message as in-flight for recovery purposes
+        message_key = f"{session_id}:{user_msg.message_id if 'user_msg' in locals() else 'unknown'}"
+        in_flight_messages[message_key] = {
+            'sid': sid,
+            'session_id': session_id,
+            'user_message': message,
+            'partial_response': '',
+            'timestamp': asyncio.get_event_loop().time()
+        }
+        
+        # Collect full response for saving
+        full_response = ""
+        print(f"[WebSocket] Starting to stream response for message: {message[:50]}...")
         try:
-            # Get the agent response first to validate it
-            response_valid, validation_result = await validate_response_before_streaming(message, session_id, user_id, user_email)
-            
-            if not response_valid:
-                print(f"[WebSocket] Response validation failed: {validation_result}")
-                await sio.emit('error', {
-                    'error': 'Response validation failed',
-                    'details': validation_result,
-                    'suggestion': 'Please try rephrasing your question or check if the server is working properly.'
-                }, room=sid)
-                return
-                
-            print(f"[WebSocket] Response validation passed, starting stream")
-            
-            # Only emit message_start AFTER validation passes
-            await sio.emit('message_start', room=sid)
-            
-            # Track this message as in-flight for recovery purposes
-            message_key = f"{session_id}:{user_msg.message_id if 'user_msg' in locals() else 'unknown'}"
-            in_flight_messages[message_key] = {
-                'sid': sid,
-                'session_id': session_id,
-                'user_message': message,
-                'partial_response': '',
-                'timestamp': asyncio.get_event_loop().time()
-            }
-            
-            # Stream the pre-validated response
-            full_response = ""
-            print(f"[WebSocket] Starting to stream pre-validated response...")
-            
             async for chunk in process_message_stream(message, session_id, user_id, user_email):
                 full_response += chunk
                 # Update in-flight tracking
@@ -211,18 +192,8 @@ async def send_message(sid, data):
                     print(f"[WebSocket] Client {sid} disconnected during streaming, stopping")
                     break
             print(f"[WebSocket] Finished streaming. Total response: {len(full_response)} chars")
-            
-        except Exception as validation_error:
-            print(f"[WebSocket] Pre-validation error: {validation_error}")
-            await sio.emit('error', {
-                'error': 'Failed to validate response before streaming',
-                'details': str(validation_error),
-                'suggestion': 'Please try your request again. If the problem persists, the agent service may be unavailable.'
-            }, room=sid)
-            return
         finally:
             # Clean up in-flight tracking
-            message_key = f"{session_id}:{user_msg.message_id if 'user_msg' in locals() else 'unknown'}"
             if message_key in in_flight_messages:
                 del in_flight_messages[message_key]
         

@@ -1,47 +1,82 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Box,
-  TextField,
-  Button,
-  Typography,
-  Paper,
-  Alert,
-  CircularProgress,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Tooltip,
-  Stack,
-  Chip
-} from '@mui/material';
-import {
-  PlayArrow as RunIcon,
-  Save as SaveIcon,
-  Edit as EditIcon,
-  AutoAwesome as GenerateIcon,
-  ContentCopy as CopyIcon,
-  Check as CheckIcon
-} from '@mui/icons-material';
-import { Editor } from '@monaco-editor/react';
+import { styled } from 'baseui';
+import { Button, KIND, SIZE } from 'baseui/button';
+import { ButtonGroup } from 'baseui/button-group';
+import { Input } from 'baseui/input';
+import { Heading, HeadingLevel } from 'baseui/heading';
+import { Modal, ModalHeader, ModalBody, ModalFooter, ModalButton } from 'baseui/modal';
+import Editor from 'react-simple-code-editor';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-sql';
 import ResultsTable from '../ListManager/ResultsTable';
 import { useAuthCheck } from '../../hooks/useAuthCheck';
 import apiClient from '../../services/api';
-
-interface QueryResult {
-  rows: any[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-}
+import { QueryResult } from '../../types/lists';
 
 interface SaveDialogState {
   open: boolean;
   listName: string;
   description: string;
 }
+
+const Container = styled('div', {
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  backgroundColor: '#f5f5f5',
+  padding: '24px',
+});
+
+const HeaderSection = styled('div', {
+  marginBottom: '24px',
+});
+
+const PromptContainer = styled('div', {
+  backgroundColor: '#ffffff',
+  borderRadius: '8px',
+  padding: '20px',
+  marginBottom: '24px',
+  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+});
+
+const EditorContainer = styled('div', {
+  backgroundColor: '#1e1e1e',
+  borderRadius: '8px',
+  padding: '16px',
+  marginBottom: '24px',
+  position: 'relative',
+});
+
+const EditorHeader = styled('div', {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: '12px',
+});
+
+const EditorTitle = styled('div', {
+  color: '#cccccc',
+  fontSize: '14px',
+  fontWeight: 600,
+});
+
+const StyledEditor = styled('div', {
+  '& textarea': {
+    outline: 'none !important',
+  },
+  '& pre': {
+    margin: '0 !important',
+  },
+});
+
+const ErrorAlert = styled('div', {
+  backgroundColor: '#fee2e2',
+  color: '#dc2626',
+  padding: '12px',
+  borderRadius: '4px',
+  marginBottom: '16px',
+});
 
 const QueryTool: React.FC = () => {
   useAuthCheck();
@@ -50,13 +85,11 @@ const QueryTool: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [sql, setSql] = useState('');
   const [isEditingSQL, setIsEditingSQL] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [generating, setGenerating] = useState(false);
+  const [isRunningQuery, setIsRunningQuery] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<QueryResult | null>(null);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  const [copied, setCopied] = useState(false);
   const [saveDialog, setSaveDialog] = useState<SaveDialogState>({
     open: false,
     listName: '',
@@ -69,7 +102,7 @@ const QueryTool: React.FC = () => {
       return;
     }
 
-    setGenerating(true);
+    setIsGenerating(true);
     setError(null);
 
     try {
@@ -80,76 +113,39 @@ const QueryTool: React.FC = () => {
       const errorMessage = err.response?.data?.detail || err.message || 'Failed to generate SQL';
       setError(errorMessage);
     } finally {
-      setGenerating(false);
+      setIsGenerating(false);
     }
   };
 
-  const executeQuery = useCallback(async (currentPage: number = 1, currentPageSize: number = 25) => {
+  const executeQuery = async () => {
     if (!sql.trim()) {
       setError('Please generate or enter SQL first');
       return;
     }
 
-    setLoading(true);
+    setIsRunningQuery(true);
     setError(null);
+    setResults(null);
 
     try {
-      const offset = (currentPage - 1) * currentPageSize;
-      // Remove any existing LIMIT clause and add our own with pagination
-      const baseSql = sql.trim().replace(/;?\s*$/, '').replace(/\s+LIMIT\s+\d+(\s+OFFSET\s+\d+)?$/i, '');
-      // Fetch one extra row to determine if there are more pages
-      const paginatedSQL = `${baseSql} LIMIT ${currentPageSize + 1} OFFSET ${offset}`;
-      
-      const data = await apiClient.post<any>('/execute-query', { sql: paginatedSQL });
-
-      // Check if we got more rows than requested (indicates more pages)
-      const hasMore = data.rows && data.rows.length > currentPageSize;
-      const actualRows = hasMore ? data.rows.slice(0, currentPageSize) : data.rows;
-
-      // Estimate total count based on current page and whether there are more results
-      // This is an approximation but avoids the expensive COUNT query
-      let estimatedTotal = offset + actualRows.length;
-      if (hasMore) {
-        // If there are more rows, we don't know the exact count
-        // Show at least enough for the next page
-        estimatedTotal = offset + currentPageSize + 1;
-      }
-
-      setResults({
-        rows: actualRows,
-        totalCount: estimatedTotal,
-        page: currentPage,
-        pageSize: currentPageSize
-      });
-      setPage(currentPage);
-      setPageSize(currentPageSize);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to execute query');
-      setResults(null);
+      // Execute query without modifying it - let backend handle it
+      const data = await apiClient.post<QueryResult>('/execute-query', { sql });
+      setResults(data);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.detail || err.message || 'Failed to execute query';
+      setError(errorMessage);
     } finally {
-      setLoading(false);
-    }
-  }, [sql]);
-
-  const handlePageChange = (newPage: number) => {
-    executeQuery(newPage, pageSize);
-  };
-
-  const handlePageSizeChange = (newPageSize: number) => {
-    executeQuery(1, newPageSize);
-  };
-
-  const handlePromptKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      generateSQL();
+      setIsRunningQuery(false);
     }
   };
 
-  const handleCopySQL = () => {
-    navigator.clipboard.writeText(sql);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleSaveChanges = () => {
+    setIsEditingSQL(false);
+  };
+
+  const handleCancelEdit = () => {
+    // Reset SQL to last saved state if needed
+    setIsEditingSQL(false);
   };
 
   const handleSaveList = async () => {
@@ -163,7 +159,7 @@ const QueryTool: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    setIsSaving(true);
     setError(null);
 
     try {
@@ -180,205 +176,180 @@ const QueryTool: React.FC = () => {
       const errorMessage = err.response?.data?.detail || err.message || 'Failed to save list';
       setError(errorMessage);
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
-  // Disabled auto-generation to avoid errors while typing
-  // useEffect(() => {
-  //   if (prompt && !sql) {
-  //     const timer = setTimeout(() => {
-  //       generateSQL();
-  //     }, 1000);
-  //     return () => clearTimeout(timer);
-  //   }
-  // }, [prompt]);
+  const highlightSQL = (code: string) => {
+    return Prism.highlight(code, Prism.languages.sql, 'sql');
+  };
+
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Query Builder
-      </Typography>
+    <Container>
+      <HeaderSection>
+        <HeadingLevel>
+          <Heading styleLevel={3}>Query Builder</Heading>
+        </HeadingLevel>
+      </HeaderSection>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Stack spacing={2}>
-          <TextField
-            fullWidth
-            multiline
-            rows={3}
-            variant="outlined"
-            label="Describe your query in natural language"
-            placeholder="e.g., Find all Democratic voters in Westfield who voted in the last 3 elections"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyPress={handlePromptKeyPress}
-            disabled={generating}
-            InputProps={{
-              endAdornment: (
-                <Button
-                  variant="contained"
-                  startIcon={generating ? <CircularProgress size={20} /> : <GenerateIcon />}
-                  onClick={generateSQL}
-                  disabled={!prompt.trim() || generating}
-                  sx={{ ml: 1 }}
-                >
-                  {generating ? 'Generating...' : 'Generate SQL'}
-                </Button>
-              )
-            }}
-          />
+      <PromptContainer>
+        <div style={{ marginBottom: '12px', fontSize: '14px', fontWeight: 600 }}>
+          Describe your query in natural language
+        </div>
+        <Input
+          value={prompt}
+          onChange={(e) => setPrompt((e.target as HTMLInputElement).value)}
+          placeholder="e.g., Find all Democratic voters in Westfield who voted in the last 3 elections"
+          overrides={{
+            Root: {
+              style: {
+                marginBottom: '12px',
+              },
+            },
+          }}
+        />
+        <Button
+          onClick={generateSQL}
+          kind={KIND.primary}
+          size={SIZE.compact}
+          disabled={!prompt.trim() || isGenerating}
+          isLoading={isGenerating}
+        >
+          Generate SQL
+        </Button>
+      </PromptContainer>
 
-          {sql && (
-            <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
-                  Generated SQL
-                </Typography>
-                <Stack direction="row" spacing={1}>
-                  <Tooltip title={copied ? 'Copied!' : 'Copy SQL'}>
-                    <IconButton size="small" onClick={handleCopySQL}>
-                      {copied ? <CheckIcon /> : <CopyIcon />}
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title={isEditingSQL ? 'View mode' : 'Edit SQL'}>
-                    <IconButton 
-                      size="small" 
-                      onClick={() => setIsEditingSQL(!isEditingSQL)}
-                      color={isEditingSQL ? 'primary' : 'default'}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-              </Box>
-
-              {isEditingSQL ? (
-                <Box sx={{ border: '1px solid #ddd', borderRadius: 1 }}>
-                  <Editor
-                    height="200px"
-                    language="sql"
-                    theme="vs-light"
-                    value={sql}
-                    onChange={(value) => setSql(value || '')}
-                    options={{
-                      minimap: { enabled: false },
-                      fontSize: 14,
-                      wordWrap: 'on',
-                      lineNumbers: 'on',
-                      scrollBeyondLastLine: false
-                    }}
-                  />
-                </Box>
+      {sql && (
+        <EditorContainer>
+          <EditorHeader>
+            <EditorTitle>SQL Query</EditorTitle>
+            <ButtonGroup size={SIZE.mini}>
+              {!isEditingSQL ? (
+                <>
+                  <Button
+                    onClick={() => setIsEditingSQL(true)}
+                    kind={KIND.secondary}
+                    size={SIZE.mini}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    onClick={executeQuery}
+                    kind={KIND.primary}
+                    size={SIZE.mini}
+                    isLoading={isRunningQuery}
+                  >
+                    Run Query
+                  </Button>
+                  <Button
+                    onClick={() => setSaveDialog({ ...saveDialog, open: true })}
+                    kind={KIND.secondary}
+                    size={SIZE.mini}
+                  >
+                    Save as List
+                  </Button>
+                </>
               ) : (
-                <Paper 
-                  variant="outlined" 
-                  sx={{ 
-                    p: 2, 
-                    bgcolor: 'grey.50',
-                    fontFamily: 'monospace',
-                    fontSize: '0.9rem',
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word'
-                  }}
-                >
-                  {sql}
-                </Paper>
+                <>
+                  <Button 
+                    onClick={handleCancelEdit} 
+                    kind={KIND.tertiary} 
+                    size={SIZE.mini}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleSaveChanges} 
+                    kind={KIND.primary} 
+                    size={SIZE.mini}
+                  >
+                    Save
+                  </Button>
+                </>
               )}
+            </ButtonGroup>
+          </EditorHeader>
 
-              <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-                <Button
-                  variant="contained"
-                  startIcon={loading ? <CircularProgress size={20} /> : <RunIcon />}
-                  onClick={() => executeQuery(1, pageSize)}
-                  disabled={!sql.trim() || loading}
-                >
-                  {loading ? 'Running...' : 'Run Query'}
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<SaveIcon />}
-                  onClick={() => setSaveDialog({ ...saveDialog, open: true })}
-                  disabled={!sql.trim()}
-                >
-                  Save as List
-                </Button>
-              </Stack>
-            </Box>
-          )}
-        </Stack>
-      </Paper>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-
-      {results && (
-        <Paper sx={{ flexGrow: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <Box sx={{ p: 2, borderBottom: '1px solid #ddd' }}>
-            <Typography variant="h6">
-              Results
-              <Chip 
-                label={`${results.totalCount.toLocaleString()} total`} 
-                size="small" 
-                sx={{ ml: 2 }} 
-              />
-            </Typography>
-          </Box>
-          <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
-            <ResultsTable
-              results={{
-                columns: results.rows.length > 0 ? Object.keys(results.rows[0]) : [],
-                rows: results.rows.map(row => Object.values(row))
+          <StyledEditor>
+            <Editor
+              value={sql}
+              onValueChange={(code) => {
+                if (isEditingSQL) {
+                  setSql(code);
+                }
+              }}
+              highlight={highlightSQL}
+              padding={10}
+              disabled={!isEditingSQL}
+              style={{
+                fontFamily: '"Fira Code", "Fira Mono", monospace',
+                fontSize: 13,
+                backgroundColor: isEditingSQL ? '#2a2a2a' : '#1e1e1e',
+                color: '#d4d4d4',
+                minHeight: '100px',
+                borderRadius: '4px',
+                cursor: isEditingSQL ? 'text' : 'not-allowed',
+                opacity: isEditingSQL ? 1 : 0.8,
               }}
             />
-          </Box>
-        </Paper>
+          </StyledEditor>
+
+          {results && results.rows && (
+            <div style={{ color: '#888', fontSize: '12px', marginTop: '8px' }}>
+              Query returned {results.rows.length.toLocaleString()} rows
+            </div>
+          )}
+        </EditorContainer>
       )}
 
-      <Dialog 
-        open={saveDialog.open} 
+      {error && (
+        <ErrorAlert>
+          {error}
+        </ErrorAlert>
+      )}
+
+      {results && <ResultsTable results={results} />}
+
+      <Modal
+        isOpen={saveDialog.open}
         onClose={() => setSaveDialog({ ...saveDialog, open: false })}
-        maxWidth="sm"
-        fullWidth
+        size="default"
       >
-        <DialogTitle>Save Query as List</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
-              autoFocus
-              fullWidth
-              label="List Name"
+        <ModalHeader>Save Query as List</ModalHeader>
+        <ModalBody>
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ marginBottom: '8px', fontSize: '14px', fontWeight: 600 }}>List Name</div>
+            <Input
               value={saveDialog.listName}
-              onChange={(e) => setSaveDialog({ ...saveDialog, listName: e.target.value })}
+              onChange={(e) => setSaveDialog({ ...saveDialog, listName: (e.target as HTMLInputElement).value })}
               placeholder="e.g., Active Democratic Voters in Westfield"
+              autoFocus
             />
-            <TextField
-              fullWidth
-              multiline
-              rows={3}
-              label="Description (optional)"
+          </div>
+          <div>
+            <div style={{ marginBottom: '8px', fontSize: '14px', fontWeight: 600 }}>Description (optional)</div>
+            <Input
               value={saveDialog.description}
-              onChange={(e) => setSaveDialog({ ...saveDialog, description: e.target.value })}
+              onChange={(e) => setSaveDialog({ ...saveDialog, description: (e.target as HTMLInputElement).value })}
               placeholder="Additional description of this list"
             />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSaveDialog({ ...saveDialog, open: false })}>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <ModalButton kind={KIND.tertiary} onClick={() => setSaveDialog({ ...saveDialog, open: false })}>
             Cancel
-          </Button>
-          <Button 
-            onClick={handleSaveList} 
-            variant="contained"
-            disabled={!saveDialog.listName.trim() || loading}
+          </ModalButton>
+          <ModalButton
+            onClick={handleSaveList}
+            disabled={!saveDialog.listName.trim() || isSaving}
+            isLoading={isSaving}
           >
-            {loading ? <CircularProgress size={20} /> : 'Save List'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+            Save List
+          </ModalButton>
+        </ModalFooter>
+      </Modal>
+    </Container>
   );
 };
 

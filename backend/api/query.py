@@ -2,17 +2,14 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import logging
-from google.cloud import bigquery
 from api.auth import get_current_user
 from core.config import settings
 import google.generativeai as genai
 from google.cloud import secretmanager
+from services.bigquery_service import execute_query as execute_bq_query
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-# Initialize BigQuery client
-client = bigquery.Client(project=settings.GOOGLE_CLOUD_PROJECT)
 
 # Load Gemini API key from Secret Manager
 def get_gemini_api_key():
@@ -47,9 +44,6 @@ class GenerateSQLResponse(BaseModel):
 class ExecuteQueryRequest(BaseModel):
     sql: str
 
-class QueryResult(BaseModel):
-    rows: List[Dict[str, Any]]
-    totalCount: Optional[int] = None
 
 # Import database manifest and schema
 try:
@@ -116,7 +110,7 @@ async def generate_sql(request: GenerateSQLRequest, current_user: dict = Depends
         logger.error(f"Error generating SQL: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to generate SQL: {str(e)}")
 
-@router.post("/execute-query", response_model=QueryResult)
+@router.post("/execute-query")
 async def execute_query(request: ExecuteQueryRequest, current_user: dict = Depends(get_current_user)):
     """Execute a BigQuery SQL query"""
     try:
@@ -132,25 +126,10 @@ async def execute_query(request: ExecuteQueryRequest, current_user: dict = Depen
             if keyword in sql_upper:
                 raise ValueError(f"Query contains forbidden keyword: {keyword}")
         
-        # Execute query
-        query_job = client.query(sql)
-        results = query_job.result(timeout=30)
-        
-        # Convert results to list of dicts
-        rows = []
-        for row in results:
-            row_dict = {}
-            for key, value in row.items():
-                # Handle special types
-                if hasattr(value, 'isoformat'):  # datetime
-                    row_dict[key] = value.isoformat()
-                elif hasattr(value, '__geo_interface__'):  # geography
-                    row_dict[key] = str(value)
-                else:
-                    row_dict[key] = value
-            rows.append(row_dict)
-        
-        return QueryResult(rows=rows)
+        # Execute query using the bigquery service (returns full dataset)
+        # Pass limit=0 to not add any LIMIT clause
+        result = await execute_bq_query(sql, limit=0)
+        return result
         
     except Exception as e:
         logger.error(f"Error executing query: {str(e)}")

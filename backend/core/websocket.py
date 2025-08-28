@@ -2,6 +2,7 @@ import socketio
 from typing import Optional
 import json
 import asyncio
+import time
 from core.config import settings
 
 # Create Socket.IO server with extended timeout settings for Cloud Run
@@ -25,6 +26,12 @@ sio_app = socketio.ASGIApp(
 # Store active connections and in-flight messages
 connections = {}
 in_flight_messages = {}  # Track messages being streamed per session
+message_sequence = {}  # Track message sequence numbers per session
+
+# Configuration for message retention
+MESSAGE_RETENTION_SECONDS = 300  # 5 minutes
+CLEANUP_INTERVAL_SECONDS = 60  # Run cleanup every minute
+last_cleanup_time = 0
 
 @sio.event
 async def connect(sid, environ, auth):
@@ -62,6 +69,33 @@ async def disconnect(sid):
     print(f"Client {sid} disconnected")
     if sid in connections:
         del connections[sid]
+
+async def cleanup_old_messages():
+    """Remove abandoned in-flight messages (streaming was interrupted)"""
+    global last_cleanup_time
+    current_time = time.time()
+    
+    # Only run cleanup if enough time has passed
+    if current_time - last_cleanup_time < CLEANUP_INTERVAL_SECONDS:
+        return
+    
+    last_cleanup_time = current_time
+    removed_count = 0
+    
+    # Find and remove abandoned messages (streaming interrupted, never completed)
+    for key in list(in_flight_messages.keys()):
+        msg = in_flight_messages[key]
+        age = current_time - msg['timestamp']
+        
+        # Remove if message streaming was abandoned (> 5 minutes old)
+        # These are messages where streaming was interrupted and never resumed
+        if age > MESSAGE_RETENTION_SECONDS:
+            print(f"[Cleanup] Removing abandoned message {key} (age: {age:.0f}s)")
+            del in_flight_messages[key]
+            removed_count += 1
+    
+    if removed_count > 0:
+        print(f"[Cleanup] Removed {removed_count} abandoned in-flight messages")
 
 @sio.event
 async def send_message(sid, data):
@@ -166,13 +200,25 @@ async def send_message(sid, data):
         
         # Track this message as in-flight for recovery purposes
         message_key = f"{session_id}:{user_msg.message_id if 'user_msg' in locals() else 'unknown'}"
+        
+        # Get or initialize sequence number for this session
+        if session_id not in message_sequence:
+            message_sequence[session_id] = 0
+        message_sequence[session_id] += 1
+        current_sequence = message_sequence[session_id]
+        
         in_flight_messages[message_key] = {
             'sid': sid,
             'session_id': session_id,
             'user_message': message,
             'partial_response': '',
-            'timestamp': asyncio.get_event_loop().time()
+            'timestamp': time.time(),  # Use wall clock time for TTL
+            'sequence_number': current_sequence,
+            'user_msg_id': user_msg.message_id if 'user_msg' in locals() else None
         }
+        
+        # Run cleanup of old messages if needed
+        await cleanup_old_messages()
         
         # Collect full response for saving
         full_response = ""
@@ -193,7 +239,7 @@ async def send_message(sid, data):
                     break
             print(f"[WebSocket] Finished streaming. Total response: {len(full_response)} chars")
         finally:
-            # Clean up in-flight tracking
+            # Clean up in-flight tracking - message is already saved to Firestore
             if message_key in in_flight_messages:
                 del in_flight_messages[message_key]
         

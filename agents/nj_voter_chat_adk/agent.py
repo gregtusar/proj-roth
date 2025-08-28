@@ -477,18 +477,43 @@ class NJVoterChatAgent(Agent):
                 "total_size_tokens": total_size // 4
             })
             
-            # CRITICAL FIX: Return the chunk with actual content, not just the last chunk
-            # Try to find a chunk with meaningful content
-            for chunk in all_chunks:
+            # CRITICAL FIX: Combine ALL text from ALL chunks, not just return one chunk
+            # ADK may send content across multiple chunks that need to be assembled
+            combined_text_parts = []
+            final_chunk = None
+            
+            print(f"[ADK] Processing {len(all_chunks)} chunks to extract complete response")
+            
+            for i, chunk in enumerate(all_chunks):
                 if hasattr(chunk, 'content') and hasattr(chunk.content, 'parts'):
-                    # Check if this chunk has non-empty text
+                    # Extract text from this chunk's parts
                     for part in chunk.content.parts:
                         if hasattr(part, 'text') and part.text and part.text.strip():
-                            print(f"[ADK] Found content chunk with {len(part.text)} chars")
-                            return chunk
+                            combined_text_parts.append(part.text.strip())
+                            print(f"[ADK] Chunk {i+1}: Found text part with {len(part.text)} chars")
+                    
+                    # Keep the last chunk that had content as our template
+                    if combined_text_parts:
+                        final_chunk = chunk
             
-            # If no content chunk found, return the last chunk (original behavior)
-            print(f"[ADK] No content chunk found, returning last chunk")
+            # If we found text across chunks, create a combined response
+            if combined_text_parts and final_chunk:
+                combined_text = '\n'.join(combined_text_parts)
+                print(f"[ADK] Combined {len(combined_text_parts)} text parts into {len(combined_text)} total chars")
+                
+                # Modify the final chunk to contain all combined text
+                # This preserves the chunk structure while including all content
+                if hasattr(final_chunk, 'content') and hasattr(final_chunk.content, 'parts'):
+                    if final_chunk.content.parts:
+                        # Replace the text in the first part with combined text
+                        if hasattr(final_chunk.content.parts[0], 'text'):
+                            final_chunk.content.parts[0].text = combined_text
+                            print(f"[ADK] Updated final chunk with combined text")
+                
+                return final_chunk
+            
+            # If no content chunks found at all, return the last chunk (original behavior)
+            print(f"[ADK] No content chunks found in any of {len(all_chunks)} chunks, returning last chunk")
             return last
 
         # Get user context
@@ -603,6 +628,12 @@ class NJVoterChatAgent(Agent):
             
             # Log RunConfig details
             print(f"[RUN CONFIG] max_llm_calls: {run_config.max_llm_calls}")
+            
+            # Set a limit on context/history to prevent token overflow
+            # The model has a 1M token limit, but with system prompt + history + query + response
+            # we need to leave room. Setting a conservative limit.
+            if hasattr(run_config, 'max_context_tokens'):
+                run_config.max_context_tokens = 800000  # Leave ~250k for response
             
             # Set generation parameters if available in RunConfig
             if hasattr(run_config, 'generation_config'):
@@ -791,6 +822,21 @@ class NJVoterChatAgent(Agent):
             error_print(f"[ERROR] ADK Runner invocation failed: {e}")
             
             error_str = str(e)
+            
+            # Check for token limit errors
+            if 'exceeds the maximum number of tokens' in error_str or 'token count' in error_str.lower():
+                print(f"[INFO] Token limit exceeded. The conversation history is too large.")
+                # Provide a helpful message to the user
+                return ("I've hit the token limit due to our conversation history being too long. "
+                       "This typically happens with complex queries that involve multiple analyses. "
+                       "Please try one of these options:\n"
+                       "1. Start a new chat session for this complex analysis\n"
+                       "2. Break down your request into smaller parts\n"
+                       "3. Ask me to focus on specific aspects rather than comprehensive analysis\n\n"
+                       "For your strategy question, you could ask me to:\n"
+                       "- First analyze voter demographics\n"
+                       "- Then analyze donor patterns\n"
+                       "- Finally create targeted lists based on specific criteria")
             
             if any(keyword in error_str.lower() for keyword in ['bigquery', 'unrecognized name', 'invalid query', 'query failed']):
                 print(f"[INFO] Detected BigQuery-related error, returning user-friendly message")

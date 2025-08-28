@@ -91,7 +91,12 @@ const chatSlice = createSlice({
     },
     updateStreamingMessage: (state, action: PayloadAction<string>) => {
       if (state.streamingMessage !== null) {
-        state.streamingMessage += action.payload;
+        // Add a newline between chunks if both have content
+        if (state.streamingMessage && action.payload) {
+          state.streamingMessage += '\n' + action.payload;
+        } else {
+          state.streamingMessage += action.payload;
+        }
       }
     },
     finalizeStreamingMessage: (state) => {

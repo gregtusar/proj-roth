@@ -50,6 +50,23 @@ async def process_message_stream(
         # Set user context for prompt logging
         if user_id:
             os.environ["VOTER_LIST_USER_ID"] = user_id
+            
+            # Load and set user's custom prompt if available
+            try:
+                from services.user_settings_service import get_user_settings_service
+                settings_service = get_user_settings_service()
+                custom_prompt = await settings_service.get_custom_prompt(user_id)
+                if custom_prompt:
+                    os.environ["USER_CUSTOM_PROMPT"] = custom_prompt
+                    print(f"[Agent] Loaded custom prompt for user {user_id}: {len(custom_prompt)} chars")
+                else:
+                    if "USER_CUSTOM_PROMPT" in os.environ:
+                        del os.environ["USER_CUSTOM_PROMPT"]
+            except Exception as e:
+                print(f"[Agent] Could not load custom prompt: {e}")
+                if "USER_CUSTOM_PROMPT" in os.environ:
+                    del os.environ["USER_CUSTOM_PROMPT"]
+        
         if user_email:
             os.environ["VOTER_LIST_USER_EMAIL"] = user_email
         os.environ["CLIENT_TYPE"] = "react"

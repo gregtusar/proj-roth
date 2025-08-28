@@ -228,8 +228,8 @@ const ListManager: React.FC = () => {
                       })}
                       {list.user_email && (
                         <>
-                          <br />
-                          <span style={{ fontSize: '10px' }}>{list.user_email}</span>
+                          {' • '}
+                          <span style={{ fontSize: '11px', fontStyle: 'italic' }}>{list.user_email}</span>
                         </>
                       )}
                     </ListMeta>

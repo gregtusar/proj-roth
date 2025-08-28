@@ -44,7 +44,8 @@ async def get_user_lists(current_user: dict = Depends(get_current_user)):
                     prompt=getattr(lst, 'prompt', None),
                     row_count=lst.row_count,
                     created_at=lst.created_at.isoformat() if lst.created_at else datetime.utcnow().isoformat(),
-                    updated_at=lst.updated_at.isoformat() if lst.updated_at else datetime.utcnow().isoformat()
+                    updated_at=lst.updated_at.isoformat() if lst.updated_at else datetime.utcnow().isoformat(),
+                    user_email=lst.user_email if hasattr(lst, 'user_email') else None
                 )
             )
         except Exception as e:
@@ -80,7 +81,8 @@ async def get_list(
         prompt=getattr(lst, 'prompt', None),
         row_count=lst.row_count,
         created_at=lst.created_at.isoformat(),
-        updated_at=lst.updated_at.isoformat()
+        updated_at=lst.updated_at.isoformat(),
+        user_email=lst.user_email if hasattr(lst, 'user_email') else None
     )
 
 @router.post("/", response_model=ListResponse)
@@ -127,7 +129,8 @@ async def create_list(
         prompt=getattr(lst, 'prompt', None),
         row_count=lst.row_count,
         created_at=lst.created_at.isoformat(),
-        updated_at=lst.updated_at.isoformat()
+        updated_at=lst.updated_at.isoformat(),
+        user_email=current_user.get('email', '')
     )
 
 @router.put("/{list_id}", response_model=ListResponse)
@@ -181,7 +184,8 @@ async def update_list(
         prompt=getattr(lst, 'prompt', None),
         row_count=lst.row_count,
         created_at=lst.created_at.isoformat(),
-        updated_at=lst.updated_at.isoformat()
+        updated_at=lst.updated_at.isoformat(),
+        user_email=lst.user_email if hasattr(lst, 'user_email') else None
     )
 
 @router.delete("/{list_id}")
@@ -341,7 +345,8 @@ async def search_lists(
             query=lst.query,
             row_count=lst.row_count,
             created_at=lst.created_at.isoformat(),
-            updated_at=lst.updated_at.isoformat()
+            updated_at=lst.updated_at.isoformat(),
+            user_email=lst.user_email if hasattr(lst, 'user_email') else None
         )
         for lst in lists
     ]

@@ -433,13 +433,23 @@ const ReasoningDisplay: React.FC = () => {
   };
 
   const getPromptForGroup = (index: number) => {
-    // Try to find the corresponding user message
+    // Find the message_start event for this group which contains the prompt text
+    const groupEvents = groupedEvents[index];
+    if (groupEvents && groupEvents.length > 0) {
+      const messageStartEvent = groupEvents.find(e => e.type === 'message_start');
+      if (messageStartEvent && messageStartEvent.data?.message) {
+        const text = messageStartEvent.data.message;
+        return text.length > 100 ? text.substring(0, 100) + '...' : text;
+      }
+    }
+    
+    // Fallback: Try to find the corresponding user message
     const userMessages = messages.filter(m => m.message_type === 'user');
-    if (userMessages[index]) {
-      const text = userMessages[index].message_text;
+    if (userMessages[index - 1]) { // index - 1 because message index starts at 1
+      const text = userMessages[index - 1].message_text;
       return text.length > 100 ? text.substring(0, 100) + '...' : text;
     }
-    return `Prompt ${index + 1}`;
+    return `Prompt ${index}`;
   };
 
   return (

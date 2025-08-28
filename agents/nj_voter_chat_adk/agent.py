@@ -612,9 +612,18 @@ class NJVoterChatAgent(Agent):
                 except Exception as e:
                     debug_print(f"[DEBUG] Session creation returned: {e}, continuing with session_id: {self._session_id}")
             
+            # Check for user custom prompt and prepend it to the message if available
+            custom_prompt = os.environ.get("USER_CUSTOM_PROMPT", "").strip()
+            if custom_prompt:
+                # Prepend the custom instructions to the user's message
+                enhanced_prompt = f"[User's Custom Instructions: {custom_prompt}]\n\n{prompt}"
+                print(f"[CUSTOM PROMPT] Adding {len(custom_prompt)} chars of custom instructions to prompt")
+            else:
+                enhanced_prompt = prompt
+            
             message_content = types.Content(
                 role="user",
-                parts=[types.Part(text=prompt)]
+                parts=[types.Part(text=enhanced_prompt)]
             )
             
             # Log token estimation for the prompt

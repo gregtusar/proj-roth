@@ -14,6 +14,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.config import settings
 from api import auth, chat, lists_firestore as lists, agent, maps, sessions, query, videos, visualize
+from api import settings as settings_api
 from core.websocket import sio, sio_app
 
 @asynccontextmanager
@@ -50,6 +51,7 @@ app.include_router(maps.router, prefix="/api/maps", tags=["Maps"])
 app.include_router(query.router, prefix="/api", tags=["Query"])
 app.include_router(videos.router, prefix="/api/videos", tags=["Videos"])
 app.include_router(visualize.router, prefix="/api", tags=["Visualize"])
+app.include_router(settings_api.router, prefix="/api", tags=["Settings"])
 
 # Mount Socket.IO app
 app.mount("/socket.io", sio_app)

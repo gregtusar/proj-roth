@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { styled } from 'baseui';
 import { Heading, HeadingLevel } from 'baseui/heading';
 import { Checkbox, LABEL_PLACEMENT } from 'baseui/checkbox';
 import { Button, KIND, SIZE } from 'baseui/button';
+import { Textarea } from 'baseui/textarea';
+import { Notification, KIND as NotificationKind } from 'baseui/notification';
 import { RootState, AppDispatch } from '../../store';
 import { toggleDarkMode } from '../../store/settingsSlice';
+import * as settingsService from '../../services/settings';
 
 const Container = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
   height: '100%',
@@ -78,6 +81,53 @@ const Settings: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const { isDarkMode } = useSelector((state: RootState) => state.settings);
+  const { user } = useSelector((state: RootState) => state.auth);
+  
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [originalPrompt, setOriginalPrompt] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [notification, setNotification] = useState<{
+    message: string;
+    kind: typeof NotificationKind[keyof typeof NotificationKind];
+  } | null>(null);
+
+  useEffect(() => {
+    // Load user's custom prompt when component mounts
+    loadCustomPrompt();
+  }, []);
+
+  const loadCustomPrompt = async () => {
+    try {
+      const settings = await settingsService.getSettings();
+      if (settings.custom_prompt) {
+        setCustomPrompt(settings.custom_prompt);
+        setOriginalPrompt(settings.custom_prompt);
+      }
+    } catch (error) {
+      console.error('Error loading custom prompt:', error);
+    }
+  };
+
+  const handleSavePrompt = async () => {
+    setIsSaving(true);
+    try {
+      await settingsService.saveCustomPrompt(customPrompt);
+      setOriginalPrompt(customPrompt);
+      setNotification({
+        message: 'Custom prompt saved successfully!',
+        kind: NotificationKind.positive,
+      });
+      setTimeout(() => setNotification(null), 3000);
+    } catch (error) {
+      console.error('Error saving custom prompt:', error);
+      setNotification({
+        message: 'Failed to save custom prompt',
+        kind: NotificationKind.negative,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleDarkModeToggle = () => {
     dispatch(toggleDarkMode());
@@ -105,6 +155,25 @@ const Settings: React.FC = () => {
           Settings
         </Heading>
       </HeadingLevel>
+
+      {notification && (
+        <Notification
+          kind={notification.kind}
+          closeable
+          onClose={() => setNotification(null)}
+          overrides={{
+            Body: {
+              style: {
+                marginBottom: '24px',
+                maxWidth: '800px',
+                margin: '0 auto 24px',
+              },
+            },
+          }}
+        >
+          {notification.message}
+        </Notification>
+      )}
 
       <Card $isDarkMode={isDarkMode}>
         <Section>
@@ -149,6 +218,73 @@ const Settings: React.FC = () => {
               {isDarkMode ? 'Enabled' : 'Disabled'}
             </Checkbox>
           </SettingRow>
+        </Section>
+
+        <Section>
+          <SectionTitle $isDarkMode={isDarkMode}>Custom System Prompt</SectionTitle>
+          <SectionDescription $isDarkMode={isDarkMode}>
+            Add custom instructions that will be appended to the system prompt for all your conversations
+          </SectionDescription>
+          
+          <Textarea
+            value={customPrompt}
+            onChange={(e) => setCustomPrompt((e.target as HTMLTextAreaElement).value)}
+            placeholder="Enter custom instructions here... (e.g., 'Always include demographic breakdowns', 'Focus on Union County')"
+            rows={6}
+            disabled={isSaving}
+            overrides={{
+              Root: {
+                style: {
+                  marginBottom: '12px',
+                },
+              },
+              Input: {
+                style: {
+                  backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+                  color: isDarkMode ? '#e0e0e0' : '#111827',
+                  borderColor: isDarkMode ? '#404040' : '#d1d5db',
+                  fontSize: '14px',
+                },
+              },
+            }}
+          />
+          
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: '12px'
+          }}>
+            <span style={{ 
+              fontSize: '12px', 
+              color: isDarkMode ? '#808080' : '#9ca3af'
+            }}>
+              {customPrompt.length} characters
+            </span>
+            
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {customPrompt !== originalPrompt && (
+                <Button
+                  onClick={() => setCustomPrompt(originalPrompt)}
+                  disabled={isSaving}
+                  kind={KIND.secondary}
+                  size={SIZE.compact}
+                >
+                  Reset
+                </Button>
+              )}
+              
+              <Button
+                onClick={handleSavePrompt}
+                disabled={customPrompt === originalPrompt || isSaving}
+                kind={KIND.primary}
+                size={SIZE.compact}
+                isLoading={isSaving}
+              >
+                Save Prompt
+              </Button>
+            </div>
+          </div>
         </Section>
 
         <Section>

@@ -38,3 +38,4 @@ class ListResponse(BaseModel):
     row_count: int
     created_at: str
     updated_at: str
+    user_email: Optional[str] = None

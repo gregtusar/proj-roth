@@ -100,5 +100,8 @@ if __name__ == "__main__":
         host=settings.HOST,
         port=settings.PORT,
         reload=settings.DEBUG,
-        log_level="info"
+        log_level="info",
+        # Increase limits for video uploads
+        limit_max_requests=100000,
+        h11_max_incomplete_event_size=1024 * 1024 * 1024  # 1GB
     )

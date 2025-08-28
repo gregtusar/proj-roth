@@ -4,9 +4,10 @@ Firestore-based video asset management service
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import uuid
-from google.cloud import firestore, storage
+from google.cloud import firestore, storage, secretmanager
 from google.api_core import exceptions
 import os
+import json
 import logging
 
 from models.video_asset import (
@@ -26,8 +27,25 @@ class VideoAssetService:
             self.firestore_client = firestore.AsyncClient(project=self.project_id)
             self.videos_collection = self.firestore_client.collection('video_assets')
             
-            # Initialize Storage client (but don't create bucket yet)
-            self.storage_client = storage.Client(project=self.project_id)
+            # Try to get service account key for signed URLs
+            self.signing_credentials = None
+            try:
+                secret_client = secretmanager.SecretManagerServiceClient()
+                secret_name = f"projects/{self.project_id}/secrets/video-signer-key/versions/latest"
+                response = secret_client.access_secret_version(request={"name": secret_name})
+                key_data = json.loads(response.payload.data.decode("UTF-8"))
+                
+                # Create storage client with signing credentials
+                from google.oauth2 import service_account
+                credentials = service_account.Credentials.from_service_account_info(key_data)
+                self.storage_client = storage.Client(project=self.project_id, credentials=credentials)
+                self.signing_credentials = credentials
+                logger.info("Using service account key for signed URLs")
+            except Exception as e:
+                logger.warning(f"Could not load signing key from Secret Manager: {e}")
+                # Fall back to default credentials
+                self.storage_client = storage.Client(project=self.project_id)
+            
             self.bucket_name = f"{self.project_id}-campaign-assets"
             
             # Just reference the bucket, don't try to create it
@@ -368,34 +386,9 @@ class VideoAssetService:
         safe_filename = filename.replace(" ", "_").replace("/", "_")
         gcs_path = f"videos/raw/{timestamp}_{safe_filename}"
         
+        blob = self.bucket.blob(gcs_path)
+        
         try:
-            # Try to create a service account client with impersonation
-            from google.auth import impersonated_credentials
-            from google.auth import default
-            
-            # Get default credentials
-            source_credentials, project = default()
-            
-            # Service account to impersonate (the default service account)
-            target_service_account = f"{self.project_id}@appspot.gserviceaccount.com"
-            
-            # Create impersonated credentials
-            target_credentials = impersonated_credentials.Credentials(
-                source_credentials=source_credentials,
-                target_principal=target_service_account,
-                target_scopes=['https://www.googleapis.com/auth/cloud-platform'],
-                lifetime=3600
-            )
-            
-            # Create a new storage client with impersonated credentials
-            impersonated_client = storage.Client(
-                project=self.project_id,
-                credentials=target_credentials
-            )
-            
-            # Get blob with impersonated client
-            blob = impersonated_client.bucket(self.bucket_name).blob(gcs_path)
-            
             # Generate signed URL
             url = blob.generate_signed_url(
                 version="v4",
@@ -404,11 +397,11 @@ class VideoAssetService:
                 content_type=content_type
             )
             
-            logger.info(f"Successfully generated signed URL using impersonation for {gcs_path}")
+            logger.info(f"Successfully generated signed URL for {gcs_path}")
             return url, gcs_path
             
         except Exception as e:
-            logger.warning(f"Failed to generate signed URL with impersonation: {e}")
+            logger.warning(f"Failed to generate signed URL: {e}")
             
             # Fallback: Return a marker that tells the frontend to use the proxy upload
             # This will trigger the frontend to use the /upload-file endpoint instead

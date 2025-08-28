@@ -10,7 +10,7 @@ from google.auth.transport import requests
 from google.oauth2 import id_token
 
 from core.config import settings
-from services.firestore_user_service import get_firestore_user_service
+from services.bigquery_user_service import get_bigquery_user_service
 
 router = APIRouter()
 
@@ -62,9 +62,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         if user_id is None:
             raise credentials_exception
         
-        # Try to fetch full user data from Firestore
-        user_service = get_firestore_user_service()
-        user_data = await user_service.get_user(user_id)
+        # Try to fetch full user data from BigQuery
+        user_service = get_bigquery_user_service()
+        user_data = await user_service.get_user_by_id(user_id)
         
         if user_data:
             return user_data
@@ -118,27 +118,29 @@ async def google_auth_callback(request: GoogleAuthRequest):
                 settings.GOOGLE_CLIENT_ID
             )
             
-            # Extract user information
-            user = {
-                "id": idinfo.get("sub"),
+            # Extract user information from Google
+            google_user_data = {
+                "sub": idinfo.get("sub"),
                 "email": idinfo.get("email"),
                 "name": idinfo.get("name"),
                 "picture": idinfo.get("picture"),
                 "googleId": idinfo.get("sub"),
+                "given_name": idinfo.get("given_name"),
+                "family_name": idinfo.get("family_name"),
             }
             
-            # Create JWT tokens
+            # Save/update user in BigQuery and get internal user_id
+            user_service = get_bigquery_user_service()
+            user = await user_service.save_or_update_user(google_user_data)
+            
+            # Create JWT tokens with internal user_id
             access_token = create_access_token(
-                data={"sub": user["id"], "email": user["email"]},
+                data={"sub": user["user_id"], "email": user["email"]},  # Use internal user_id
                 expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
             )
             refresh_token = create_refresh_token(
-                data={"sub": user["id"], "email": user["email"]}
+                data={"sub": user["user_id"], "email": user["email"]}  # Use internal user_id
             )
-            
-            # Save user to Firestore
-            user_service = get_firestore_user_service()
-            await user_service.save_user(user)
             
             return AuthResponse(
                 user=user,
@@ -179,9 +181,9 @@ async def refresh_access_token(request: RefreshRequest):
             expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         )
         
-        # Fetch user from Firestore
-        user_service = get_firestore_user_service()
-        user = await user_service.get_user(user_id)
+        # Fetch user from BigQuery
+        user_service = get_bigquery_user_service()
+        user = await user_service.get_user_by_id(user_id)
         
         if not user:
             # Fallback if user not found

@@ -6,8 +6,8 @@ export interface UserSettings {
 }
 
 export const getSettings = async (): Promise<UserSettings> => {
-  const response = await api.get('/settings/');
-  return response.data;
+  const response = await api.get<UserSettings>('/settings/');
+  return response;
 };
 
 export const saveCustomPrompt = async (customPrompt: string): Promise<void> => {

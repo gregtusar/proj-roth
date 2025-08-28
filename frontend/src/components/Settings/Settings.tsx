@@ -98,13 +98,26 @@ const Settings: React.FC = () => {
 
   const loadCustomPrompt = async () => {
     try {
+      console.log('[Settings] Loading custom prompt...');
       const settings = await settingsService.getSettings();
-      if (settings.custom_prompt) {
+      console.log('[Settings] Received settings:', settings);
+      
+      if (settings && settings.custom_prompt) {
+        console.log('[Settings] Setting custom prompt:', settings.custom_prompt);
         setCustomPrompt(settings.custom_prompt);
         setOriginalPrompt(settings.custom_prompt);
+      } else {
+        console.log('[Settings] No custom prompt found in settings');
+        setCustomPrompt('');
+        setOriginalPrompt('');
       }
     } catch (error) {
-      console.error('Error loading custom prompt:', error);
+      console.error('[Settings] Error loading custom prompt:', error);
+      setNotification({
+        message: 'Failed to load custom prompt',
+        kind: NotificationKind.negative,
+      });
+      setTimeout(() => setNotification(null), 3000);
     }
   };
 

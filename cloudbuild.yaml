@@ -39,7 +39,7 @@ steps:
 substitutions:
   _SERVICE_NAME: nj-voter-chat-app
   _REGION: us-central1
-  _IMAGE_URI: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/nj-voter-chat/nj-voter-chat-app:${SHORT_SHA}-${BUILD_ID}
+  _IMAGE_URI: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/nj-voter-chat-app/nj-voter-chat-app:${SHORT_SHA}-${BUILD_ID}
 
 options:
   logging: CLOUD_LOGGING_ONLY

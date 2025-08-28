@@ -60,6 +60,13 @@ const MessageInput: React.FC = () => {
 
     // Clear previous reasoning events when starting new message
     dispatch(clearReasoningEvents());
+    
+    // Add a marker event for new message grouping
+    dispatch(addReasoningEvent({
+      type: 'message_start',
+      data: { message: message.trim() },
+      timestamp: Date.now()
+    }));
 
     // Don't add message to store yet - wait for backend confirmation
     // This ensures we have the correct session_id

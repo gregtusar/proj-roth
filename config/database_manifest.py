@@ -11,12 +11,19 @@ DATABASE_MANIFEST = {
     and geocoded addresses. Data is organized in a star schema with master_id and address_id 
     serving as primary keys for linking records across tables.
     
+    CRITICAL QUERY OPTIMIZATION RULES (MUST FOLLOW TO PREVENT CONTEXT OVERFLOW):
+    - NEVER use 'SELECT *' unless absolutely necessary - it brings in 80+ fields per row
+    - ALWAYS select only the specific fields you need (e.g., SELECT name, party, city)
+    - Use COUNT(*) when you only need the number of records, not the data itself
+    - Use LIMIT 10-100 when sampling data to understand structure or verify results
+    - For large result sets, consider aggregating with GROUP BY instead of returning all rows
+    - Each row with SELECT * consumes ~500-1000 tokens - be extremely selective
+    
     KEY PRINCIPLES:
     - Use specific values when querying (e.g., demo_party = 'REPUBLICAN' not 'Republican')  
     - Join tables using master_id to link individuals across datasets
     - Join using address_id to get geocoded location data
     - Use BigQuery geography functions for spatial analysis (ST_DISTANCE, ST_DWITHIN, etc.)
-    - Avoid using LIMIT unless specifically requested by the user
     - Names are stored as 'LASTNAME, FIRSTNAME' format in standardized fields
     - Always use 'city' field NOT 'municipal_name' (which is often NULL)
     """,
@@ -309,13 +316,44 @@ DATABASE_MANIFEST = {
     },
     
     "query_patterns": {
+        "TOKEN_EFFICIENT_QUERIES": {
+            "description": "CRITICAL: How to write queries that don't overflow context",
+            "example": """
+                -- BAD: Returns 622K rows with 80+ fields each = millions of tokens!
+                SELECT * FROM voter_data.voters
+                
+                -- GOOD: Get count when you need a number
+                SELECT COUNT(*) as total_voters FROM voter_data.voters
+                WHERE demo_party = 'DEMOCRAT'
+                
+                -- GOOD: Select only needed fields
+                SELECT standardized_name, demo_party, city 
+                FROM voter_data.voter_geo_view
+                WHERE city = 'SUMMIT'
+                LIMIT 100
+                
+                -- GOOD: Use aggregation instead of raw data
+                SELECT demo_party, COUNT(*) as count
+                FROM voter_data.voters
+                GROUP BY demo_party
+                
+                -- GOOD: Sample data to understand structure
+                SELECT standardized_name, demo_party, demo_age, city
+                FROM voter_data.voter_geo_view
+                LIMIT 10
+            """,
+            "notes": "ALWAYS minimize token usage: COUNT for totals, specific fields only, LIMIT for samples, GROUP BY for summaries"
+        },
+        
         "find_voter_by_name": {
             "description": "Find voters by name (names are in individuals table, not voters)",
             "example": """
-                -- BEST: Use voter_geo_view which has everything joined
-                SELECT * FROM voter_data.voter_geo_view 
+                -- EFFICIENT: Select only needed fields, not SELECT *
+                SELECT standardized_name, demo_party, demo_age, city, street_name
+                FROM voter_data.voter_geo_view 
                 WHERE standardized_name LIKE '%TUSAR, GREG%'
-                AND city = 'BERNARDSVILLE'  -- Use city, not municipal_name
+                AND city = 'BERNARDSVILLE'
+                LIMIT 10  -- Add LIMIT if just verifying the person exists
             """,
             "notes": "Names are 'LASTNAME, FIRSTNAME' format in standardized fields"
         },
@@ -323,24 +361,43 @@ DATABASE_MANIFEST = {
         "find_all_donations_by_name": {
             "description": "Find ALL donations including those not matched to voters",
             "example": """
-                -- Search original donation records (76% are unmatched)
-                SELECT * FROM voter_data.donations
+                -- EFFICIENT: Get summary first
+                SELECT 
+                    COUNT(*) as donation_count,
+                    SUM(contribution_amount) as total_donated,
+                    MIN(donation_date) as first_donation,
+                    MAX(donation_date) as last_donation
+                FROM voter_data.donations
                 WHERE UPPER(original_full_name) LIKE '%TUSAR%GREG%'
-                   OR UPPER(original_full_name) LIKE '%GREG%TUSAR%'
-                   
-                -- Or search matched donations only
-                SELECT * FROM voter_data.donor_view
-                WHERE standardized_name LIKE '%TUSAR, GREG%'
+                
+                -- Then get details ONLY if needed with specific fields
+                SELECT 
+                    original_full_name,
+                    committee_name,
+                    contribution_amount,
+                    donation_date
+                FROM voter_data.donations
+                WHERE UPPER(original_full_name) LIKE '%TUSAR%GREG%'
+                ORDER BY donation_date DESC
+                LIMIT 20
             """,
-            "notes": "Always try name variations (GREG vs GREGORY, with/without middle initial)"
+            "notes": "Start with aggregates, then query details only if needed"
         },
         
         "find_latino_voters": {
             "description": "Find Latino/Hispanic voters using demo_race field",
             "example": """
-                SELECT * FROM voter_data.voter_geo_view
+                -- EFFICIENT: Get count first
+                SELECT COUNT(*) as latino_voter_count
+                FROM voter_data.voter_geo_view
                 WHERE UPPER(demo_race) LIKE '%LATINO%' 
                    OR UPPER(demo_race) LIKE '%HISPANIC%'
+                   
+                -- Then sample if needed
+                SELECT standardized_name, demo_party, city, demo_age
+                FROM voter_data.voter_geo_view
+                WHERE UPPER(demo_race) LIKE '%LATINO%'
+                LIMIT 50
             """,
             "notes": "demo_race contains both race AND ethnicity information"
         },
@@ -410,13 +467,21 @@ DATABASE_MANIFEST = {
         "voting_frequency_analysis": {
             "description": "Find voters by participation patterns",
             "example": """
-                -- Super voters (voted in all recent elections)
-                SELECT * FROM voter_data.voter_geo_view
+                -- EFFICIENT: Get count of super voters first
+                SELECT COUNT(*) as super_voter_count
+                FROM voter_data.voter_geo_view
                 WHERE participation_general_2020 = TRUE 
                   AND participation_general_2022 = TRUE
                   AND participation_general_2024 = TRUE
-                  AND participation_primary_2022 = TRUE
-                  AND participation_primary_2024 = TRUE
+                  
+                -- Then get sample with specific fields if needed
+                SELECT standardized_name, demo_party, city, demo_age
+                FROM voter_data.voter_geo_view
+                WHERE participation_general_2020 = TRUE 
+                  AND participation_general_2022 = TRUE
+                  AND participation_general_2024 = TRUE
+                ORDER BY demo_age DESC
+                LIMIT 50
             """,
             "notes": "Use high_frequency_voters view for pre-filtered consistent voters"
         },
@@ -436,29 +501,35 @@ DATABASE_MANIFEST = {
     },
     
     "important_notes": [
+        "CRITICAL: NEVER use SELECT * - it returns 80+ fields consuming 500-1000 tokens per row",
+        "CRITICAL: Use COUNT(*) when you need record counts, not the actual data",
+        "CRITICAL: Always use LIMIT 10-100 when sampling data to understand structure",
+        "CRITICAL: Select ONLY the specific fields you need (e.g., name, party, city)",
+        "CRITICAL: For large datasets, aggregate with GROUP BY instead of returning all rows",
         "ALWAYS scope table names with 'voter_data.' prefix (e.g., 'voter_data.voters' not just 'voters')",
         "Party values must be exact: 'REPUBLICAN', 'DEMOCRAT', 'UNAFFILIATED' (case-sensitive)",
         "Congressional district stored as 'NJ CONGRESSIONAL DISTRICT 07' not 'NJ-07'",
         "demo_race field contains BOTH race AND ethnicity (e.g., Latino, Hispanic, Asian, Black, White)",
         "Names in standardized fields use 'LASTNAME, FIRSTNAME' format",
         "Always use 'city' field instead of 'municipal_name' (which has many NULLs)",
-        "Use 'county_name' NOT 'county' when querying voters or voter_geo_view (addresses table has 'county' but voter tables use 'county_name')",
+        "Use 'county_name' NOT 'county' when querying voters or voter_geo_view",
         "All 264K addresses have preserved geocoding (latitude/longitude)",
         "Only 24% of donations matched to voters - query donations table for unmatched",
         "Use voter_geo_view for most queries - it has everything pre-joined",
         "Use donor_view for donation analysis - includes voter matching",
         "Counties and cities are UPPERCASE in the database",
         "Distance functions use meters: 1 mile = 1609.34 meters",
-        "Names in original voters table are CASE SENSITIVE (use UPPER() for safety)",
         "ZIP codes are stored as 5-digit strings (e.g., '07901' not 7901)"
     ],
     
     "performance_tips": [
+        "ALWAYS minimize tokens: COUNT for totals, specific fields only, LIMIT for samples",
+        "Start with COUNT(*) or aggregations, then query details only if needed",
         "Use materialized views (voter_donor_mv, voter_geo_summary_mv) for best performance",
         "Use voter_geo_view instead of joining tables manually",
         "Use ST_DWITHIN for spatial queries instead of calculating ST_DISTANCE",
         "Pre-aggregated views (street_party_summary, major_donors) are fastest for analysis",
-        "Cluster your queries by demo_party, county_name when possible"
+        "Remember: Each SELECT * row = 500-1000 tokens. 1000 rows = 500K-1M tokens!"
     ]
 }
 
@@ -468,7 +539,17 @@ def format_for_llm():
     output.append("=== NJ VOTER DATABASE MANIFEST ===\n")
     output.append(DATABASE_MANIFEST["overview"])
     
-    # Include ALL important notes upfront as critical rules
+    # Put token optimization rules FIRST and PROMINENTLY
+    output.append("\n=== 🚨 CRITICAL TOKEN OPTIMIZATION RULES (MUST FOLLOW) 🚨 ===")
+    output.append("1. **NEVER use SELECT *** - Each row returns 80+ fields = 500-1000 tokens per row!")
+    output.append("2. **ALWAYS select ONLY specific fields** you need (e.g., SELECT name, party, city)")
+    output.append("3. **Use COUNT(*)** when you need the number of records, not the data itself")
+    output.append("4. **Use LIMIT 10-100** when sampling data to understand structure")
+    output.append("5. **Use GROUP BY aggregations** instead of returning all raw rows")
+    output.append("6. **REMEMBER**: 1000 rows with SELECT * = 500,000-1,000,000 tokens!")
+    output.append("7. **BEST PRACTICE**: Start with COUNT or aggregation, then query details only if needed")
+    
+    # Include ALL important notes as critical rules
     output.append("\n=== CRITICAL SQL GENERATION RULES ===")
     for i, note in enumerate(DATABASE_MANIFEST["important_notes"], 1):
         output.append(f"{i}. {note}")

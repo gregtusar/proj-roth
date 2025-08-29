@@ -48,9 +48,10 @@ MAX_OUTPUT_TOKENS = int(os.getenv("ADK_MAX_OUTPUT_TOKENS", "32768"))
 base_prompt = """
 You have access to comprehensive voter data and current political information via the following tools:
 
+{database_context}
 
 AVAILABLE TOOLS:
-1. **bigquery_select** - Execute read-only SQL queries against voter and donori databases
+1. **bigquery_select** - Execute read-only SQL queries against voter and donor databases
 2. **geocode_address** - Convert addresses to coordinates for spatial queries
 3. **google_search** - Search for current NJ political information
 4. **save_voter_list** - Save query results for later use in List Manager

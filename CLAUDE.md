@@ -90,6 +90,7 @@ gcloud run deploy nj-voter-chat-app \
     --timeout 600 \
     --max-instances 10 \
     --min-instances 0 \
+    --session-affinity \
     --allow-unauthenticated \
     --set-env-vars="GOOGLE_CLOUD_PROJECT=proj-roth,PROJECT_ID=proj-roth,CORS_ALLOWED_ORIGINS=https://gwanalytica.ai;https://nj-voter-chat-app-169579073940.us-central1.run.app;http://localhost:3000" \
     --set-secrets="GOOGLE_MAPS_API_KEY=google-maps-api-key:latest"
@@ -111,6 +112,15 @@ If deployment fails with secret errors, verify secret names with:
 ```bash
 gcloud secrets list --project=proj-roth
 ```
+
+#### WebSocket Configuration
+The application uses WebSockets for real-time chat. Key settings:
+- **Session Affinity**: Enabled via `--session-affinity` flag to ensure WebSocket connections stick to the same instance
+- **Request Timeout**: Set to 600 seconds (10 minutes) via `--timeout 600`
+- **Load Balancer**: Cloud Run's load balancer has a default WebSocket idle timeout of 10 minutes
+- **Client-side**: WebSocket client has keepalive pings every 20 seconds to prevent idle disconnection
+
+Note: Cloud Run doesn't allow direct configuration of load balancer WebSocket timeouts. The 10-minute timeout is generally sufficient for chat applications with proper keepalive implementation.
 
 ### Data Loading & Donation Matching Pipeline
 ```bash

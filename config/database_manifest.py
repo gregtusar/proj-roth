@@ -14,10 +14,8 @@ DATABASE_MANIFEST = {
     CRITICAL QUERY OPTIMIZATION RULES (MUST FOLLOW TO PREVENT CONTEXT OVERFLOW):
     - NEVER use 'SELECT *' unless absolutely necessary - it brings in 80+ fields per row
     - ALWAYS select only the specific fields you need (e.g., SELECT name, party, city)
-    - Use COUNT(*) when you only need the number of records, not the data itself
     - Use LIMIT 10-100 when sampling data to understand structure or verify results
     - For large result sets, consider aggregating with GROUP BY instead of returning all rows
-    - Each row with SELECT * consumes ~500-1000 tokens - be extremely selective
     
     KEY PRINCIPLES:
     - Use specific values when querying (e.g., demo_party = 'REPUBLICAN' not 'Republican')  

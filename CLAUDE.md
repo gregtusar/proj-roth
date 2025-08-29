@@ -44,12 +44,72 @@ python agents/nj_voter_chat_adk/test_search.py
 ```
 
 ### Deployment
-```bash
-# Deploy to Cloud Run (requires GCP permissions)
-PROJECT_ID=proj-roth REGION=us-central1 bash scripts/deploy_nj_voter_chat.sh
 
-# Test build locally
-bash test_simple_build.sh
+#### Complete Build and Deploy (Recommended)
+```bash
+# Full build and deploy with all steps
+bash scripts/full_deploy.sh
+
+# This script handles:
+# 1. Frontend version update and build
+# 2. Backend verification
+# 3. Docker image build via Cloud Build
+# 4. Cloud Run deployment with proper secrets and env vars
+# 5. Deployment verification and health checks
+
+# Options:
+# --skip-version   Skip frontend version update
+# --skip-frontend  Skip frontend build
+# --skip-backend   Skip backend verification
+# --skip-deploy    Skip Cloud Run deployment (only build)
+# --help          Show help message
+```
+
+#### Quick Frontend Deploy
+```bash
+# For frontend-only changes (faster with Docker layer caching)
+bash scripts/quick_frontend_deploy.sh
+```
+
+#### Manual Deploy Steps (if scripts fail)
+```bash
+# 1. Build Docker image
+gcloud builds submit \
+    --tag us-central1-docker.pkg.dev/proj-roth/nj-voter-chat-app/nj-voter-chat-app:latest \
+    --project proj-roth \
+    --timeout=20m
+
+# 2. Deploy to Cloud Run
+gcloud run deploy nj-voter-chat-app \
+    --image us-central1-docker.pkg.dev/proj-roth/nj-voter-chat-app/nj-voter-chat-app:latest \
+    --region us-central1 \
+    --project proj-roth \
+    --platform managed \
+    --memory 4Gi \
+    --cpu 2 \
+    --timeout 600 \
+    --max-instances 10 \
+    --min-instances 0 \
+    --allow-unauthenticated \
+    --set-env-vars="GOOGLE_CLOUD_PROJECT=proj-roth,PROJECT_ID=proj-roth,CORS_ALLOWED_ORIGINS=https://gwanalytica.ai;https://nj-voter-chat-app-169579073940.us-central1.run.app;http://localhost:3000" \
+    --set-secrets="GOOGLE_MAPS_API_KEY=google-maps-api-key:latest"
+
+# 3. Verify deployment
+gcloud run services describe nj-voter-chat-app \
+    --region us-central1 \
+    --project proj-roth \
+    --format="table(status.url,status.latestReadyRevisionName)"
+```
+
+#### Important Notes on Secrets
+The project uses the following Google Secret Manager secrets:
+- `google-maps-api-key` - Google Maps API key for geocoding
+- `api-key` - Google Search API key (note: NOT google-search-api-key)
+- `search-engine-id` - Google Search CX ID (note: NOT google-search-cx)
+
+If deployment fails with secret errors, verify secret names with:
+```bash
+gcloud secrets list --project=proj-roth
 ```
 
 ### Data Loading & Donation Matching Pipeline

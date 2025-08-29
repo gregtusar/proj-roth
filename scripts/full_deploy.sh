@@ -105,17 +105,32 @@ build_docker_image() {
     
     echo "Building image: ${IMAGE_URL}:${IMAGE_TAG}"
     
-    # Submit build to Cloud Build
-    gcloud builds submit \
+    # Submit build to Cloud Build and capture the build ID
+    BUILD_OUTPUT=$(gcloud builds submit \
         --tag "${IMAGE_URL}:${IMAGE_TAG}" \
         --project ${PROJECT_ID} \
         --timeout=20m \
-        .
+        --format="value(name)" \
+        . 2>&1)
     
-    if [ $? -eq 0 ]; then
+    BUILD_EXIT_CODE=$?
+    
+    # Extract build ID if successful
+    if [ $BUILD_EXIT_CODE -eq 0 ]; then
+        BUILD_ID=$(echo "$BUILD_OUTPUT" | grep -oE '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}' | head -1)
+        
+        if [ ! -z "$BUILD_ID" ]; then
+            echo "Build ID: ${BUILD_ID}"
+            echo "Monitoring build progress..."
+            
+            # Wait for build to complete
+            gcloud builds log ${BUILD_ID} --stream --project=${PROJECT_ID} 2>/dev/null || true
+        fi
+        
         echo -e "${GREEN}✓ Docker image built successfully${NC}"
         
         # Also tag as latest
+        echo "Tagging as latest..."
         gcloud container images add-tag \
             "${IMAGE_URL}:${IMAGE_TAG}" \
             "${IMAGE_URL}:latest" \
@@ -124,6 +139,8 @@ build_docker_image() {
         echo "Tagged as: ${IMAGE_URL}:latest"
     else
         echo -e "${RED}✗ Docker build failed${NC}"
+        echo "Build output:"
+        echo "$BUILD_OUTPUT"
         exit 1
     fi
     
@@ -143,24 +160,56 @@ deploy_to_cloud_run() {
         exit 1
     fi
     
-    echo "Deploying ${IMAGE_URL}:latest to Cloud Run..."
+    echo "Deploying ${IMAGE_URL}:${IMAGE_TAG} to Cloud Run..."
     
+    # Deploy with proper configuration including secrets and env vars
     gcloud run deploy ${SERVICE_NAME} \
-        --image "${IMAGE_URL}:latest" \
+        --image "${IMAGE_URL}:${IMAGE_TAG}" \
         --platform managed \
         --region ${REGION} \
         --project ${PROJECT_ID} \
         --allow-unauthenticated \
-        --memory 2Gi \
+        --memory 4Gi \
         --cpu 2 \
         --timeout 600 \
         --max-instances 10 \
-        --min-instances 0
+        --min-instances 0 \
+        --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},PROJECT_ID=${PROJECT_ID},CORS_ALLOWED_ORIGINS=https://gwanalytica.ai;https://nj-voter-chat-app-169579073940.us-central1.run.app;http://localhost:3000" \
+        --set-secrets="GOOGLE_MAPS_API_KEY=google-maps-api-key:latest"
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✓ Deployment successful${NC}"
+        
+        # Wait for the new revision to be ready
+        echo "Waiting for revision to be ready..."
+        local max_attempts=30
+        local attempt=0
+        
+        while [ $attempt -lt $max_attempts ]; do
+            READY=$(gcloud run services describe ${SERVICE_NAME} \
+                --region ${REGION} \
+                --project ${PROJECT_ID} \
+                --format="value(status.conditions[0].status)" 2>/dev/null)
+            
+            if [ "$READY" = "True" ]; then
+                echo -e "${GREEN}✓ New revision is ready and serving traffic${NC}"
+                break
+            fi
+            
+            echo -n "."
+            sleep 2
+            attempt=$((attempt + 1))
+        done
+        
+        if [ $attempt -eq $max_attempts ]; then
+            echo -e "\n${YELLOW}⚠ Revision may still be deploying. Check status manually.${NC}"
+        fi
     else
         echo -e "${RED}✗ Deployment failed${NC}"
+        echo "Common issues:"
+        echo "  - Check if secrets exist: gcloud secrets list --project=${PROJECT_ID}"
+        echo "  - Verify IAM permissions for Cloud Run service account"
+        echo "  - Check Cloud Build logs: gcloud builds list --limit=1 --project=${PROJECT_ID}"
         exit 1
     fi
 }

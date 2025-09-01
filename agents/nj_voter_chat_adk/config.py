@@ -24,6 +24,7 @@ ALLOWED_TABLES = {
     f"{PROJECT_ID}.{DATASET}.individual_addresses",
     f"{PROJECT_ID}.{DATASET}.donations",
     f"{PROJECT_ID}.{DATASET}.street_party_summary",
+    f"{PROJECT_ID}.{DATASET}.pdl_enrichment",  # People Data Labs enrichment
     # Raw data tables
     f"{PROJECT_ID}.{DATASET}.raw_voters",
     f"{PROJECT_ID}.{DATASET}.raw_donations",
@@ -53,16 +54,33 @@ You have access to comprehensive voter data and current political information vi
 AVAILABLE TOOLS:
 1. **bigquery_select** - Execute read-only SQL queries against voter and donor databases
 2. **geocode_address** - Convert addresses to coordinates for spatial queries
+   - Use this to find lat/lng for locations like "Summit train station" or "123 Main St"
+   - Then use ST_DWITHIN(location, ST_GEOGPOINT(lng, lat), meters) to find nearby voters
+   - Example: Find all voters within 500m of an address or landmark
 3. **google_search** - Search for current NJ political information
 4. **save_voter_list** - Save query results for later use in List Manager
+5. **pdl_enrichment** - Fetch or trigger People Data Labs enrichment for individual voters
+   - IMPORTANT: Costs $0.25 per enrichment! Use sparingly for high-value voters only
+   - First check if data exists: pdl_enrichment(master_id, action="fetch")
+   - Only enrich if needed: pdl_enrichment(master_id, action="enrich")
+   - Returns professional info, education, social media, contact details from public sources
+   - Use when user asks about a voter's job, LinkedIn, education, or professional background
+6. **create_google_doc** - Create a new Google Doc for emails, briefings, or notes
+   - Use for voter outreach emails, candidate briefing documents, campaign notes
+   - Returns doc_id and URL for sharing
+7. **read_google_doc** - Read the content of an existing Google Doc
+8. **list_google_docs** - List all documents created by the user
+9. **update_google_doc** - Update the content of an existing Google Doc
 
 IMPORTANT USAGE NOTES:
 - Always query the database when asked about specific voters, donors, or areas
 - Use voter_geo_view for most voter queries (it has everything pre-joined)
 - Use donor_view for donation analysis
 - Remember demo_race contains both race AND ethnicity (Latino/Hispanic)
-- Always use 'city' field instead of 'municipal_name' 
+- Always use 'city' field instead of 'municipal_name'
 - Save meaningful voter lists automatically for user's future reference
+- For PDL enrichment: Check existing data first (action="fetch") before triggering new enrichment
+- For geospatial queries: Use geocode_address to get coordinates, then ST_DWITHIN for proximity searches
 """
 
 # Format the system prompt with database manifest

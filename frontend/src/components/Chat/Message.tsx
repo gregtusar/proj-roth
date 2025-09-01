@@ -26,14 +26,11 @@ const MessageContent = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean })
   fontSize: '14px',
   lineHeight: '1.6',
   color: $isDarkMode ? '#e0e0e0' : '#111827',
-  textAlign: 'left',
-  wordSpacing: 'normal',
-  letterSpacing: 'normal',
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  fontKerning: 'normal',
+  textRendering: 'optimizeLegibility',
   '& p': {
     margin: '0 0 8px 0',
-    textAlign: 'left',
-    wordSpacing: 'normal',
-    letterSpacing: 'normal',
   },
   '& p:last-child': {
     margin: 0,
@@ -178,44 +175,31 @@ const Message: React.FC<MessageProps> = ({ message, isStreaming = false }) => {
         }}
       />
       <MessageContent $isDarkMode={isDarkMode}>
-        {isStreaming ? (
-          // During streaming, render plain text with preserved whitespace
-          <div style={{ 
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            textAlign: 'left',
-            letterSpacing: 'normal',
-            wordSpacing: 'normal'
-          }}>
-            {message.message_text}
-            <StreamingIndicator />
-          </div>
-        ) : (
-          // After streaming completes, render with full markdown
-          <ReactMarkdown
-            components={{
-              code({ node, inline, className, children, ...props }) {
-                const match = /language-(\w+)/.exec(className || '');
-                return !inline && match ? (
-                  <SyntaxHighlighter
-                    style={oneDark}
-                    language={match[1]}
-                    PreTag="div"
-                    {...props}
-                  >
-                    {String(children).replace(/\n$/, '')}
-                  </SyntaxHighlighter>
-                ) : (
-                  <code className={className} {...props}>
-                    {children}
-                  </code>
-                );
-              },
-            }}
-          >
-            {message.message_text}
-          </ReactMarkdown>
-        )}
+        <ReactMarkdown
+          components={{
+            code({ node, inline, className, children, ...props }) {
+              const match = /language-(\w+)/.exec(className || '');
+              return !inline && match ? (
+                <SyntaxHighlighter
+                  style={oneDark}
+                  language={match[1]}
+                  PreTag="div"
+                  {...props}
+                >
+                  {String(children).replace(/\n$/, '')}
+                </SyntaxHighlighter>
+              ) : (
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              );
+            },
+          }}
+        >
+          {message.message_text}
+        </ReactMarkdown>
+        
+        {isStreaming && <StreamingIndicator />}
         
         {message.metadata?.tool_calls && (
           <ToolCallContainer $isDarkMode={isDarkMode}>

@@ -38,3 +38,7 @@ class UserContext:
 
 # Global instance
 user_context = UserContext()
+
+def get_current_user_id() -> Optional[str]:
+    """Get the current user ID from context or environment"""
+    return user_context.get_user_context().get("user_id")

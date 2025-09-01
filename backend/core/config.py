@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     GOOGLE_CLOUD_REGION: str = "us-central1"
     
     # Firestore is used exclusively for chat storage
+    USE_FIRESTORE_FOR_CHAT: bool = True
     
     # Authentication
     SECRET_KEY: str = "your-secret-key-here-change-in-production"

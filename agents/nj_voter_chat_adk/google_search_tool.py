@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import requests
 from urllib.parse import quote_plus
 from .debug_config import debug_print, error_print
-from .secret_manager import load_secret
+from .secret_manager import get_secret_manager
 
 
 class GoogleSearchTool:
@@ -58,24 +58,27 @@ class GoogleSearchTool:
         # 3. Local secret files
         # 4. Environment variables
         
-        self.api_key = (
-            api_key or 
-            load_secret("google-search-api-key", "GOOGLE_SEARCH_API_KEY") or
-            load_secret("api-key", "GOOGLE_SEARCH_API_KEY") or  # This is the actual secret name in your project
-            self._read_secret("api-key") or 
-            os.getenv("GOOGLE_SEARCH_API_KEY")
-        )
-        
-        self.search_engine_id = (
-            search_engine_id or 
-            load_secret("google-search-cx", "GOOGLE_SEARCH_ENGINE_ID") or
-            load_secret("search-engine-id", "GOOGLE_SEARCH_ENGINE_ID") or  # This is the actual secret name
-            self._read_secret("search-engine-id") or 
-            os.getenv("GOOGLE_SEARCH_ENGINE_ID")
-        )
+        # Always use Secret Manager for consistency and security
+        self.api_key = api_key
+        self.search_engine_id = search_engine_id
         
         if not self.api_key or not self.search_engine_id:
-            print("[WARNING] Google Search API credentials not configured. Search functionality will be limited.")
+            # Try to load from Secret Manager only
+            manager = get_secret_manager()
+            if not self.api_key:
+                # Note: The actual secret name in the project is 'api-key'
+                self.api_key = manager.get_secret("api-key")
+                if self.api_key:
+                    debug_print("[DEBUG] Successfully loaded Google Search API key from Secret Manager")
+            
+            if not self.search_engine_id:
+                # Note: The actual secret name in the project is 'search-engine-id'
+                self.search_engine_id = manager.get_secret("search-engine-id")
+                if self.search_engine_id:
+                    debug_print("[DEBUG] Successfully loaded Google Search Engine ID from Secret Manager")
+        
+        if not self.api_key or not self.search_engine_id:
+            print("[WARNING] Google Search API credentials not found in Secret Manager. Search functionality will be limited.")
         
         # Simple in-memory cache with TTL
         self._cache = {}  # {cache_key: {"results": [...], "timestamp": datetime}}

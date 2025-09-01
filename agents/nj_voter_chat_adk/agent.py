@@ -1,9 +1,10 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 import asyncio
 import inspect
 import time
 import os
 import sys
+import json
 from pathlib import Path
 
 # Add project root to path for imports
@@ -18,6 +19,8 @@ from .bigquery_tool import BigQueryReadOnlyTool
 from .google_search_tool import GoogleSearchTool
 from .geocoding_tool import GeocodingTool
 from .voter_list_tool import VoterListTool
+from .pdl_tool import PDLEnrichmentTool
+from .google_docs_tool import GoogleDocsTool
 from .debug_config import debug_print, error_print
 
 # Global reference to the current websocket for reasoning events
@@ -144,6 +147,7 @@ _bq_tool = None
 _search_tool = None
 _geocoding_tool = None
 _list_tool = None
+_pdl_tool = None
 
 def _get_bq_tool():
     global _bq_tool
@@ -168,6 +172,12 @@ def _get_list_tool():
     if _list_tool is None:
         _list_tool = VoterListTool()
     return _list_tool
+
+def _get_pdl_tool():
+    global _pdl_tool
+    if _pdl_tool is None:
+        _pdl_tool = PDLEnrichmentTool()
+    return _pdl_tool
 
 def bigquery_select(sql: str) -> Dict[str, Any]:
     """Executes read-only SELECT queries on approved BigQuery tables with smart field mapping.
@@ -376,6 +386,197 @@ def save_voter_list(list_name: str, description: str, sql_query: str, row_count:
             "list_id": None
         }
 
+def pdl_enrichment(master_id: str, action: str = "fetch", min_likelihood: int = 8, force: bool = False) -> Dict[str, Any]:
+    """Fetch or trigger People Data Labs enrichment for a voter.
+    
+    IMPORTANT: PDL enrichment costs $0.25 per API call. Use sparingly and only for high-value voters.
+    
+    Args:
+        master_id (str): The voter's master_id from the database
+        action (str): Either "fetch" to get existing data or "enrich" to trigger new enrichment
+        min_likelihood (int): For enrichment, minimum confidence score (1-10, default 8)
+                             Lower values = more matches but less accurate
+                             Higher values = fewer matches but more accurate
+        force (bool): For enrichment, bypass cost controls and existing data checks (use carefully!)
+    
+    Returns:
+        Dict[str, Any]: Contains enrichment data or status information including:
+                       - For existing data: Full PDL profile with job, education, social media, etc.
+                       - For new enrichment: Cost information and enrichment results
+                       - For errors: Status and error messages
+    
+    Examples:
+        >>> # First check if data exists
+        >>> pdl_enrichment("abc123", action="fetch")
+        {"status": "found", "enrichment": {...full PDL data...}}
+        
+        >>> # Trigger new enrichment if needed
+        >>> pdl_enrichment("abc123", action="enrich", min_likelihood=8)
+        {"status": "enriched", "cost": 0.25, "enrichment": {...}}
+    """
+    try:
+        tool = _get_pdl_tool()
+        
+        if action == "fetch":
+            return tool.get_enrichment(master_id)
+        elif action == "enrich":
+            return tool.trigger_enrichment(
+                master_id,
+                min_likelihood=min_likelihood,
+                skip_if_exists=not force,
+                require_confirmation=not force
+            )
+        elif action == "session_summary":
+            return tool.get_session_summary()
+        else:
+            return {
+                "status": "error",
+                "message": f"Invalid action: {action}. Use 'fetch' or 'enrich'"
+            }
+    except Exception as e:
+        error_print(f"[ERROR] PDL enrichment failed: {e}")
+        return {
+            "status": "error",
+            "error": f"PDL enrichment failed: {str(e)}"
+        }
+
+def create_google_doc(title: str, content: str = "", user_id: Optional[str] = None) -> str:
+    """Create a new Google Doc with the specified title and content.
+    
+    Args:
+        title (str): The title of the document
+        content (str): The initial content of the document (optional)
+        user_id (str): The ID of the user creating the document (optional, will use session if not provided)
+        
+    Returns:
+        str: JSON string with document details including doc_id, title, and URL
+    """
+    import asyncio
+    
+    async def _create_doc():
+        tool = GoogleDocsTool()
+        
+        # Get user_id from session if not provided
+        nonlocal user_id
+        if not user_id:
+            from .user_context import get_current_user_id
+            user_id = get_current_user_id()
+            if not user_id:
+                return json.dumps({
+                    'error': 'No user context available. Please ensure you are logged in.'
+                })
+        
+        result = await tool.create_document(title=title, content=content, user_id=user_id)
+        debug_print(f"[GOOGLE_DOCS] Document created: {result}")
+        return result
+    
+    try:
+        # Run async function synchronously
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(_create_doc())
+        finally:
+            loop.close()
+    except Exception as e:
+        error_print(f"[ERROR] Failed to create Google Doc: {e}")
+        return json.dumps({
+            'error': f'Failed to create document: {str(e)}'
+        })
+
+def read_google_doc(doc_id: str, user_id: Optional[str] = None) -> str:
+    """Read the content of a Google Doc.
+    
+    Args:
+        doc_id (str): The ID of the document to read
+        user_id (str): The ID of the user requesting the document (optional, will use session if not provided)
+        
+    Returns:
+        str: JSON string with document content including doc_id, title, content, and URL
+    """
+    try:
+        tool = GoogleDocsTool()
+        
+        # Get user_id from session if not provided
+        if not user_id:
+            from .user_context import get_current_user_id
+            user_id = get_current_user_id()
+            if not user_id:
+                return json.dumps({
+                    'error': 'No user context available. Please ensure you are logged in.'
+                })
+        
+        result = tool.read_document(doc_id=doc_id, user_id=user_id)
+        debug_print(f"[GOOGLE_DOCS] Document read: {doc_id}")
+        return result
+    except Exception as e:
+        error_print(f"[ERROR] Failed to read Google Doc: {e}")
+        return json.dumps({
+            'error': f'Failed to read document: {str(e)}'
+        })
+
+def list_google_docs(user_id: Optional[str] = None) -> str:
+    """List all Google Docs owned by the user.
+    
+    Args:
+        user_id (str): The ID of the user (optional, will use session if not provided)
+        
+    Returns:
+        str: JSON string with list of documents including doc_id, title, created_at, updated_at, and URL
+    """
+    try:
+        tool = GoogleDocsTool()
+        
+        # Get user_id from session if not provided
+        if not user_id:
+            from .user_context import get_current_user_id
+            user_id = get_current_user_id()
+            if not user_id:
+                return json.dumps({
+                    'error': 'No user context available. Please ensure you are logged in.'
+                })
+        
+        result = tool.list_documents(user_id=user_id)
+        debug_print(f"[GOOGLE_DOCS] Listed documents for user {user_id}")
+        return result
+    except Exception as e:
+        error_print(f"[ERROR] Failed to list Google Docs: {e}")
+        return json.dumps({
+            'error': f'Failed to list documents: {str(e)}'
+        })
+
+def update_google_doc(doc_id: str, content: str, user_id: Optional[str] = None) -> str:
+    """Update the content of a Google Doc.
+    
+    Args:
+        doc_id (str): The ID of the document to update
+        content (str): The new content for the document
+        user_id (str): The ID of the user updating the document (optional, will use session if not provided)
+        
+    Returns:
+        str: JSON string with update status
+    """
+    try:
+        tool = GoogleDocsTool()
+        
+        # Get user_id from session if not provided
+        if not user_id:
+            from .user_context import get_current_user_id
+            user_id = get_current_user_id()
+            if not user_id:
+                return json.dumps({
+                    'error': 'No user context available. Please ensure you are logged in.'
+                })
+        
+        result = tool.update_document(doc_id=doc_id, content=content, user_id=user_id)
+        debug_print(f"[GOOGLE_DOCS] Document updated: {doc_id}")
+        return result
+    except Exception as e:
+        error_print(f"[ERROR] Failed to update Google Doc: {e}")
+        return json.dumps({
+            'error': f'Failed to update document: {str(e)}'
+        })
+
 class NJVoterChatAgent(Agent):
     def __init__(self):
         import os
@@ -390,10 +591,20 @@ class NJVoterChatAgent(Agent):
         super().__init__(
             name="nj_voter_chat", 
             model=MODEL, 
-            tools=[bigquery_select, google_search, geocode_address, save_voter_list], 
+            tools=[
+                bigquery_select, 
+                google_search, 
+                geocode_address, 
+                save_voter_list, 
+                pdl_enrichment,
+                create_google_doc,
+                read_google_doc,
+                list_google_docs,
+                update_google_doc
+            ], 
             instruction=SYSTEM_PROMPT
         )
-        debug_print(f"[DEBUG] Agent initialized successfully with instruction parameter and tools: bigquery_select, google_search, geocode_address, save_voter_list")
+        debug_print(f"[DEBUG] Agent initialized successfully with instruction parameter and tools: bigquery_select, google_search, geocode_address, save_voter_list, pdl_enrichment, create_google_doc, read_google_doc, list_google_docs, update_google_doc")
         self._initialize_services()
     
     def _initialize_services(self):

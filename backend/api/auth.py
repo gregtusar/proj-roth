@@ -11,6 +11,7 @@ from google.oauth2 import id_token
 
 from core.config import settings
 from services.bigquery_user_service import get_bigquery_user_service
+from services.oauth_token_service import OAuthTokenService
 
 router = APIRouter()
 
@@ -127,11 +128,28 @@ async def google_auth_callback(request: GoogleAuthRequest):
                 "googleId": idinfo.get("sub"),
                 "given_name": idinfo.get("given_name"),
                 "family_name": idinfo.get("family_name"),
+                # Store Google OAuth tokens for Docs/Drive access
+                "google_access_token": token_data.get("access_token"),
+                "google_refresh_token": token_data.get("refresh_token"),
+                "google_token_expires_at": datetime.utcnow() + timedelta(seconds=token_data.get("expires_in", 3600))
             }
             
             # Save/update user in BigQuery and get internal user_id
             user_service = get_bigquery_user_service()
             user = await user_service.save_or_update_user(google_user_data)
+            
+            # Store OAuth tokens separately in Firestore
+            if token_data.get("access_token"):
+                oauth_service = OAuthTokenService()
+                await oauth_service.store_tokens(
+                    user_id=user["user_id"],
+                    tokens={
+                        'access_token': token_data.get("access_token"),
+                        'refresh_token': token_data.get("refresh_token"),
+                        'expires_at': datetime.utcnow() + timedelta(seconds=token_data.get("expires_in", 3600)),
+                        'scopes': ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/documents']
+                    }
+                )
             
             # Create JWT tokens with internal user_id
             access_token = create_access_token(

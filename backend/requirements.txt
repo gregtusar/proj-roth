@@ -20,3 +20,4 @@ google-genai>=0.4.0
 googlemaps==4.10.0
 google-adk==1.11.0
 google-generativeai
+google-api-python-client>=2.100.0

@@ -16,6 +16,7 @@ const Container = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => (
   backgroundColor: $isDarkMode ? '#1a1a1a' : '#f5f5f5',
   padding: '32px',
   transition: 'background-color 0.3s ease',
+  overflowY: 'auto',
 }));
 
 const Card = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
@@ -169,24 +170,6 @@ const Settings: React.FC = () => {
         </Heading>
       </HeadingLevel>
 
-      {notification && (
-        <Notification
-          kind={notification.kind}
-          closeable
-          onClose={() => setNotification(null)}
-          overrides={{
-            Body: {
-              style: {
-                marginBottom: '24px',
-                maxWidth: '800px',
-                margin: '0 auto 24px',
-              },
-            },
-          }}
-        >
-          {notification.message}
-        </Notification>
-      )}
 
       <Card $isDarkMode={isDarkMode}>
         <Section>
@@ -243,7 +226,7 @@ const Settings: React.FC = () => {
             value={customPrompt}
             onChange={(e) => setCustomPrompt((e.target as HTMLTextAreaElement).value)}
             placeholder="Enter custom instructions here... (e.g., 'Always include demographic breakdowns', 'Focus on Union County')"
-            rows={6}
+            rows={12}
             disabled={isSaving}
             overrides={{
               Root: {
@@ -256,7 +239,8 @@ const Settings: React.FC = () => {
                   backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
                   color: isDarkMode ? '#e0e0e0' : '#111827',
                   borderColor: isDarkMode ? '#404040' : '#d1d5db',
-                  fontSize: '14px',
+                  fontSize: '16px',
+                  lineHeight: '1.5',
                 },
               },
             }}
@@ -298,6 +282,17 @@ const Settings: React.FC = () => {
               </Button>
             </div>
           </div>
+          
+          {notification && notification.message === 'Custom prompt saved successfully!' && (
+            <div style={{
+              marginTop: '8px',
+              fontSize: '14px',
+              color: '#10b981',
+              textAlign: 'right'
+            }}>
+              ✓ Prompt saved
+            </div>
+          )}
         </Section>
 
         <Section>

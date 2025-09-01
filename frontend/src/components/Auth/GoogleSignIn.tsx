@@ -58,7 +58,8 @@ const GoogleSignIn: React.FC = () => {
     // Redirect to Google OAuth
     const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
     const redirectUri = `${window.location.origin}/login`;
-    const scope = 'openid email profile';
+    // Include Google Docs/Drive scopes for document creation
+    const scope = 'openid email profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/documents';
     
     console.log('Google OAuth Config:', {
       clientId,

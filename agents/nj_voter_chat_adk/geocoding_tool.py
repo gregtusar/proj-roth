@@ -6,7 +6,7 @@ import time
 import hashlib
 from datetime import datetime
 from .debug_config import debug_print, error_print
-from .secret_manager import load_secret
+from .secret_manager import get_secret_manager
 
 
 class GeocodingTool:
@@ -27,33 +27,17 @@ class GeocodingTool:
         # 3. Environment variable
         # 4. Local secret files
         
-        self.api_key = (
-            api_key or 
-            load_secret("google-maps-api-key", "GOOGLE_MAPS_API_KEY") or
-            load_secret("maps-api-key", "GOOGLE_MAPS_API_KEY") or
-            load_secret("api-key", "GOOGLE_MAPS_API_KEY") or  # Generic api-key might be Maps
-            os.getenv("GOOGLE_MAPS_API_KEY")
-        )
-        
-        # Also try reading from local secret files as fallback
+        # Always use Secret Manager for consistency and security
+        self.api_key = api_key
         if not self.api_key:
-            secret_paths = [
-                f"/run/secrets/maps-api-key",
-                os.path.join(os.path.dirname(__file__), "secrets", "maps-api-key"),
-            ]
-            for path in secret_paths:
-                if os.path.exists(path):
-                    try:
-                        with open(path, 'r') as f:
-                            self.api_key = f.read().strip()
-                            if self.api_key:
-                                debug_print(f"[DEBUG] Loaded Maps API key from {path}")
-                                break
-                    except:
-                        pass
+            # Try to load from Secret Manager only
+            manager = get_secret_manager()
+            self.api_key = manager.get_secret("google-maps-api-key")
+            if self.api_key:
+                debug_print("[DEBUG] Successfully loaded Google Maps API key from Secret Manager")
         
         if not self.api_key:
-            print("[WARNING] Google Maps API key not configured. Geocoding will be limited.")
+            print("[WARNING] Google Maps API key not found in Secret Manager. Geocoding will be limited.")
         
         # Simple cache for geocoding results
         self._cache = {}  # {address_hash: {"lat": ..., "lng": ..., "formatted": ..., "timestamp": ...}}

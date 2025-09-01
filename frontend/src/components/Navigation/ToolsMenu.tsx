@@ -37,6 +37,7 @@ const ToolsMenu: React.FC<ToolsMenuProps> = ({ isCompact = false }) => {
     { id: 'lists', icon: '📋', label: 'List Manager', path: '/lists' },
     { id: 'query', icon: '🔍', label: 'Query', path: '/query' },
     { id: 'videos', icon: '🎥', label: 'Video Assets', path: '/videos' },
+    { id: 'documents', icon: '📄', label: 'Document Assets', path: '/documents' },
     { id: 'campaign', icon: '📢', label: 'Campaign Manager', path: '/campaign' },
     { id: 'abtesting', icon: '🧪', label: 'A/B Testing Tool', path: '/ab-testing' },
     { id: 'streetmap', icon: '🗺️', label: 'Street Map', path: '/street-map' },

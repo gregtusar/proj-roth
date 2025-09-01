@@ -1,0 +1,16 @@
+FEATURE Request:
+
+Lets give our system the ability to create, read, and use documents stored in google docs. We will use these for various purposes, including but not limited to
+
+	- A place to create emails we will use for voter outreach
+	- A place to create briefing documents to prepare our candidate for meetings
+	- a scratchpad for our agent to keep track of random things
+
+This feature should have a few components:
+	- the agent should be able to create a document. for example 'please create a document for me which contains an email written in the voice of...' along with the ability to name it.
+	- the agent should be able to consume the contents of a document
+	- There should be a component in the left nav called 'Document Assets'
+	- Documents should be 'owned' and visible by their creator only in our tool, though in google docs they can share the link with anyone they would like
+	
+
+

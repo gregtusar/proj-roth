@@ -6,6 +6,20 @@ from dotenv import load_dotenv
 # Load .env file
 load_dotenv()
 
+# Try to load secrets from Google Secret Manager
+def load_secret(secret_id: str, default: str = "") -> str:
+    """Load a secret from Google Secret Manager."""
+    try:
+        from google.cloud import secretmanager
+        client = secretmanager.SecretManagerServiceClient()
+        project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "proj-roth")
+        name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
+        response = client.access_secret_version(request={"name": name})
+        return response.payload.data.decode("UTF-8").strip()
+    except Exception as e:
+        print(f"Warning: Could not load secret {secret_id}: {e}")
+        return default
+
 class Settings(BaseSettings):
     # Application
     APP_NAME: str = "NJ Voter Chat API"
@@ -40,9 +54,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours (1440 minutes)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # 30 days for refresh token
     
-    # Google OAuth
-    GOOGLE_CLIENT_ID: str = ""
-    GOOGLE_CLIENT_SECRET: str = ""
+    # Google OAuth - Load from Secret Manager
+    GOOGLE_CLIENT_ID: str = load_secret("google-oauth-client-id", "")
+    GOOGLE_CLIENT_SECRET: str = load_secret("google-oauth-client-secret", "")
     
     # Redis (for session management)
     REDIS_URL: str = "redis://localhost:6379"

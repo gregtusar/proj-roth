@@ -471,13 +471,17 @@ def create_google_doc(title: str, content: str = "", user_id: Optional[str] = No
         return result
     
     try:
-        # Run async function synchronously
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        # Try to get the running event loop
         try:
-            return loop.run_until_complete(_create_doc())
-        finally:
-            loop.close()
+            loop = asyncio.get_running_loop()
+            # If we're in an async context, run the coroutine in the existing loop
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, _create_doc())
+                return future.result()
+        except RuntimeError:
+            # No running loop, create a new one
+            return asyncio.run(_create_doc())
     except Exception as e:
         error_print(f"[ERROR] Failed to create Google Doc: {e}")
         return json.dumps({
@@ -494,10 +498,13 @@ def read_google_doc(doc_id: str, user_id: Optional[str] = None) -> str:
     Returns:
         str: JSON string with document content including doc_id, title, content, and URL
     """
-    try:
+    import asyncio
+    
+    async def _read_doc():
         tool = GoogleDocsTool()
         
         # Get user_id from session if not provided
+        nonlocal user_id
         if not user_id:
             from .user_context import get_current_user_id
             user_id = get_current_user_id()
@@ -506,9 +513,22 @@ def read_google_doc(doc_id: str, user_id: Optional[str] = None) -> str:
                     'error': 'No user context available. Please ensure you are logged in.'
                 })
         
-        result = tool.read_document(doc_id=doc_id, user_id=user_id)
+        result = await tool.read_document(doc_id=doc_id, user_id=user_id)
         debug_print(f"[GOOGLE_DOCS] Document read: {doc_id}")
         return result
+    
+    try:
+        # Try to get the running event loop
+        try:
+            loop = asyncio.get_running_loop()
+            # If we're in an async context, run the coroutine in the existing loop
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, _read_doc())
+                return future.result()
+        except RuntimeError:
+            # No running loop, create a new one
+            return asyncio.run(_read_doc())
     except Exception as e:
         error_print(f"[ERROR] Failed to read Google Doc: {e}")
         return json.dumps({
@@ -524,10 +544,13 @@ def list_google_docs(user_id: Optional[str] = None) -> str:
     Returns:
         str: JSON string with list of documents including doc_id, title, created_at, updated_at, and URL
     """
-    try:
+    import asyncio
+    
+    async def _list_docs():
         tool = GoogleDocsTool()
         
         # Get user_id from session if not provided
+        nonlocal user_id
         if not user_id:
             from .user_context import get_current_user_id
             user_id = get_current_user_id()
@@ -536,9 +559,22 @@ def list_google_docs(user_id: Optional[str] = None) -> str:
                     'error': 'No user context available. Please ensure you are logged in.'
                 })
         
-        result = tool.list_documents(user_id=user_id)
+        result = await tool.list_documents(user_id=user_id)
         debug_print(f"[GOOGLE_DOCS] Listed documents for user {user_id}")
         return result
+    
+    try:
+        # Try to get the running event loop
+        try:
+            loop = asyncio.get_running_loop()
+            # If we're in an async context, run the coroutine in the existing loop
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, _list_docs())
+                return future.result()
+        except RuntimeError:
+            # No running loop, create a new one
+            return asyncio.run(_list_docs())
     except Exception as e:
         error_print(f"[ERROR] Failed to list Google Docs: {e}")
         return json.dumps({
@@ -556,10 +592,13 @@ def update_google_doc(doc_id: str, content: str, user_id: Optional[str] = None) 
     Returns:
         str: JSON string with update status
     """
-    try:
+    import asyncio
+    
+    async def _update_doc():
         tool = GoogleDocsTool()
         
         # Get user_id from session if not provided
+        nonlocal user_id
         if not user_id:
             from .user_context import get_current_user_id
             user_id = get_current_user_id()
@@ -568,9 +607,22 @@ def update_google_doc(doc_id: str, content: str, user_id: Optional[str] = None) 
                     'error': 'No user context available. Please ensure you are logged in.'
                 })
         
-        result = tool.update_document(doc_id=doc_id, content=content, user_id=user_id)
+        result = await tool.update_document(doc_id=doc_id, content=content, user_id=user_id)
         debug_print(f"[GOOGLE_DOCS] Document updated: {doc_id}")
         return result
+    
+    try:
+        # Try to get the running event loop
+        try:
+            loop = asyncio.get_running_loop()
+            # If we're in an async context, run the coroutine in the existing loop
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, _update_doc())
+                return future.result()
+        except RuntimeError:
+            # No running loop, create a new one
+            return asyncio.run(_update_doc())
     except Exception as e:
         error_print(f"[ERROR] Failed to update Google Doc: {e}")
         return json.dumps({
@@ -739,23 +791,20 @@ class NJVoterChatAgent(Agent):
         chat_session_id = os.environ.get("CHAT_SESSION_ID")
         session_id = self._session_id if hasattr(self, '_session_id') else None
         
-        persistent_session_id = None
-        try:
-            persistent_session_id = _run_asyncio(self._persistent_sessions.create_or_get_session(
-                user_id=user_id,
-                user_email=user_email,
-                session_id=chat_session_id
-            ))
-            
-            _run_asyncio(self._persistent_sessions.add_message(
-                session_id=persistent_session_id,
-                user_id=user_id,
-                message_type="user",
-                message_text=prompt
-            ))
-        except Exception as e:
-            print(f"Error with persistent session: {e}")
-            persistent_session_id = None
+        # Only use the session_id passed from WebSocket for loading history
+        # DON'T create sessions here - WebSocket handler already creates them
+        # This prevents duplicate/orphan sessions from being created
+        persistent_session_id = chat_session_id  # Use the session created by WebSocket
+        
+        # Note: We no longer call create_or_get_session here because:
+        # 1. WebSocket handler creates the session if needed (websocket.py lines 130-135)
+        # 2. WebSocket handler saves all messages (websocket.py lines 158, 247)
+        # 3. Agent only needs the session_id to load conversation history
+        
+        if not persistent_session_id:
+            print(f"[Agent] No session_id provided, conversation history won't be available")
+        else:
+            print(f"[Agent] Using session_id from WebSocket: {persistent_session_id}")
 
         try:
             debug_print("[DEBUG] NJVoterChatAgent.chat -> using proper ADK Runner invocation")
@@ -1013,18 +1062,9 @@ class NJVoterChatAgent(Agent):
                 debug_print(f"[CHAT] Response preview: {final_response[:200]}...")
                 debug_print(f"[CHAT] Response indicates system instruction awareness: {'data assistant' in final_response.lower() or 'bigquery' in final_response.lower()}")
                 
-                # Store response in persistent session if configured
-                if persistent_session_id:
-                    try:
-                        _run_asyncio(self._persistent_sessions.add_message(
-                            session_id=persistent_session_id,
-                            user_id=user_id,
-                            message_type="assistant",
-                            message_text=final_response
-                        ))
-                        debug_print(f"[CHAT] Response stored in session {persistent_session_id}")
-                    except Exception as e:
-                        error_print(f"[ERROR] Failed to store assistant response: {e}")
+                # REMOVED: Don't save assistant message here - WebSocket handler already saves it
+                # This was causing duplicate messages in Firestore
+                # The WebSocket handler in backend/core/websocket.py handles all message persistence
                 
                 return final_response
             else:

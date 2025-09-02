@@ -47,9 +47,18 @@ async def process_message_stream(
         return
     
     try:
-        # Set user context for prompt logging
+        # Set user context for prompt logging and Google Docs
         if user_id:
             os.environ["VOTER_LIST_USER_ID"] = user_id
+            
+            # IMPORTANT: Also set user context for Google Docs tools
+            from agents.nj_voter_chat_adk.user_context import user_context
+            user_context.set_user_context(
+                user_id=user_id,
+                user_email=user_email or "user@example.com",
+                session_id=session_id
+            )
+            print(f"[Agent] Set user context for Google Docs: user_id={user_id}, email={user_email}")
             
             # Load and set user's custom prompt if available
             try:

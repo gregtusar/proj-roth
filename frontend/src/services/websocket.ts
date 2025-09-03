@@ -11,6 +11,7 @@ import {
   addReasoningEvent,
   clearReasoningEvents,
 } from '../store/chatSlice';
+import { MessageQueue, QueuedMessage } from './messageQueue';
 
 // WebSocket configuration constants - using arithmetic to prevent minification issues
 const PING_INTERVAL_MS = 20000;  // 20 seconds - do not change format
@@ -23,7 +24,38 @@ class WebSocketService {
   private maxReconnectAttempts = 5;
   private isConnecting = false;
   private activeSessionId: string | null = null;
-  private isLoadingSession = false;
+  private messageQueue: MessageQueue;
+
+  constructor() {
+    // Initialize message queue with handlers
+    this.messageQueue = new MessageQueue({
+      maxRetries: 3,
+      retryDelay: 500,
+      maxQueueSize: 100,
+      processingDelay: 10
+    });
+    
+    this.setupMessageHandlers();
+  }
+
+  private setupMessageHandlers(): void {
+    // Register handlers for different message types
+    this.messageQueue.registerHandler('message', async (data) => {
+      await this.handleMessage(data);
+    });
+    
+    this.messageQueue.registerHandler('message_confirmed', async (data) => {
+      await this.handleMessageConfirmed(data);
+    });
+    
+    this.messageQueue.registerHandler('session_created', async (data) => {
+      await this.handleSessionCreated(data);
+    });
+    
+    this.messageQueue.registerHandler('session_updated', async (data) => {
+      await this.handleSessionUpdated(data);
+    });
+  }
 
   connect(): void {
     // Prevent multiple connection attempts
@@ -125,126 +157,59 @@ class WebSocketService {
     });
 
     this.socket.on('message', (message: any) => {
-      // Only add message if it's for the current session and we're not loading
-      const state = store.getState();
+      // Queue message for processing instead of handling directly
+      const queuedMessage: QueuedMessage = {
+        id: message.message_id || `msg_${Date.now()}`,
+        type: 'message',
+        data: message,
+        timestamp: Date.now(),
+        retryCount: 0,
+        sessionId: message.session_id
+      };
       
-      // Debug logging
-      console.log('[WebSocket] message event:', {
-        isLoadingSession: this.isLoadingSession,
-        messageSessionId: message.session_id,
-        currentSessionId: state.chat.currentSessionId,
-        activeSessionId: this.activeSessionId
-      });
-      
-      if (this.isLoadingSession) {
-        console.log('[WebSocket] Ignoring message - session is loading');
-        return;
-      }
-      
-      // Allow messages for new sessions being created (currentSessionId might be null initially)
-      if (state.chat.currentSessionId && message.session_id !== state.chat.currentSessionId) {
-        console.log('[WebSocket] Ignoring message - different session');
-        return;
-      }
-      
-      // Check for duplicate before adding
-      const exists = state.chat.messages.some(
-        (msg: any) => msg.message_id === message.message_id
-      );
-      if (!exists) {
-        store.dispatch(addMessage(message));
-      } else {
-        console.log('[WebSocket] Ignoring duplicate message:', message.message_id);
-      }
+      this.messageQueue.enqueue(queuedMessage);
     });
 
     this.socket.on('message_confirmed', (message: any) => {
-      // Only process if it's for the current session and we're not loading
-      const state = store.getState();
+      // Queue for processing
+      const queuedMessage: QueuedMessage = {
+        id: `confirm_${message.message_id || Date.now()}`,
+        type: 'message_confirmed',
+        data: message,
+        timestamp: Date.now(),
+        retryCount: 0,
+        sessionId: message.session_id
+      };
       
-      // Allow message_confirmed for new sessions being created
-      if (this.isLoadingSession) {
-        console.log('[WebSocket] Ignoring message_confirmed - session is loading');
-        return;
-      }
-      
-      // For new sessions, currentSessionId might be set just before this event
-      // So we should be more lenient with the check
-      if (state.chat.currentSessionId && message.session_id !== state.chat.currentSessionId) {
-        console.log('[WebSocket] Warning: message_confirmed for different session', {
-          messageSession: message.session_id,
-          currentSession: state.chat.currentSessionId
-        });
-        // Don't return here - the session might have just been created
-      }
-      
-      console.log('[WebSocket] Message confirmed:', message);
-      
-      // Find the temp message to replace
-      const tempMessage = state.chat.messages.find(
-        (msg: any) => msg.message_id.startsWith('temp-') && 
-                      msg.message_text === message.message_text &&
-                      msg.message_type === 'user'
-      );
-      
-      if (tempMessage) {
-        // Replace the temp message with the confirmed one
-        store.dispatch(replaceMessage({
-          oldId: tempMessage.message_id,
-          newMessage: message
-        }));
-      } else {
-        // Check if message already exists before adding
-        const exists = state.chat.messages.some(
-          (msg: any) => msg.message_id === message.message_id
-        );
-        if (!exists) {
-          store.dispatch(addMessage(message));
-        }
-      }
+      this.messageQueue.enqueue(queuedMessage);
     });
 
     this.socket.on('session_created', (data: { session_id: string; session_name: string }) => {
-      console.log('[WebSocket] Session created:', data);
-      
-      // Update current session ID immediately
-      store.dispatch(setCurrentSession(data.session_id));
-      
-      // Create a session object and update the store
-      const newSession = {
-        session_id: data.session_id,
-        session_name: data.session_name,
-        user_id: store.getState().auth.user?.id || 'anonymous',
-        user_email: store.getState().auth.user?.email || 'anonymous@example.com',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        is_active: true,
-        message_count: 1,
-        metadata: {}
+      // Queue for processing
+      const queuedMessage: QueuedMessage = {
+        id: `session_${data.session_id}`,
+        type: 'session_created',
+        data: data,
+        timestamp: Date.now(),
+        retryCount: 0,
+        sessionId: data.session_id
       };
-      store.dispatch(updateSession(newSession));
       
-      // Update any pending messages with the correct session_id
-      const state = store.getState();
-      state.chat.messages.forEach((msg: any) => {
-        if (msg.session_id === 'pending') {
-          // Replace the message with updated session_id
-          store.dispatch(replaceMessage({
-            oldId: msg.message_id,
-            newMessage: { ...msg, session_id: data.session_id }
-          }));
-        }
-      });
-      
-      // Set the active session for WebSocket message filtering
-      this.activeSessionId = data.session_id;
-      
-      // Navigation is now handled by the useSessionNavigation hook in ChatContainer
-      // This ensures React Router is properly updated
+      this.messageQueue.enqueue(queuedMessage);
     });
 
     this.socket.on('session_updated', (session: any) => {
-      store.dispatch(updateSession(session));
+      // Queue for processing
+      const queuedMessage: QueuedMessage = {
+        id: `update_${session.session_id}_${Date.now()}`,
+        type: 'session_updated',
+        data: session,
+        timestamp: Date.now(),
+        retryCount: 0,
+        sessionId: session.session_id
+      };
+      
+      this.messageQueue.enqueue(queuedMessage);
     });
 
     this.socket.on('message_recovery', (data: any) => {
@@ -366,19 +331,114 @@ class WebSocketService {
   }
 
   setLoadingSession(loading: boolean): void {
-    this.isLoadingSession = loading;
+    this.messageQueue.setSessionLoading(loading);
     console.log('[WebSocket] Session loading state:', loading);
   }
 
   setActiveSession(sessionId: string | null): void {
     this.activeSessionId = sessionId;
+    this.messageQueue.setCurrentSession(sessionId);
     console.log('[WebSocket] Active session set to:', sessionId);
   }
 
   clearMessageQueue(): void {
-    // Don't remove listeners - just rely on the isLoadingSession flag
-    // Removing and re-adding listeners causes duplicates
-    console.log('[WebSocket] Clearing message queue (using loading flag, not removing listeners)');
+    this.messageQueue.clear();
+    console.log('[WebSocket] Message queue cleared');
+  }
+
+  // Handler methods for different message types
+  private async handleMessage(message: any): Promise<void> {
+    const state = store.getState();
+    
+    // Allow messages for new sessions being created
+    if (state.chat.currentSessionId && message.session_id !== state.chat.currentSessionId) {
+      console.log('[WebSocket] Ignoring message - different session');
+      return;
+    }
+    
+    // Check for duplicate before adding
+    const exists = state.chat.messages.some(
+      (msg: any) => msg.message_id === message.message_id
+    );
+    if (!exists) {
+      store.dispatch(addMessage(message));
+    } else {
+      console.log('[WebSocket] Ignoring duplicate message:', message.message_id);
+    }
+  }
+
+  private async handleMessageConfirmed(message: any): Promise<void> {
+    const state = store.getState();
+    
+    console.log('[WebSocket] Message confirmed:', message);
+    
+    // Find the temp message to replace
+    const tempMessage = state.chat.messages.find(
+      (msg: any) => msg.message_id.startsWith('temp-') && 
+                    msg.message_text === message.message_text &&
+                    msg.message_type === 'user'
+    );
+    
+    if (tempMessage) {
+      // Replace the temp message with the confirmed one
+      store.dispatch(replaceMessage({
+        oldId: tempMessage.message_id,
+        newMessage: message
+      }));
+    } else {
+      // Check if message already exists before adding
+      const exists = state.chat.messages.some(
+        (msg: any) => msg.message_id === message.message_id
+      );
+      if (!exists) {
+        store.dispatch(addMessage(message));
+      }
+    }
+  }
+
+  private async handleSessionCreated(data: { session_id: string; session_name: string }): Promise<void> {
+    console.log('[WebSocket] Session created:', data);
+    
+    // Update current session ID immediately
+    store.dispatch(setCurrentSession(data.session_id));
+    
+    // Create a session object and update the store
+    const newSession = {
+      session_id: data.session_id,
+      session_name: data.session_name,
+      user_id: store.getState().auth.user?.id || 'anonymous',
+      user_email: store.getState().auth.user?.email || 'anonymous@example.com',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      is_active: true,
+      message_count: 1,
+      metadata: {}
+    };
+    store.dispatch(updateSession(newSession));
+    
+    // Update any pending messages with the correct session_id
+    const state = store.getState();
+    state.chat.messages.forEach((msg: any) => {
+      if (msg.session_id === 'pending') {
+        // Replace the message with updated session_id
+        store.dispatch(replaceMessage({
+          oldId: msg.message_id,
+          newMessage: { ...msg, session_id: data.session_id }
+        }));
+      }
+    });
+    
+    // Set the active session
+    this.activeSessionId = data.session_id;
+    this.messageQueue.setCurrentSession(data.session_id);
+  }
+
+  private async handleSessionUpdated(session: any): Promise<void> {
+    store.dispatch(updateSession(session));
+  }
+
+  getQueueStats() {
+    return this.messageQueue.getStats();
   }
 }
 

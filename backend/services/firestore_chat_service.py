@@ -1,52 +1,47 @@
 """
-Google Firestore-based chat session service for GCP-native NoSQL persistence
+Google Firestore-based chat session service for GCP-native NoSQL persistence.
+Improved with consistent sync client usage and circuit breaker protection.
 """
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import uuid
 from google.cloud import firestore
-from google.cloud.firestore_v1 import AsyncClient
 import asyncio
 import os
+import logging
 
 from models.chat_session import ChatSession, ChatMessage as Message
+from core.circuit_breaker import get_circuit_manager, CircuitBreakerError
+
+logger = logging.getLogger(__name__)
 
 
 class FirestoreChatService:
     def __init__(self, project_id: Optional[str] = None):
-        """Initialize Firestore connection"""
+        """Initialize Firestore connection with improved reliability"""
         self.project_id = project_id or os.getenv("GOOGLE_CLOUD_PROJECT", "proj-roth")
+        self.circuit_breaker = get_circuit_manager().get_or_create(
+            "firestore",
+            failure_threshold=3,
+            recovery_timeout=30,
+            expected_exception=Exception
+        )
         
         try:
-            # Initialize BOTH sync and async clients
-            # Sync client is more reliable and we'll use it as primary
-            self.sync_client = firestore.Client(project=self.project_id)
+            # Use only sync client for consistency and reliability
+            self.client = firestore.Client(project=self.project_id)
             
-            # Also try to create async client for future use
-            try:
-                self.client = firestore.AsyncClient(project=self.project_id)
-                self.has_async = True
-            except Exception as e:
-                print(f"AsyncClient initialization failed ({e}), will use sync client only")
-                self.client = None
-                self.has_async = False
-            
-            # Use sync client as primary (more reliable)
-            self.is_async = False  # Default to sync for reliability
-            
-            # Collection references - use sync by default
-            self.sessions_collection = self.sync_client.collection('chat_sessions')
-            self.messages_collection = self.sync_client.collection('chat_messages')
+            # Collection references
+            self.sessions_collection = self.client.collection('chat_sessions')
+            self.messages_collection = self.client.collection('chat_messages')
             
             self.connected = True
-            print(f"Firestore chat service initialized for project: {self.project_id} (primary=sync, async_available={self.has_async})")
+            logger.info(f"Firestore chat service initialized for project: {self.project_id}")
         except Exception as e:
-            print(f"Warning: Could not connect to Firestore: {e}")
-            print(f"Firestore connection details: project_id={self.project_id}")
-            print("This may be due to missing credentials or network issues")
+            logger.error(f"Could not connect to Firestore: {e}")
+            logger.error(f"Firestore connection details: project_id={self.project_id}")
             self.connected = False
             self.client = None
-            self.sync_client = None
     
     async def create_session(
         self,
@@ -81,16 +76,22 @@ class FirestoreChatService:
             "metadata": {}
         }
         
-        # Create document with session_id as document ID
-        # Use sync client for reliability
+        # Create document with session_id as document ID using circuit breaker
         try:
-            # Always use sync client for session creation (most reliable)
-            if not self.sync_client:
-                raise RuntimeError("Firestore sync client is not initialized")
-            self.sync_client.collection('chat_sessions').document(session_id).set(session_data)
-            print(f"Successfully created session: {session_id}")
+            def _create_session():
+                if not self.client:
+                    raise RuntimeError("Firestore client is not initialized")
+                self.client.collection('chat_sessions').document(session_id).set(session_data)
+                return True
+            
+            # Use circuit breaker for protection
+            await self.circuit_breaker.call(_create_session)
+            logger.info(f"Successfully created session: {session_id}")
+        except CircuitBreakerError as e:
+            logger.error(f"Circuit breaker open for Firestore: {e}")
+            raise RuntimeError("Firestore service temporarily unavailable")
         except Exception as e:
-            print(f"Error creating session in Firestore: {e}")
+            logger.error(f"Error creating session in Firestore: {e}")
             raise
         
         return ChatSession(**session_data)
@@ -101,12 +102,12 @@ class FirestoreChatService:
         limit: int = 100
     ) -> List[ChatSession]:
         """Get all sessions for a user, ordered by most recent"""
-        # Use sync client with asyncio.to_thread for async compatibility
+        # Use sync client with asyncio.to_thread and circuit breaker
         def _get_sessions():
-            if not self.sync_client:
+            if not self.client:
                 return []
             query = (
-                self.sync_client.collection('chat_sessions')
+                self.client.collection('chat_sessions')
                 .where(filter=firestore.FieldFilter("user_id", "==", user_id))
                 .where(filter=firestore.FieldFilter("is_active", "==", True))
                 .order_by("updated_at", direction=firestore.Query.DESCENDING)
@@ -120,19 +121,22 @@ class FirestoreChatService:
             
             return sessions
         
-        # Run sync operation in thread pool
+        # Run with circuit breaker protection
         try:
-            return await asyncio.to_thread(_get_sessions)
+            return await self.circuit_breaker.call(_get_sessions)
+        except CircuitBreakerError:
+            logger.warning(f"Circuit breaker open, returning empty session list for user {user_id}")
+            return []
         except Exception as e:
-            print(f"Error loading user sessions: {e}")
+            logger.error(f"Error loading user sessions: {e}")
             return []
     
     async def get_session(self, session_id: str, user_id: str) -> Optional[ChatSession]:
         """Get a specific session"""
         def _get_session():
-            if not self.sync_client:
+            if not self.client:
                 return None
-            doc_ref = self.sync_client.collection('chat_sessions').document(session_id)
+            doc_ref = self.client.collection('chat_sessions').document(session_id)
             doc = doc_ref.get()
             
             if doc.exists:
@@ -143,8 +147,15 @@ class FirestoreChatService:
             
             return None
         
-        # Run sync operation in thread pool
-        return await asyncio.to_thread(_get_session)
+        # Run with circuit breaker protection
+        try:
+            return await self.circuit_breaker.call(_get_session)
+        except CircuitBreakerError:
+            logger.warning(f"Circuit breaker open, cannot get session {session_id}")
+            return None
+        except Exception as e:
+            logger.error(f"Error getting session: {e}")
+            return None
     
     async def update_session_name(
         self,
@@ -154,9 +165,9 @@ class FirestoreChatService:
     ) -> bool:
         """Update session name"""
         def _update_name():
-            if not self.sync_client:
+            if not self.client:
                 return False
-            doc_ref = self.sync_client.collection('chat_sessions').document(session_id)
+            doc_ref = self.client.collection('chat_sessions').document(session_id)
             
             # First verify ownership
             doc = doc_ref.get()
@@ -189,9 +200,9 @@ class FirestoreChatService:
     ) -> bool:
         """Update session model"""
         def _update_model():
-            if not self.sync_client:
+            if not self.client:
                 return False
-            doc_ref = self.sync_client.collection('chat_sessions').document(session_id)
+            doc_ref = self.client.collection('chat_sessions').document(session_id)
             
             # First verify ownership
             doc = doc_ref.get()
@@ -220,9 +231,9 @@ class FirestoreChatService:
     async def delete_session(self, session_id: str, user_id: str) -> bool:
         """Soft delete a session"""
         def _delete_session():
-            if not self.sync_client:
+            if not self.client:
                 return False
-            doc_ref = self.sync_client.collection('chat_sessions').document(session_id)
+            doc_ref = self.client.collection('chat_sessions').document(session_id)
             
             # First verify ownership
             doc = doc_ref.get()
@@ -274,13 +285,13 @@ class FirestoreChatService:
         }
         
         def _add_message():
-            if not self.sync_client:
-                raise RuntimeError("Firestore sync client is not initialized")
+            if not self.client:
+                raise RuntimeError("Firestore client is not initialized")
             # Create message document
-            self.sync_client.collection('chat_messages').document(message_id).set(message_data)
+            self.client.collection('chat_messages').document(message_id).set(message_data)
             
             # Update session activity using a transaction
-            session_ref = self.sync_client.collection('chat_sessions').document(session_id)
+            session_ref = self.client.collection('chat_sessions').document(session_id)
             
             @firestore.transactional
             def update_session(transaction):
@@ -292,11 +303,11 @@ class FirestoreChatService:
                         "message_count": current_count + 1
                     })
             
-            if self.sync_client:
-                transaction = self.sync_client.transaction()
+            if self.client:
+                transaction = self.client.transaction()
                 update_session(transaction)
         
-        # Run sync operation in thread pool
+        # Run with circuit breaker protection
         await asyncio.to_thread(_add_message)
         
         return Message(**message_data)
@@ -316,7 +327,7 @@ class FirestoreChatService:
             if not self.sync_client:
                 return []
             # Get messages
-            query = self.sync_client.collection('chat_messages').where(
+            query = self.client.collection('chat_messages').where(
                 filter=firestore.FieldFilter("session_id", "==", session_id)
             )
             
@@ -343,7 +354,7 @@ class FirestoreChatService:
         def _atomic_increment():
             if not self.sync_client:
                 return 0
-            session_ref = self.sync_client.collection('chat_sessions').document(session_id)
+            session_ref = self.client.collection('chat_sessions').document(session_id)
             
             @firestore.transactional
             def increment_sequence(transaction):

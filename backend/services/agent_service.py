@@ -29,6 +29,10 @@ except (ImportError, AttributeError) as e:
     # Don't fall back to mock - we want to fix this
     raise
 
+# Cache agents per session to maintain context
+# Key: (session_id, model_id), Value: agent instance
+_agent_cache = {}
+
 async def process_message_stream(
     message: str, 
     session_id: Optional[str] = None,
@@ -117,13 +121,35 @@ async def process_message_stream(
                 await asyncio.sleep(0.05)
             return
         
-        # Create agent with specific model
-        from agents.nj_voter_chat_adk.agent import NJVoterChatAgent
-        agent = NJVoterChatAgent()  # This will use the ADK_MODEL env var we just set
+        # Get or create agent for this session+model combination
+        # This ensures we maintain conversation context within a session
+        cache_key = (session_id, model_id) if session_id else (None, model_id)
+        
+        if cache_key in _agent_cache:
+            agent = _agent_cache[cache_key]
+            print(f"[Agent] Using cached agent for session {session_id} with model {model_id}")
+        else:
+            # Create new agent instance for this session+model
+            from agents.nj_voter_chat_adk.agent import NJVoterChatAgent
+            agent = NJVoterChatAgent()  # This will use the ADK_MODEL env var we just set
+            
+            if session_id:  # Only cache if we have a session
+                _agent_cache[cache_key] = agent
+                print(f"[Agent] Created and cached new agent for session {session_id} with model {model_id}")
+                
+                # Clean up old cache entries if too many (keep max 100 sessions)
+                if len(_agent_cache) > 100:
+                    # Remove oldest entries (first 20)
+                    keys_to_remove = list(_agent_cache.keys())[:20]
+                    for key in keys_to_remove:
+                        del _agent_cache[key]
+                    print(f"[Agent] Cleaned up {len(keys_to_remove)} old agent cache entries")
+            else:
+                print(f"[Agent] Created new agent without caching (no session)")
         
         print(f"[Agent] Calling agent.chat with message: {message[:50]}...")
         print(f"[Agent] Session ID: {session_id}")
-        print(f"[Agent] Using agent: {type(agent).__name__}")
+        print(f"[Agent] Using agent: {type(agent).__name__} (cached: {cache_key in _agent_cache})")
         
         # The agent's chat() method will handle session management based on CHAT_SESSION_ID
         # It will load conversation history internally for context
@@ -223,6 +249,22 @@ async def invoke_agent_tool(tool_name: str, args: dict) -> dict:
         
     except Exception as e:
         return {"error": str(e)}
+
+def clear_session_agent_cache(session_id: str, model_id: Optional[str] = None):
+    """
+    Clear agent cache for a specific session when model changes
+    """
+    if model_id:
+        cache_key = (session_id, model_id)
+        if cache_key in _agent_cache:
+            del _agent_cache[cache_key]
+            print(f"[Agent] Cleared cache for session {session_id} with model {model_id}")
+    else:
+        # Clear all models for this session
+        keys_to_remove = [k for k in _agent_cache.keys() if k[0] == session_id]
+        for key in keys_to_remove:
+            del _agent_cache[key]
+        print(f"[Agent] Cleared all {len(keys_to_remove)} cache entries for session {session_id}")
 
 def get_available_tools() -> list:
     """

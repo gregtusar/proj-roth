@@ -310,6 +310,11 @@ async def update_session_model(sid, data):
         
         # Import here to avoid circular dependency
         from services.firestore_chat_service import get_firestore_chat_service
+        from services.agent_service import clear_session_agent_cache
+        
+        # Clear the agent cache for this session since model is changing
+        # This ensures a new agent instance with the new model will be created
+        clear_session_agent_cache(session_id)
         
         # Update the session model
         service = get_firestore_chat_service()

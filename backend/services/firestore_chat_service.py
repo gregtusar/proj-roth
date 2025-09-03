@@ -324,7 +324,7 @@ class FirestoreChatService:
             raise ValueError(f"Session {session_id} not found or access denied")
         
         def _get_messages():
-            if not self.sync_client:
+            if not self.client:
                 return []
             # Get messages
             query = self.client.collection('chat_messages').where(
@@ -352,7 +352,7 @@ class FirestoreChatService:
     async def _get_next_sequence_number(self, session_id: str) -> int:
         """Get the next sequence number for a session using atomic increment"""
         def _atomic_increment():
-            if not self.sync_client:
+            if not self.client:
                 return 0
             session_ref = self.client.collection('chat_sessions').document(session_id)
             
@@ -368,7 +368,7 @@ class FirestoreChatService:
                     transaction.update(session_ref, {"last_sequence_number": 0})
                     return 0
             
-            transaction = self.sync_client.transaction()
+            transaction = self.client.transaction()
             return increment_sequence(transaction)
         
         # Run sync operation in thread pool

@@ -74,8 +74,12 @@ class SessionIntegration:
             return []
         
         try:
-            result = await self.session_service.get_session_messages(session_id, user_id)
-            return [{"role": msg.message_type, "content": msg.message_text} for msg in result.messages]
+            messages = await self.session_service.get_session_messages(session_id, user_id)
+            # Convert messages to the expected format
+            history = []
+            for msg in messages.messages:
+                history.append({"role": msg.message_type, "content": msg.message_text})
+            return history
         except Exception as e:
             print(f"Error getting session history: {e}")
             return []

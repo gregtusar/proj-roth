@@ -746,29 +746,47 @@ class NJVoterChatAgent(Agent):
                 "total_size_tokens": total_size // 4
             })
             
-            # CRITICAL FIX: Combine ALL text from ALL chunks, not just return one chunk
-            # ADK may send content across multiple chunks that need to be assembled
-            combined_text_parts = []
+            # FIX: Handle chunks properly based on ADK documentation
+            # Check 'partial' flag to determine if chunks are incremental or complete
+            combined_text = ""
             final_chunk = None
             
             print(f"[ADK] Processing {len(all_chunks)} chunks to extract complete response")
             
             for i, chunk in enumerate(all_chunks):
+                # Check if this is a partial chunk (incremental) or complete
+                is_partial = getattr(chunk, 'partial', None)
+                
                 if hasattr(chunk, 'content') and hasattr(chunk.content, 'parts'):
                     # Extract text from this chunk's parts
                     for part in chunk.content.parts:
-                        if hasattr(part, 'text') and part.text and part.text.strip():
-                            combined_text_parts.append(part.text.strip())
-                            print(f"[ADK] Chunk {i+1}: Found text part with {len(part.text)} chars")
+                        if hasattr(part, 'text') and part.text:
+                            text = part.text
+                            
+                            if is_partial is True:
+                                # Incremental content - append to what we have
+                                combined_text += text
+                                print(f"[ADK] Chunk {i+1}: Incremental text ({len(text)} chars, partial={is_partial})")
+                            elif is_partial is False:
+                                # Complete chunk - replace what we have
+                                combined_text = text
+                                print(f"[ADK] Chunk {i+1}: Complete text replacement ({len(text)} chars, partial={is_partial})")
+                            else:
+                                # No partial flag - assume it's complete (ADK might not always set it)
+                                # But only replace if this chunk has more content
+                                if len(text) > len(combined_text):
+                                    combined_text = text
+                                    print(f"[ADK] Chunk {i+1}: Replacing with larger text ({len(text)} chars, no partial flag)")
+                                else:
+                                    print(f"[ADK] Chunk {i+1}: Skipping smaller duplicate ({len(text)} chars, no partial flag)")
                     
                     # Keep the last chunk that had content as our template
-                    if combined_text_parts:
+                    if combined_text:
                         final_chunk = chunk
             
-            # If we found text across chunks, create a combined response
-            if combined_text_parts and final_chunk:
-                combined_text = '\n'.join(combined_text_parts)
-                print(f"[ADK] Combined {len(combined_text_parts)} text parts into {len(combined_text)} total chars")
+            # If we found text across chunks, use the combined response
+            if combined_text and final_chunk:
+                print(f"[ADK] Final combined text: {len(combined_text)} total chars")
                 
                 # Modify the final chunk to contain all combined text
                 # This preserves the chunk structure while including all content

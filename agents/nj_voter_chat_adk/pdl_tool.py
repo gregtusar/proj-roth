@@ -13,14 +13,43 @@ from datetime import datetime, timedelta
 from google.cloud import bigquery
 from google.cloud import secretmanager
 
-# PDL enrichment classes defined inline to avoid import issues
-class PDLEnrichmentRecord:
-    """Placeholder class for PDL enrichment record"""
-    pass
-
-class PDLEnrichmentPipeline:
-    """Placeholder class for PDL enrichment pipeline"""
-    pass
+# Try to import the real PDL enrichment classes
+try:
+    # Add scripts path to sys.path if not already there
+    scripts_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'scripts')
+    if scripts_path not in sys.path:
+        sys.path.insert(0, scripts_path)
+    
+    from pdl_enrichment import PDLEnrichmentPipeline, PDLEnrichmentRecord
+    logger.info("Successfully imported PDL enrichment classes from scripts")
+except ImportError as e:
+    logger.warning(f"Could not import PDL enrichment classes: {e}")
+    # Fallback placeholder classes with correct signatures
+    class PDLEnrichmentRecord:
+        """Placeholder class for PDL enrichment record"""
+        def __init__(self):
+            self.pdl_id = None
+            self.likelihood = 0
+            self.has_email = False
+            self.has_phone = False
+            self.has_linkedin = False
+            self.has_job_info = False
+            self.has_education = False
+            self.pdl_data = {}
+    
+    class PDLEnrichmentPipeline:
+        """Placeholder class for PDL enrichment pipeline"""
+        def __init__(self, api_key: str, dry_run: bool = False):
+            self.api_key = api_key
+            self.dry_run = dry_run
+            
+        def enrich_by_master_id(self, master_id: str, min_likelihood: int = 8):
+            """Placeholder method"""
+            raise NotImplementedError("Real PDL enrichment pipeline not available")
+            
+        def save_enrichment_batch(self, records):
+            """Placeholder method"""
+            raise NotImplementedError("Real PDL enrichment pipeline not available")
 
 logger = logging.getLogger(__name__)
 

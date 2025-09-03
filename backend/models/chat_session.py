@@ -12,6 +12,7 @@ class ChatSession(BaseModel):
     is_active: bool = True
     message_count: int = 0
     last_sequence_number: int = -1
+    model_id: Optional[str] = "gemini-2.0-flash-exp"  # Add model_id field
     metadata: Optional[dict] = None
 
 class ChatMessage(BaseModel):

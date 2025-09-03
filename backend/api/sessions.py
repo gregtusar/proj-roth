@@ -6,6 +6,10 @@ from models.chat_session import (
     CreateSessionRequest, UpdateSessionRequest,
     SessionListResponse, SessionMessagesResponse, ChatSession
 )
+from pydantic import BaseModel
+
+class UpdateSessionModelRequest(BaseModel):
+    model_id: str
 
 router = APIRouter()
 
@@ -77,6 +81,26 @@ async def update_session(
             detail="Failed to update session"
         )
     return {"success": True}
+
+@router.patch("/{session_id}/model")
+async def update_session_model(
+    session_id: str,
+    request: UpdateSessionModelRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update the model for a session"""
+    service = get_session_service()
+    success = await service.update_session_model(
+        session_id=session_id,
+        user_id=current_user["id"],
+        model_id=request.model_id
+    )
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to update session model"
+        )
+    return {"success": True, "model_id": request.model_id}
 
 @router.delete("/{session_id}")
 async def delete_session(

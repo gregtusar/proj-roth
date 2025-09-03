@@ -290,6 +290,49 @@ async def recover_message(sid, data):
         }, room=sid)
 
 @sio.event
+async def update_session_model(sid, data):
+    """Update the model for a session"""
+    try:
+        session_id = data.get('session_id')
+        model_id = data.get('model_id')
+        
+        if not session_id or not model_id:
+            await sio.emit('error', {'error': 'Missing session_id or model_id'}, room=sid)
+            return
+        
+        # Get user from session
+        session_data = await sio.get_session(sid)
+        user_id = session_data.get('user_id') if session_data else None
+        
+        if not user_id:
+            await sio.emit('error', {'error': 'User not authenticated'}, room=sid)
+            return
+        
+        # Import here to avoid circular dependency
+        from services.firestore_chat_service import get_firestore_chat_service
+        
+        # Update the session model
+        service = get_firestore_chat_service()
+        success = await service.update_session_model(
+            session_id=session_id,
+            user_id=user_id,
+            model_id=model_id
+        )
+        
+        if success:
+            print(f"[WebSocket] Updated session {session_id} model to {model_id}")
+            await sio.emit('session_model_updated', {
+                'session_id': session_id,
+                'model_id': model_id
+            }, room=sid)
+        else:
+            await sio.emit('error', {'error': 'Failed to update session model'}, room=sid)
+            
+    except Exception as e:
+        print(f"Error updating session model: {e}")
+        await sio.emit('error', {'error': str(e)}, room=sid)
+
+@sio.event
 async def typing_start(sid, data):
     """Handle typing indicator start"""
     room = data.get('room', 'general')

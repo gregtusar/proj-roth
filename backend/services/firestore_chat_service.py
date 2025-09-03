@@ -181,6 +181,42 @@ class FirestoreChatService:
             print(f"Error updating session name: {e}")
             return False
     
+    async def update_session_model(
+        self,
+        session_id: str,
+        user_id: str,
+        model_id: str
+    ) -> bool:
+        """Update session model"""
+        def _update_model():
+            if not self.sync_client:
+                return False
+            doc_ref = self.sync_client.collection('chat_sessions').document(session_id)
+            
+            # First verify ownership
+            doc = doc_ref.get()
+            if not doc.exists:
+                return False
+                
+            session_data = doc.to_dict()
+            if session_data.get("user_id") != user_id:
+                return False
+            
+            # Update the session model
+            doc_ref.update({
+                "model_id": model_id,
+                "updated_at": datetime.utcnow()
+            })
+            
+            print(f"Updated session {session_id} model to {model_id}")
+            return True
+        
+        try:
+            return await asyncio.to_thread(_update_model)
+        except Exception as e:
+            print(f"Error updating session model: {e}")
+            return False
+    
     async def delete_session(self, session_id: str, user_id: str) -> bool:
         """Soft delete a session"""
         def _delete_session():

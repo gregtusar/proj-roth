@@ -35,6 +35,9 @@ COPY config/ ./config/
 # Copy ADK agent code
 COPY agents/nj_voter_chat_adk/ ./agents/nj_voter_chat_adk/
 
+# Copy scripts directory (contains PDL enrichment pipeline needed by agent)
+COPY scripts/ ./scripts/
+
 # Copy frontend build from previous stage
 COPY --from=frontend-builder /app/frontend/build ./frontend/build
 

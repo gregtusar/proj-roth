@@ -104,8 +104,9 @@ async def send_message(sid, data):
     try:
         message = data.get('message', '')
         session_id = data.get('session_id', None)
+        model_id = data.get('model_id', None)  # Get model ID from request
         
-        print(f"[WebSocket] Processing - Message: '{message}', Session: {session_id}")
+        print(f"[WebSocket] Processing - Message: '{message}', Session: {session_id}, Model: {model_id}")
         
         # Get user info from authenticated connection
         conn_info = connections.get(sid, {})
@@ -130,7 +131,8 @@ async def send_message(sid, data):
                 session = await session_service.create_session(
                     user_id=user_id or 'anonymous',
                     user_email=user_email or 'anonymous@example.com',
-                    first_message=message
+                    first_message=message,
+                    model_id=model_id  # Pass model ID to session
                 )
                 session_id = session.session_id
                 print(f"[WebSocket] Successfully created new session: {session_id}")
@@ -224,7 +226,7 @@ async def send_message(sid, data):
         full_response = ""
         print(f"[WebSocket] Starting to stream response for message: {message[:50]}...")
         try:
-            async for chunk in process_message_stream(message, session_id, user_id, user_email):
+            async for chunk in process_message_stream(message, session_id, user_id, user_email, model_id):
                 full_response += chunk
                 # Update in-flight tracking
                 if message_key in in_flight_messages:

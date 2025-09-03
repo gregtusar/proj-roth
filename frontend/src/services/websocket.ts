@@ -273,7 +273,7 @@ class WebSocketService {
     });
   }
 
-  sendMessage(message: string, sessionId?: string): void {
+  sendMessage(message: string, sessionId?: string, modelId?: string): void {
     const state = store.getState();
     // Use the provided sessionId or fall back to current session
     const effectiveSessionId = sessionId || state.chat.currentSessionId;
@@ -282,7 +282,8 @@ class WebSocketService {
       message, 
       sessionId,
       effectiveSessionId,
-      currentSessionId: state.chat.currentSessionId 
+      currentSessionId: state.chat.currentSessionId,
+      modelId
     });
     console.log('[WebSocket] Socket state:', { 
       exists: !!this.socket, 
@@ -293,7 +294,7 @@ class WebSocketService {
       console.error('WebSocket not initialized, attempting to connect...');
       this.connect();
       // Wait a bit for connection then retry
-      setTimeout(() => this.sendMessage(message, sessionId), 1000);
+      setTimeout(() => this.sendMessage(message, sessionId, modelId), 1000);
       return;
     }
     
@@ -302,7 +303,7 @@ class WebSocketService {
       // Wait for connection event then send
       this.socket.once('connect', () => {
         console.log('[WebSocket] Connected, now sending message');
-        this.sendMessage(message, sessionId);
+        this.sendMessage(message, sessionId, modelId);
       });
       return;
     }
@@ -314,11 +315,27 @@ class WebSocketService {
       session_id: effectiveSessionId,
       user_id: user?.id || 'anonymous',
       user_email: user?.email || 'anonymous@example.com',
+      model_id: modelId,
     };
     
     console.log('[WebSocket] Emitting send_message with payload:', payload);
     this.socket.emit('send_message', payload);
     console.log('[WebSocket] Message emitted');
+  }
+
+  updateSessionModel(sessionId: string, modelId: string): void {
+    if (!this.socket?.connected) {
+      console.error('WebSocket not connected');
+      return;
+    }
+    
+    const payload = {
+      session_id: sessionId,
+      model_id: modelId,
+    };
+    
+    console.log('[WebSocket] Updating session model:', payload);
+    this.socket.emit('update_session_model', payload);
   }
 
   disconnect(): void {

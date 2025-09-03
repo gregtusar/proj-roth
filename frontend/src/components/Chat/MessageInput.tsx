@@ -46,7 +46,11 @@ const VerboseToggleContainer = styled('div', ({ $isDarkMode }: { $isDarkMode: bo
   transition: 'color 0.3s ease',
 }));
 
-const MessageInput: React.FC = () => {
+interface MessageInputProps {
+  modelId?: string;
+}
+
+const MessageInput: React.FC<MessageInputProps> = ({ modelId }) => {
   const [message, setMessage] = useState('');
   const dispatch = useDispatch<AppDispatch>();
   const { messages, isLoading, currentSessionId, verboseMode, currentReasoning } = useSelector(
@@ -74,7 +78,7 @@ const MessageInput: React.FC = () => {
     
     // Send message through WebSocket
     // Backend will create session if needed and return proper session_id
-    wsService.sendMessage(messageText, currentSessionId || undefined);
+    wsService.sendMessage(messageText, currentSessionId || undefined, modelId);
     
     // Add user message to store with temporary ID
     // It will be replaced when we get the real message from backend

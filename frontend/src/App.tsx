@@ -20,6 +20,8 @@ import QueryTool from './components/QueryTool/QueryTool';
 import VideoAssets from './components/VideoAssets/VideoAssets';
 import DocumentAssets from './components/DocumentAssets/DocumentAssets';
 import Visualizer from './components/Visualizer/Visualizer';
+import PrivacyPolicy from './components/Legal/PrivacyPolicy';
+import TermsOfService from './components/Legal/TermsOfService';
 
 function App() {
   const dispatch = useDispatch<AppDispatch>();
@@ -86,6 +88,8 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<GoogleSignIn />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfService />} />
       <Route
         path="/"
         element={

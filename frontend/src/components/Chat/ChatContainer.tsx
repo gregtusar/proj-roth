@@ -1,12 +1,14 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { styled } from 'baseui';
+import { Box, Typography } from '@mui/material';
 import { RootState, AppDispatch } from '../../store';
 import { loadSession, clearMessages } from '../../store/chatSlice';
 import { useSessionNavigation } from '../../hooks/useSessionNavigation';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
+import ModelSelector, { AVAILABLE_MODELS } from './ModelSelector';
 import wsService from '../../services/websocket';
 
 const Container = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
@@ -47,9 +49,27 @@ const ChatContainer: React.FC = () => {
   const { isDarkMode } = useSelector((state: RootState) => state.settings);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastLoadedSessionRef = useRef<string | null>(null);
+  
+  // Model selection state - default to Fast model
+  const [selectedModel, setSelectedModel] = useState<string>(
+    localStorage.getItem('defaultModel') || AVAILABLE_MODELS[0].id
+  );
 
   // Use the session navigation hook to handle navigation when sessions are created
   useSessionNavigation();
+  
+  // Handle model change
+  const handleModelChange = (modelId: string) => {
+    setSelectedModel(modelId);
+    // Store as default preference
+    localStorage.setItem('defaultModel', modelId);
+    
+    // If we have an active session, update it
+    if (currentSessionId) {
+      // TODO: Update session model in backend
+      wsService.updateSessionModel(currentSessionId, modelId);
+    }
+  };
 
   useEffect(() => {
     console.log('[ChatContainer] Route changed to:', sessionId, 'Current sessionId:', currentSessionId, 'Last loaded:', lastLoadedSessionRef.current);
@@ -103,10 +123,36 @@ const ChatContainer: React.FC = () => {
 
   return (
     <Container $isDarkMode={isDarkMode}>
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          padding: '12px 24px',
+          borderBottom: '1px solid',
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+          backgroundColor: isDarkMode ? '#2a2a2a' : '#f5f5f5'
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            Model:
+          </Typography>
+          <ModelSelector 
+            value={selectedModel}
+            onChange={handleModelChange}
+            disabled={false}
+            showDescription={false}
+          />
+        </Box>
+        <Typography variant="caption" color="text.secondary">
+          {sessionId && sessionId !== 'new' ? `Session: ${sessionId.slice(0, 8)}...` : 'New Chat'}
+        </Typography>
+      </Box>
       <ChatArea>
         <MessageList />
         <div ref={messagesEndRef} />
-        <MessageInput />
+        <MessageInput modelId={selectedModel} />
       </ChatArea>
     </Container>
   );

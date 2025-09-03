@@ -1,10 +1,8 @@
 import logging
 from typing import Dict, List, Optional, Any
-from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from google.cloud import firestore
 import os
 from datetime import datetime
 import json
@@ -20,14 +18,12 @@ logger = logging.getLogger(__name__)
 class GoogleDocsTool:
     def __init__(self):
         self.project_id = os.environ.get("GOOGLE_CLOUD_PROJECT", "proj-roth")
-        self.db = firestore.Client(project=self.project_id)
         self.oauth_service = OAuthTokenService()
         self.shared_folder_id = None
         self._load_config()
-        # Don't initialize services here - we'll do it per-request with user credentials
     
     def _load_config(self):
-        """Load the shared folder configuration"""
+        """Load the shared folder configuration if needed"""
         try:
             config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'backend', 'google_drive_config.json')
             if os.path.exists(config_path):
@@ -36,7 +32,7 @@ class GoogleDocsTool:
                     self.shared_folder_id = config.get('shared_folder_id')
                     logger.info(f"Loaded shared folder ID: {self.shared_folder_id}")
             else:
-                logger.warning("No google_drive_config.json found")
+                logger.debug("No google_drive_config.json found - documents will be created in user's My Drive")
         except Exception as e:
             logger.error(f"Error loading config: {e}")
     
@@ -80,11 +76,11 @@ class GoogleDocsTool:
                 'title': title
             }
             
-            # First create the document with user's credentials
+            # Create the document with user's credentials
             doc = docs_service.documents().create(body=document).execute()
             doc_id = doc.get('documentId')
             
-            # Then move it to the shared folder if configured
+            # Optionally move to shared folder if configured
             if self.shared_folder_id and drive_service:
                 try:
                     # Get the document's current parents
@@ -102,18 +98,12 @@ class GoogleDocsTool:
                             removeParents=previous_parents,
                             fields='id, parents'
                         ).execute()
-                    else:
-                        drive_service.files().update(
-                            fileId=doc_id,
-                            addParents=self.shared_folder_id,
-                            fields='id, parents'
-                        ).execute()
-                    
                     logger.info(f"Moved document {doc_id} to shared folder {self.shared_folder_id}")
                 except Exception as e:
                     logger.warning(f"Could not move document to shared folder: {e}")
                     # Continue even if moving fails
             
+            # Add initial content if provided
             if content:
                 requests = [
                     {
@@ -130,23 +120,12 @@ class GoogleDocsTool:
                     body={'requests': requests}
                 ).execute()
             
-            doc_metadata = {
-                'doc_id': doc_id,
-                'title': title,
-                'owner_id': user_id,
-                'created_at': datetime.utcnow(),
-                'updated_at': datetime.utcnow(),
-                'url': f"https://docs.google.com/document/d/{doc_id}/edit"
-            }
-            
-            self.db.collection('user_documents').document(doc_id).set(doc_metadata)
-            
             logger.info(f"Document created: {doc_id} for user {user_id}")
             
             result = {
                 'doc_id': doc_id,
                 'title': title,
-                'url': doc_metadata['url'],
+                'url': f"https://docs.google.com/document/d/{doc_id}/edit",
                 'message': f"Document '{title}' created successfully"
             }
             
@@ -171,64 +150,81 @@ class GoogleDocsTool:
             A JSON string containing the document content
         """
         try:
-            doc_ref = self.db.collection('user_documents').document(doc_id)
-            doc_metadata = doc_ref.get()
-            
-            if not doc_metadata.exists:
-                return json.dumps({'error': f"Document {doc_id} not found"})
-            
-            metadata = doc_metadata.to_dict()
-            if metadata['owner_id'] != user_id:
-                return json.dumps({'error': f"You don't have permission to access document {doc_id}"})
-            
             # Get user-specific services
-            docs_service, _ = await self._get_user_services(metadata['owner_id'])
+            docs_service, _ = await self._get_user_services(user_id)
             if not docs_service:
-                return json.dumps({'error': 'Unable to get user OAuth credentials'})
+                return json.dumps({'error': 'Unable to get user OAuth credentials. Please re-login with Google Docs permissions.'})
             
-            document = docs_service.documents().get(documentId=doc_id).execute()
+            # Fetch the document directly from Google Docs API
+            try:
+                document = docs_service.documents().get(documentId=doc_id).execute()
+                
+                content = self._extract_text_from_document(document)
+                
+                result = {
+                    'doc_id': doc_id,
+                    'title': document.get('title'),
+                    'content': content,
+                    'url': f"https://docs.google.com/document/d/{doc_id}/edit"
+                }
+                
+                return json.dumps(result)
+                
+            except HttpError as error:
+                if error.resp.status == 404:
+                    return json.dumps({'error': f"Document {doc_id} not found. Please check the document ID."})
+                elif error.resp.status == 403:
+                    return json.dumps({'error': f"Permission denied: You don't have access to document {doc_id}. Make sure the document is shared with you."})
+                else:
+                    logger.error(f"Error accessing document: {error}")
+                    return json.dumps({'error': f"Failed to read document: {str(error)}"})
             
-            content = self._extract_text_from_document(document)
-            
-            result = {
-                'doc_id': doc_id,
-                'title': document.get('title'),
-                'content': content,
-                'url': f"https://docs.google.com/document/d/{doc_id}/edit"
-            }
-            
-            return json.dumps(result)
-            
-        except HttpError as error:
-            logger.error(f"Error reading document: {error}")
-            return json.dumps({'error': f"Failed to read document: {str(error)}"})
         except Exception as e:
             logger.error(f"Error reading document: {e}")
             return json.dumps({'error': f"Failed to read document: {str(e)}"})
     
-    async def list_documents(self, user_id: str) -> str:
+    async def list_documents(self, user_id: str, max_results: int = 20) -> str:
         """
-        List all documents owned by the user.
+        List documents accessible by the user.
         
         Args:
             user_id: The ID of the user
+            max_results: Maximum number of documents to return
             
         Returns:
             A JSON string containing the list of documents
         """
         try:
-            docs_ref = self.db.collection('user_documents').where('owner_id', '==', user_id)
-            docs = docs_ref.order_by('created_at', direction=firestore.Query.DESCENDING).stream()
+            # Get user-specific services
+            _, drive_service = await self._get_user_services(user_id)
+            if not drive_service:
+                return json.dumps({'error': 'Unable to get user OAuth credentials. Please re-login with Google Docs permissions.'})
+            
+            # Query for Google Docs files
+            query = "mimeType='application/vnd.google-apps.document'"
+            
+            # If we have a shared folder, also include it
+            if self.shared_folder_id:
+                query = f"({query}) or ('{self.shared_folder_id}' in parents and mimeType='application/vnd.google-apps.document')"
+            
+            # List documents from Google Drive
+            results = drive_service.files().list(
+                q=query,
+                pageSize=max_results,
+                fields="files(id, name, createdTime, modifiedTime, webViewLink)",
+                orderBy="modifiedTime desc"
+            ).execute()
+            
+            files = results.get('files', [])
             
             documents = []
-            for doc in docs:
-                doc_data = doc.to_dict()
+            for file in files:
                 documents.append({
-                    'doc_id': doc_data['doc_id'],
-                    'title': doc_data['title'],
-                    'created_at': doc_data['created_at'].isoformat() if doc_data.get('created_at') else None,
-                    'updated_at': doc_data['updated_at'].isoformat() if doc_data.get('updated_at') else None,
-                    'url': doc_data.get('url')
+                    'doc_id': file['id'],
+                    'title': file['name'],
+                    'created_at': file.get('createdTime'),
+                    'updated_at': file.get('modifiedTime'),
+                    'url': file.get('webViewLink', f"https://docs.google.com/document/d/{file['id']}/edit")
                 })
             
             result = {
@@ -239,6 +235,9 @@ class GoogleDocsTool:
             
             return json.dumps(result)
             
+        except HttpError as error:
+            logger.error(f"Error listing documents: {error}")
+            return json.dumps({'error': f"Failed to list documents: {str(error)}"})
         except Exception as e:
             logger.error(f"Error listing documents: {e}")
             return json.dumps({'error': f"Failed to list documents: {str(e)}"})
@@ -256,66 +255,61 @@ class GoogleDocsTool:
             A JSON string with the update status
         """
         try:
-            doc_ref = self.db.collection('user_documents').document(doc_id)
-            doc_metadata = doc_ref.get()
-            
-            if not doc_metadata.exists:
-                return json.dumps({'error': f"Document {doc_id} not found"})
-            
-            metadata = doc_metadata.to_dict()
-            if metadata['owner_id'] != user_id:
-                return json.dumps({'error': f"You don't have permission to update document {doc_id}"})
-            
             # Get user-specific services
             docs_service, _ = await self._get_user_services(user_id)
             if not docs_service:
-                return json.dumps({'error': 'Unable to get user OAuth credentials'})
+                return json.dumps({'error': 'Unable to get user OAuth credentials. Please re-login with Google Docs permissions.'})
             
-            document = docs_service.documents().get(documentId=doc_id).execute()
-            end_index = document['body']['content'][-1]['endIndex'] - 1
-            
-            requests = [
-                {
-                    'deleteContentRange': {
-                        'range': {
-                            'startIndex': 1,
-                            'endIndex': end_index
+            # Get the current document to find the content range
+            try:
+                document = docs_service.documents().get(documentId=doc_id).execute()
+                end_index = document['body']['content'][-1]['endIndex'] - 1
+                
+                # Clear existing content and insert new content
+                requests = [
+                    {
+                        'deleteContentRange': {
+                            'range': {
+                                'startIndex': 1,
+                                'endIndex': end_index
+                            }
+                        }
+                    },
+                    {
+                        'insertText': {
+                            'location': {
+                                'index': 1,
+                            },
+                            'text': content
                         }
                     }
-                },
-                {
-                    'insertText': {
-                        'location': {
-                            'index': 1,
-                        },
-                        'text': content
-                    }
+                ]
+                
+                docs_service.documents().batchUpdate(
+                    documentId=doc_id,
+                    body={'requests': requests}
+                ).execute()
+                
+                logger.info(f"Document updated: {doc_id} for user {user_id}")
+                
+                result = {
+                    'doc_id': doc_id,
+                    'status': 'updated',
+                    'message': f"Document {doc_id} updated successfully",
+                    'url': f"https://docs.google.com/document/d/{doc_id}/edit"
                 }
-            ]
+                
+                return json.dumps(result)
+                
+            except HttpError as error:
+                if error.resp.status == 404:
+                    return json.dumps({'error': f"Document {doc_id} not found. Please check the document ID."})
+                elif error.resp.status == 403:
+                    return json.dumps({'error': f"Permission denied: You don't have edit access to document {doc_id}"})
+                else:
+                    logger.error(f"Error updating document: {error}")
+                    return json.dumps({'error': f"Failed to update document: {str(error)}"})
             
-            docs_service.documents().batchUpdate(
-                documentId=doc_id,
-                body={'requests': requests}
-            ).execute()
-            
-            doc_ref.update({
-                'updated_at': datetime.utcnow()
-            })
-            
-            logger.info(f"Document updated: {doc_id} for user {user_id}")
-            
-            result = {
-                'doc_id': doc_id,
-                'status': 'updated',
-                'message': f"Document {doc_id} updated successfully",
-                'url': f"https://docs.google.com/document/d/{doc_id}/edit"
-            }
-            
-            return json.dumps(result)
-            
-        except HttpError as error:
-            logger.error(f"Error updating document: {error}")
-            return json.dumps({'error': f"Failed to update document: {str(error)}"})
         except Exception as e:
             logger.error(f"Error updating document: {e}")
             return json.dumps({'error': f"Failed to update document: {str(e)}"})

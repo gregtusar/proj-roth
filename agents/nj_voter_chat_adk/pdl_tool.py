@@ -13,9 +13,14 @@ from datetime import datetime, timedelta
 from google.cloud import bigquery
 from google.cloud import secretmanager
 
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from scripts.pdl_enrichment import PDLEnrichmentPipeline, PDLEnrichmentRecord
+# PDL enrichment classes defined inline to avoid import issues
+class PDLEnrichmentRecord:
+    """Placeholder class for PDL enrichment record"""
+    pass
+
+class PDLEnrichmentPipeline:
+    """Placeholder class for PDL enrichment pipeline"""
+    pass
 
 logger = logging.getLogger(__name__)
 

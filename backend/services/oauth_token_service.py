@@ -5,7 +5,7 @@ import logging
 from typing import Dict, Optional
 from google.cloud import firestore
 from google.cloud import secretmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 import os
@@ -92,17 +92,27 @@ class OAuthTokenService:
             
             # Check if token is expired
             if token_data.get('expires_at'):
-                if isinstance(token_data['expires_at'], datetime):
-                    if token_data['expires_at'] <= datetime.utcnow():
+                # Ensure we're comparing timezone-aware datetimes
+                expires_at = token_data['expires_at']
+                if isinstance(expires_at, datetime):
+                    # Make sure expires_at is timezone-aware (UTC)
+                    if expires_at.tzinfo is None:
+                        # If naive, assume it's UTC
+                        expires_at = expires_at.replace(tzinfo=timezone.utc)
+                    
+                    # Compare with current UTC time (timezone-aware)
+                    now_utc = datetime.now(timezone.utc)
+                    
+                    if expires_at <= now_utc:
                         # Token is expired, refresh it
                         logger.info(f"Refreshing expired token for user {user_id}")
                         creds.refresh(Request())
                         
-                        # Store the new tokens
+                        # Store the new tokens with timezone-aware datetime
                         await self.store_tokens(user_id, {
                             'access_token': creds.token,
                             'refresh_token': creds.refresh_token,
-                            'expires_at': datetime.utcnow() + timedelta(seconds=3600)
+                            'expires_at': datetime.now(timezone.utc) + timedelta(seconds=3600)
                         })
             
             return creds

@@ -53,7 +53,8 @@ class FirestoreChatService:
         user_id: str,
         user_email: str,
         session_name: Optional[str] = None,
-        first_message: Optional[str] = None
+        first_message: Optional[str] = None,
+        model_id: Optional[str] = None
     ) -> ChatSession:
         """Create a new chat session"""
         if not self.connected:
@@ -76,6 +77,7 @@ class FirestoreChatService:
             "updated_at": datetime.utcnow(),
             "is_active": True,
             "message_count": 0,
+            "model_id": model_id or "gemini-2.0-flash-exp",  # Store model with default
             "metadata": {}
         }
         

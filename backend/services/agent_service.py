@@ -20,9 +20,9 @@ try:
                 del sys.modules[key]
     
     from agents.nj_voter_chat_adk.agent import NJVoterChatAgent
-    agent = NJVoterChatAgent()
+    # Don't create a singleton - we'll create agents dynamically with different models
     ADK_AVAILABLE = True
-    print("Successfully loaded NJ Voter Chat ADK agent")
+    print("Successfully loaded NJ Voter Chat ADK agent module")
 except (ImportError, AttributeError) as e:
     print(f"Error loading ADK agent: {e}")
     print(f"sys.path: {sys.path[:3]}")  # Debug: show first 3 paths
@@ -33,13 +33,14 @@ async def process_message_stream(
     message: str, 
     session_id: Optional[str] = None,
     user_id: Optional[str] = None,
-    user_email: Optional[str] = None
+    user_email: Optional[str] = None,
+    model_id: Optional[str] = None
 ) -> AsyncGenerator[str, None]:
     """
     Process a message through the ADK agent and stream the response
     """
     print(f"[Agent] Processing message: {message[:50]}... ADK_AVAILABLE={ADK_AVAILABLE}")
-    print(f"[Agent] Session context: session_id={session_id}, user_id={user_id}")
+    print(f"[Agent] Session context: session_id={session_id}, user_id={user_id}, model_id={model_id}")
     
     if not ADK_AVAILABLE:
         print("[Agent] Error: ADK agent not available")
@@ -80,6 +81,16 @@ async def process_message_stream(
             os.environ["VOTER_LIST_USER_EMAIL"] = user_email
         os.environ["CLIENT_TYPE"] = "react"
         
+        # Set the model ID for this request
+        if model_id:
+            os.environ["ADK_MODEL"] = model_id
+            print(f"[Agent] Using model: {model_id}")
+        else:
+            # Use default if not specified
+            if "ADK_MODEL" in os.environ:
+                del os.environ["ADK_MODEL"]
+            print("[Agent] Using default model")
+        
         # CRITICAL: Pass the chat session_id to the agent so it can maintain separate ADK sessions
         # This enables conversation context to be maintained across messages
         if session_id:
@@ -105,6 +116,10 @@ async def process_message_stream(
                 yield chunk
                 await asyncio.sleep(0.05)
             return
+        
+        # Create agent with specific model
+        from agents.nj_voter_chat_adk.agent import NJVoterChatAgent
+        agent = NJVoterChatAgent()  # This will use the ADK_MODEL env var we just set
         
         print(f"[Agent] Calling agent.chat with message: {message[:50]}...")
         print(f"[Agent] Session ID: {session_id}")

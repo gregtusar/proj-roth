@@ -152,7 +152,7 @@ class VoterListTool:
         share_type: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Update a voter list
+        Update a voter list in Firestore
         
         Args:
             list_id: ID of the list to update
@@ -166,43 +166,35 @@ class VoterListTool:
             Dict with success status
         """
         try:
-            # Build the update query
-            updates = []
-            params = [
-                bigquery.ScalarQueryParameter("list_id", "STRING", list_id),
-                bigquery.ScalarQueryParameter("user_id", "STRING", user_id),
-            ]
+            # Get the document reference
+            doc_ref = self.client.collection(self.collection_name).document(list_id)
+            doc = doc_ref.get()
+            
+            if not doc.exists:
+                return {"success": False, "error": "List not found"}
+            
+            # Verify ownership
+            data = doc.to_dict()
+            if data.get("user_id") != user_id:
+                return {"success": False, "error": "Unauthorized"}
+            
+            # Build update dictionary
+            updates = {"updated_at": datetime.utcnow()}
             
             if list_name is not None:
-                updates.append("list_name = @list_name")
-                params.append(bigquery.ScalarQueryParameter("list_name", "STRING", list_name))
+                updates["name"] = list_name
             
             if description_text is not None:
-                updates.append("description_text = @description_text")
-                params.append(bigquery.ScalarQueryParameter("description_text", "STRING", description_text))
+                updates["description"] = description_text
             
             if is_shared is not None:
-                updates.append("is_shared = @is_shared")
-                params.append(bigquery.ScalarQueryParameter("is_shared", "BOOL", is_shared))
+                updates["is_shared"] = is_shared
             
             if share_type is not None:
-                updates.append("share_type = @share_type")
-                params.append(bigquery.ScalarQueryParameter("share_type", "STRING", share_type))
+                updates["share_type"] = share_type
             
-            if not updates:
-                return {"success": False, "error": "No updates provided"}
-            
-            updates.append("updated_at = CURRENT_TIMESTAMP()")
-            
-            query = f"""
-            UPDATE `{self.full_table_id}`
-            SET {', '.join(updates)}
-            WHERE list_id = @list_id AND user_id = @user_id
-            """
-            
-            job_config = bigquery.QueryJobConfig(query_parameters=params)
-            query_job = self.client.query(query, job_config=job_config)
-            query_job.result()
+            # Update the document
+            doc_ref.update(updates)
             
             return {"success": True, "message": "List updated successfully"}
             
@@ -212,7 +204,7 @@ class VoterListTool:
     
     def delete_list(self, list_id: str, user_id: str) -> Dict[str, Any]:
         """
-        Soft delete a voter list
+        Soft delete a voter list in Firestore
         
         Args:
             list_id: ID of the list to delete
@@ -222,21 +214,23 @@ class VoterListTool:
             Dict with success status
         """
         try:
-            query = f"""
-            UPDATE `{self.full_table_id}`
-            SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP()
-            WHERE list_id = @list_id AND user_id = @user_id
-            """
+            # Get the document reference
+            doc_ref = self.client.collection(self.collection_name).document(list_id)
+            doc = doc_ref.get()
             
-            job_config = bigquery.QueryJobConfig(
-                query_parameters=[
-                    bigquery.ScalarQueryParameter("list_id", "STRING", list_id),
-                    bigquery.ScalarQueryParameter("user_id", "STRING", user_id),
-                ]
-            )
+            if not doc.exists:
+                return {"success": False, "error": "List not found"}
             
-            query_job = self.client.query(query, job_config=job_config)
-            query_job.result()
+            # Verify ownership
+            data = doc.to_dict()
+            if data.get("user_id") != user_id:
+                return {"success": False, "error": "Unauthorized"}
+            
+            # Soft delete by setting is_active to False
+            doc_ref.update({
+                "is_active": False,
+                "updated_at": datetime.utcnow()
+            })
             
             return {"success": True, "message": "List deleted successfully"}
             
@@ -246,28 +240,25 @@ class VoterListTool:
     
     def increment_access_count(self, list_id: str) -> None:
         """
-        Increment the access count for a list
+        Increment the access count for a list in Firestore
         
         Args:
             list_id: ID of the list
         """
         try:
-            query = f"""
-            UPDATE `{self.full_table_id}`
-            SET 
-                access_count = IFNULL(access_count, 0) + 1,
-                last_accessed_at = CURRENT_TIMESTAMP()
-            WHERE list_id = @list_id
-            """
+            # Get the document reference
+            doc_ref = self.client.collection(self.collection_name).document(list_id)
+            doc = doc_ref.get()
             
-            job_config = bigquery.QueryJobConfig(
-                query_parameters=[
-                    bigquery.ScalarQueryParameter("list_id", "STRING", list_id),
-                ]
-            )
-            
-            query_job = self.client.query(query, job_config=job_config)
-            query_job.result()
+            if doc.exists:
+                data = doc.to_dict()
+                current_count = data.get("access_count", 0)
+                
+                # Update the access count
+                doc_ref.update({
+                    "access_count": current_count + 1,
+                    "last_accessed_at": datetime.utcnow()
+                })
             
         except Exception as e:
             logger.error(f"Error incrementing access count: {str(e)}")

@@ -13,6 +13,9 @@ from datetime import datetime, timedelta
 from google.cloud import bigquery
 from google.cloud import secretmanager
 
+# Set up logger early
+logger = logging.getLogger(__name__)
+
 # Try to import the real PDL enrichment classes
 try:
     # Add scripts path to sys.path if not already there
@@ -50,8 +53,6 @@ except ImportError as e:
         def save_enrichment_batch(self, records):
             """Placeholder method"""
             raise NotImplementedError("Real PDL enrichment pipeline not available")
-
-logger = logging.getLogger(__name__)
 
 class PDLEnrichmentTool:
     """Tool for fetching and triggering PDL enrichment data"""

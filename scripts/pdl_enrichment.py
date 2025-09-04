@@ -375,6 +375,170 @@ class PDLEnrichmentPipeline:
             logger.error(f"API error enriching {individual['master_id']}: {e}")
             return None
     
+    def enrich_batch(self, master_ids: List[str], min_likelihood: int = 8) -> List[PDLEnrichmentRecord]:
+        """
+        Enrich multiple individuals using PDL Bulk API (up to 100 at a time).
+        
+        Args:
+            master_ids: List of master_ids to enrich (max 100)
+            min_likelihood: Minimum PDL confidence score (1-10)
+            
+        Returns:
+            List of enrichment records for successful matches
+        """
+        if not master_ids:
+            return []
+        
+        if len(master_ids) > 100:
+            logger.warning(f"Batch size {len(master_ids)} exceeds limit of 100. Truncating.")
+            master_ids = master_ids[:100]
+        
+        # Get individual details for all master_ids
+        master_ids_str = "','".join(master_ids)
+        query = f"""
+        SELECT 
+            i.master_id,
+            i.standardized_name,
+            i.name_first,
+            i.name_middle,
+            i.name_last,
+            v.demo_age,
+            v.email,
+            v.phone_1,
+            a.street_number,
+            a.street_name,
+            a.street_suffix,
+            a.city,
+            a.state,
+            a.zip_code
+        FROM `{INDIVIDUALS_TABLE}` i
+        LEFT JOIN `{PROJECT_ID}.{DATASET_ID}.voters` v ON i.master_id = v.master_id
+        LEFT JOIN `{PROJECT_ID}.{DATASET_ID}.individual_addresses` ia ON i.master_id = ia.master_id
+        LEFT JOIN `{PROJECT_ID}.{DATASET_ID}.addresses` a ON ia.address_id = a.address_id
+        WHERE i.master_id IN ('{master_ids_str}')
+        """
+        
+        results = list(self.client.query(query).result())
+        if not results:
+            logger.error(f"No individuals found for provided master_ids")
+            return []
+        
+        # Build bulk request
+        bulk_requests = []
+        master_id_map = {}  # Map request index to master_id
+        
+        for idx, row in enumerate(results):
+            individual = dict(row)
+            master_id_map[idx] = individual['master_id']
+            
+            # Build params for this individual
+            params = {
+                'min_likelihood': min_likelihood,
+                'required': 'full_name'
+            }
+            
+            # Add name components
+            if individual.get('name_first'):
+                params['first_name'] = individual['name_first']
+            if individual.get('name_last'):
+                params['last_name'] = individual['name_last']
+            if individual.get('name_middle'):
+                params['middle_name'] = individual['name_middle']
+            
+            # Add location
+            if individual.get('city'):
+                params['location'] = f"{individual.get('city', '')}, {individual.get('state', '')} {individual.get('zip_code', '')}".strip()
+            
+            # Add street address if available
+            if individual.get('street_number') and individual.get('street_name'):
+                street = f"{individual['street_number']} {individual['street_name']}"
+                if individual.get('street_suffix'):
+                    street += f" {individual['street_suffix']}"
+                params['street_address'] = street
+            
+            # Add contact info
+            if individual.get('email'):
+                params['email'] = individual['email']
+            if individual.get('phone_1'):
+                params['phone'] = individual['phone_1']
+            
+            # Add metadata for tracking
+            bulk_requests.append({
+                'params': params,
+                'metadata': {
+                    'master_id': individual['master_id'],
+                    'request_id': f"batch_{idx}"
+                }
+            })
+        
+        if self.dry_run:
+            logger.info(f"[DRY RUN] Would batch enrich {len(bulk_requests)} individuals")
+            return []
+        
+        # Make bulk API request
+        try:
+            headers = {
+                'X-Api-Key': self.api_key,
+                'Content-Type': 'application/json'
+            }
+            
+            request_body = {
+                'requests': bulk_requests
+            }
+            
+            logger.info(f"Sending bulk enrichment request for {len(bulk_requests)} individuals")
+            response = requests.post(PDL_BULK_URL, json=request_body, headers=headers, timeout=30)
+            
+            if response.status_code != 200:
+                logger.error(f"Bulk API error: {response.status_code} - {response.text}")
+                return []
+            
+            bulk_data = response.json()
+            
+            # Process responses
+            enrichment_records = []
+            success_count = 0
+            
+            for idx, item in enumerate(bulk_data):
+                if item.get('status') == 200 and item.get('data'):
+                    master_id = master_id_map.get(idx)
+                    if not master_id:
+                        logger.warning(f"Could not map response index {idx} to master_id")
+                        continue
+                    
+                    person = item['data']
+                    
+                    # Store request params (minus API key)
+                    metadata = bulk_requests[idx].get('metadata', {})
+                    request_params = {k: v for k, v in bulk_requests[idx]['params'].items() if k != 'api_key'}
+                    
+                    # Create record
+                    record = PDLEnrichmentRecord(
+                        master_id=master_id,
+                        pdl_data=person,
+                        likelihood=item.get('likelihood'),
+                        pdl_id=person.get('id'),
+                        min_likelihood=min_likelihood,
+                        request_params=request_params
+                    )
+                    
+                    enrichment_records.append(record)
+                    success_count += 1
+                    logger.debug(f"Enriched {master_id} (likelihood: {item.get('likelihood')})")
+                else:
+                    master_id = master_id_map.get(idx)
+                    logger.debug(f"No match for {master_id}: {item.get('error', 'Unknown error')}")
+            
+            logger.info(f"Batch enrichment complete: {success_count}/{len(bulk_requests)} successful matches")
+            return enrichment_records
+            
+        except requests.RequestException as e:
+            logger.error(f"Bulk API request failed: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Error processing bulk response: {e}")
+            return []
+    
     def save_enrichment_batch(self, records: List[PDLEnrichmentRecord]):
         """Save enrichment records to BigQuery"""
         if not records:

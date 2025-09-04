@@ -54,7 +54,8 @@ async def get_session_messages(
     """Get all messages for a specific session"""
     service = get_session_service()
     try:
-        result = await service.get_session_messages(session_id, current_user["id"])
+        # Allow public access when fetching messages
+        result = await service.get_session_messages(session_id, current_user["id"], allow_public=True)
         return result
     except Exception as e:
         raise HTTPException(
@@ -101,6 +102,44 @@ async def update_session_model(
             detail="Failed to update session model"
         )
     return {"success": True, "model_id": request.model_id}
+
+@router.post("/{session_id}/share")
+async def share_session(
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Make a session public"""
+    service = get_session_service()
+    success = await service.toggle_session_public(
+        session_id=session_id,
+        user_id=current_user["id"],
+        is_public=True
+    )
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to share session"
+        )
+    return {"success": True, "is_public": True}
+
+@router.delete("/{session_id}/share")
+async def unshare_session(
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Make a session private"""
+    service = get_session_service()
+    success = await service.toggle_session_public(
+        session_id=session_id,
+        user_id=current_user["id"],
+        is_public=False
+    )
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to unshare session"
+        )
+    return {"success": True, "is_public": False}
 
 @router.delete("/{session_id}")
 async def delete_session(

@@ -10,6 +10,7 @@ class ChatSession(BaseModel):
     created_at: datetime
     updated_at: datetime
     is_active: bool = True
+    is_public: bool = False  # New field for public sharing
     message_count: int = 0
     last_sequence_number: int = -1
     model_id: Optional[str] = "gemini-2.0-flash-exp"  # Add model_id field

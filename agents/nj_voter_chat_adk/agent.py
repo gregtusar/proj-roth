@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 import asyncio
 import inspect
 import time
@@ -386,6 +386,81 @@ def save_voter_list(list_name: str, description: str, sql_query: str, row_count:
             "list_id": None
         }
 
+def pdl_batch_enrichment(master_ids: List[str], min_likelihood: int = 8, skip_existing: bool = True, force: bool = False) -> Dict[str, Any]:
+    """Batch enrichment from People Data Labs for multiple voters (up to 100 at once).
+    
+    IMPORTANT COST OPTIMIZATION: Use this for lists of 3+ people instead of individual enrichments.
+    - Batch processing is MUCH faster: 100 people in ~2 seconds vs ~2 minutes individually
+    - Same cost per successful match ($0.25 each), but more efficient
+    - Automatically skips recently enriched individuals to save money
+    
+    Args:
+        master_ids (List[str]): List of voter master_ids to enrich (max 100)
+        min_likelihood (int): Minimum confidence score (1-10, default 8)
+                             Lower = more matches but less accurate
+                             Higher = fewer matches but more accurate
+        skip_existing (bool): Skip individuals enriched in last 6 months (default True)
+        force (bool): Bypass cost confirmations (use carefully!)
+    
+    Returns:
+        Dict[str, Any]: Batch results including:
+                       - batch_summary: Stats on successful/failed enrichments
+                       - enriched: List of successfully enriched individuals
+                       - already_enriched: Individuals skipped (already have data)
+                       - cost: Total cost for new enrichments
+    
+    Examples:
+        >>> # Enrich a list of high-value donors
+        >>> master_ids = ["voter123", "voter456", "voter789"]
+        >>> pdl_batch_enrichment(master_ids, min_likelihood=8)
+        {"status": "batch_complete", "batch_summary": {"successful": 2, "cost": 0.50}, ...}
+    """
+    try:
+        tool = _get_pdl_tool()
+        
+        print(f"\n[TOOL INVOKED] pdl_batch_enrichment")
+        print(f"[BATCH SIZE] {len(master_ids)} individuals")
+        print(f"[PARAMETERS] min_likelihood={min_likelihood}, skip_existing={skip_existing}")
+        
+        _emit_reasoning_event("tool_start", {
+            "tool": "pdl_batch_enrichment",
+            "batch_size": len(master_ids),
+            "parameters": {"min_likelihood": min_likelihood, "skip_existing": skip_existing}
+        })
+        
+        result = tool.trigger_batch_enrichment(
+            master_ids=master_ids,
+            min_likelihood=min_likelihood,
+            skip_existing=skip_existing,
+            require_confirmation=not force
+        )
+        
+        _emit_reasoning_event("tool_end", {
+            "tool": "pdl_batch_enrichment",
+            "status": result.get("status"),
+            "summary": result.get("batch_summary", {})
+        })
+        
+        # Print summary for console
+        if result.get("status") == "batch_complete":
+            summary = result.get("batch_summary", {})
+            print(f"[BATCH COMPLETE] {summary.get('successful', 0)}/{summary.get('attempted', 0)} enriched")
+            print(f"[COST] ${summary.get('cost', 0):.2f}")
+        
+        return result
+        
+    except Exception as e:
+        print(f"[ERROR] Batch enrichment failed: {str(e)}")
+        _emit_reasoning_event("tool_error", {
+            "tool": "pdl_batch_enrichment",
+            "error": str(e)
+        })
+        return {
+            "status": "error",
+            "error": str(e),
+            "message": "Batch enrichment failed"
+        }
+
 def pdl_enrichment(master_id: str, action: str = "fetch", min_likelihood: int = 8, force: bool = False) -> Dict[str, Any]:
     """Fetch or trigger People Data Labs enrichment for a voter.
     
@@ -649,6 +724,7 @@ class NJVoterChatAgent(Agent):
                 geocode_address, 
                 save_voter_list, 
                 pdl_enrichment,
+                pdl_batch_enrichment,
                 create_google_doc,
                 read_google_doc,
                 list_google_docs,
@@ -656,7 +732,7 @@ class NJVoterChatAgent(Agent):
             ], 
             instruction=SYSTEM_PROMPT
         )
-        debug_print(f"[DEBUG] Agent initialized successfully with instruction parameter and tools: bigquery_select, google_search, geocode_address, save_voter_list, pdl_enrichment, create_google_doc, read_google_doc, list_google_docs, update_google_doc")
+        debug_print(f"[DEBUG] Agent initialized successfully with instruction parameter and tools: bigquery_select, google_search, geocode_address, save_voter_list, pdl_enrichment, pdl_batch_enrichment, create_google_doc, read_google_doc, list_google_docs, update_google_doc")
         self._initialize_services()
     
     def _initialize_services(self):

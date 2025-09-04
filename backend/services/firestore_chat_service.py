@@ -71,6 +71,7 @@ class FirestoreChatService:
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
             "is_active": True,
+            "is_public": False,  # New sessions are private by default
             "message_count": 0,
             "model_id": model_id or "gemini-2.0-flash-exp",  # Store model with default
             "metadata": {}
@@ -117,6 +118,9 @@ class FirestoreChatService:
             sessions = []
             for doc in query.stream():
                 session_data = doc.to_dict()
+                # Add is_public field if missing (for backwards compatibility)
+                if "is_public" not in session_data:
+                    session_data["is_public"] = False
                 sessions.append(ChatSession(**session_data))
             
             return sessions
@@ -131,7 +135,7 @@ class FirestoreChatService:
             logger.error(f"Error loading user sessions: {e}")
             return []
     
-    async def get_session(self, session_id: str, user_id: str) -> Optional[ChatSession]:
+    async def get_session(self, session_id: str, user_id: str, allow_public: bool = False) -> Optional[ChatSession]:
         """Get a specific session"""
         def _get_session():
             if not self.client:
@@ -141,8 +145,17 @@ class FirestoreChatService:
             
             if doc.exists:
                 session_data = doc.to_dict()
-                # Verify ownership
-                if session_data.get("user_id") == user_id and session_data.get("is_active"):
+                # Add is_public field if missing (for backwards compatibility)
+                if "is_public" not in session_data:
+                    session_data["is_public"] = False
+                
+                # Check if session is accessible
+                is_owner = session_data.get("user_id") == user_id
+                is_public = session_data.get("is_public", False)
+                is_active = session_data.get("is_active", True)
+                
+                # Allow access if user owns it or if it's public (when allow_public is True)
+                if is_active and (is_owner or (allow_public and is_public)):
                     return ChatSession(**session_data)
             
             return None
@@ -226,6 +239,42 @@ class FirestoreChatService:
             return await asyncio.to_thread(_update_model)
         except Exception as e:
             print(f"Error updating session model: {e}")
+            return False
+    
+    async def toggle_session_public(
+        self,
+        session_id: str,
+        user_id: str,
+        is_public: bool
+    ) -> bool:
+        """Toggle session public/private status"""
+        def _toggle_public():
+            if not self.client:
+                return False
+            doc_ref = self.client.collection('chat_sessions').document(session_id)
+            
+            # First verify ownership
+            doc = doc_ref.get()
+            if not doc.exists:
+                return False
+                
+            session_data = doc.to_dict()
+            if session_data.get("user_id") != user_id:
+                return False
+            
+            # Update the session public status
+            doc_ref.update({
+                "is_public": is_public,
+                "updated_at": datetime.utcnow()
+            })
+            
+            logger.info(f"Updated session {session_id} public status to {is_public}")
+            return True
+        
+        try:
+            return await asyncio.to_thread(_toggle_public)
+        except Exception as e:
+            logger.error(f"Error updating session public status: {e}")
             return False
     
     async def delete_session(self, session_id: str, user_id: str) -> bool:
@@ -315,11 +364,12 @@ class FirestoreChatService:
     async def get_session_messages(
         self,
         session_id: str,
-        user_id: str
+        user_id: str,
+        allow_public: bool = False
     ) -> Dict[str, Any]:
         """Get all messages for a session"""
-        # Verify session ownership
-        session = await self.get_session(session_id, user_id)
+        # Verify session ownership or public access
+        session = await self.get_session(session_id, user_id, allow_public=allow_public)
         if not session:
             raise ValueError(f"Session {session_id} not found or access denied")
         

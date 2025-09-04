@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { Spinner } from 'baseui/spinner';
@@ -21,6 +21,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   const { isAuthenticated, isLoading } = useSelector(
     (state: RootState) => state.auth
   );
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -31,7 +32,9 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    // Save the attempted location to redirect back after login
+    const redirectTo = location.pathname + location.search;
+    return <Navigate to="/login" state={{ from: redirectTo }} replace />;
   }
 
   return <>{children}</>;

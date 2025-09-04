@@ -65,12 +65,19 @@ AVAILABLE TOOLS:
    - Only enrich if needed: pdl_enrichment(master_id, action="enrich")
    - Returns professional info, education, social media, contact details from public sources
    - Use when user asks about a voter's job, LinkedIn, education, or professional background
-6. **create_google_doc** - Create a new Google Doc for emails, briefings, or notes
+6. **pdl_batch_enrichment** - PREFERRED for enriching multiple voters (3-100 at once)
+   - ALWAYS USE THIS instead of multiple pdl_enrichment calls when enriching 3+ people
+   - Much faster: 100 people in ~2 seconds vs ~2 minutes individually
+   - Automatically skips already-enriched individuals to save money
+   - Example user requests: "enrich this list", "get PDL data for these donors", "enrich the top 20 donors"
+   - Takes list of master_ids: pdl_batch_enrichment(master_ids=["id1", "id2", "id3"])
+   - Returns batch summary with costs and success/failure counts
+7. **create_google_doc** - Create a new Google Doc for emails, briefings, or notes
    - Use for voter outreach emails, candidate briefing documents, campaign notes
    - Returns doc_id and URL for sharing
-7. **read_google_doc** - Read the content of an existing Google Doc
-8. **list_google_docs** - List all documents created by the user
-9. **update_google_doc** - Update the content of an existing Google Doc
+8. **read_google_doc** - Read the content of an existing Google Doc
+9. **list_google_docs** - List all documents created by the user
+10. **update_google_doc** - Update the content of an existing Google Doc
 
 IMPORTANT USAGE NOTES:
 - Always query the database when asked about specific voters, donors, or areas
@@ -81,6 +88,13 @@ IMPORTANT USAGE NOTES:
 - Save meaningful voter lists automatically for user's future reference
 - For PDL enrichment: Check existing data first (action="fetch") before triggering new enrichment
 - For geospatial queries: Use geocode_address to get coordinates, then ST_DWITHIN for proximity searches
+
+PDL ENRICHMENT STRATEGY:
+- SINGLE PERSON: Use pdl_enrichment(master_id, action="fetch") first, then "enrich" if needed
+- MULTIPLE PEOPLE (3+): ALWAYS use pdl_batch_enrichment(master_ids) - it's 50x faster!
+- When user says "enrich this list" or "get PDL data for these people" → use batch
+- Batch automatically skips already-enriched people to save money
+- Example: User has a list of 50 donors → use pdl_batch_enrichment with all 50 master_ids
 """
 
 # Format the system prompt with database manifest

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Button, SIZE, KIND } from 'baseui/button';
 import { Heading, HeadingLevel } from 'baseui/heading';
@@ -31,16 +31,23 @@ const Logo = styled('img', {
 
 const GoogleSignIn: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch<AppDispatch>();
   const { isAuthenticated, error } = useSelector(
     (state: RootState) => state.auth
   );
 
+  // Get the intended destination from location state (passed by AuthGuard) or sessionStorage
+  const from = (location.state as any)?.from || sessionStorage.getItem('authRedirectTo') || '/';
+
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/');
+      // Clear the saved redirect path
+      sessionStorage.removeItem('authRedirectTo');
+      // Navigate to the intended destination or home
+      navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, from]);
 
   useEffect(() => {
     // Handle Google OAuth callback
@@ -55,6 +62,11 @@ const GoogleSignIn: React.FC = () => {
   }, [dispatch]);
 
   const handleGoogleLogin = () => {
+    // Save the intended destination to sessionStorage before OAuth redirect
+    if (from !== '/') {
+      sessionStorage.setItem('authRedirectTo', from);
+    }
+    
     // Redirect to Google OAuth
     const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
     const redirectUri = `${window.location.origin}/login`;

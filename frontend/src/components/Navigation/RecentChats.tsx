@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { styled } from 'baseui';
@@ -6,6 +6,8 @@ import { Button, KIND, SIZE } from 'baseui/button';
 import { RootState, AppDispatch } from '../../store';
 import { loadChatSessions, deleteSessionAsync, renameSession } from '../../store/chatSlice';
 import { format } from 'date-fns';
+import { ChatSession } from '../../types/chat';
+import ShareDialog from '../ShareDialog/ShareDialog';
 
 const ChatList = styled('div', {
   padding: '0 8px',
@@ -80,6 +82,7 @@ const RecentChats: React.FC<RecentChatsProps> = ({ isCompact = false }) => {
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
+  const [shareDialogSession, setShareDialogSession] = useState<ChatSession | null>(null);
 
   useEffect(() => {
     dispatch(loadChatSessions());
@@ -132,6 +135,10 @@ const RecentChats: React.FC<RecentChatsProps> = ({ isCompact = false }) => {
     }
     setEditingSessionId(null);
     setEditingName('');
+  };
+
+  const handleShare = (session: ChatSession) => {
+    setShareDialogSession(session);
   };
 
   if (isCompact) {
@@ -288,6 +295,32 @@ const RecentChats: React.FC<RecentChatsProps> = ({ isCompact = false }) => {
                       cursor: 'pointer',
                       color: isDarkMode ? '#e5e7eb' : '#111827',
                       backgroundColor: 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = isDarkMode ? '#374151' : '#f3f4f6';
+                      e.currentTarget.style.color = isDarkMode ? '#ffffff' : '#111827';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = isDarkMode ? '#e5e7eb' : '#111827';
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleShare(session);
+                      setOpenPopoverId(null);
+                    }}
+                  >
+                    {session.is_public ? '🔗' : '🔒'} {session.is_public ? 'Shared' : 'Share'}
+                  </div>
+                  <div
+                    style={{
+                      padding: '8px 12px',
+                      cursor: 'pointer',
+                      color: isDarkMode ? '#e5e7eb' : '#111827',
+                      backgroundColor: 'transparent',
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = isDarkMode ? '#374151' : '#f3f4f6';
@@ -335,6 +368,16 @@ const RecentChats: React.FC<RecentChatsProps> = ({ isCompact = false }) => {
           </div>
         </div>
       ))}
+      {shareDialogSession && (
+        <ShareDialog
+          session={shareDialogSession}
+          onClose={() => setShareDialogSession(null)}
+          onShareUpdated={() => {
+            // Refresh sessions to get updated is_public status
+            dispatch(loadChatSessions());
+          }}
+        />
+      )}
     </ChatList>
   );
 };

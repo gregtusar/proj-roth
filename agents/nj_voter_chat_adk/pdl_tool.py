@@ -8,7 +8,7 @@ import json
 import logging
 import os
 import sys
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 from datetime import datetime, timedelta
 from google.cloud import bigquery
 from google.cloud import secretmanager
@@ -356,6 +356,157 @@ class PDLEnrichmentTool:
             return count * self.cost_per_enrichment
         return 0.0
     
+    def trigger_batch_enrichment(self, master_ids: List[str], min_likelihood: int = 8, 
+                                 skip_existing: bool = True,
+                                 require_confirmation: bool = True) -> Dict[str, Any]:
+        """
+        Trigger PDL batch enrichment for multiple master_ids (up to 100).
+        
+        Args:
+            master_ids: List of voter master_ids to enrich
+            min_likelihood: Minimum PDL confidence (1-10, default 8)
+            skip_existing: Skip individuals already enriched (default True)
+            require_confirmation: Require confirmation for high costs (default True)
+            
+        Returns:
+            Dict containing batch enrichment results
+        """
+        try:
+            if not master_ids:
+                return {
+                    'status': 'error',
+                    'message': 'No master_ids provided'
+                }
+            
+            # Limit to 100 per batch (PDL API limit)
+            if len(master_ids) > 100:
+                logger.warning(f"Batch size {len(master_ids)} exceeds limit of 100. Processing first 100.")
+                master_ids = master_ids[:100]
+            
+            # Check which ones already exist if skip_existing is True
+            to_enrich = []
+            already_enriched = []
+            not_found = []
+            
+            for master_id in master_ids:
+                existing = self.get_enrichment(master_id)
+                if existing['status'] == 'found' and skip_existing:
+                    age_days = existing['enrichment']['age_days']
+                    if age_days < 180:  # Less than 6 months old
+                        already_enriched.append({
+                            'master_id': master_id,
+                            'name': existing.get('name'),
+                            'age_days': age_days
+                        })
+                    else:
+                        to_enrich.append(master_id)
+                elif existing['status'] == 'not_found':
+                    not_found.append(master_id)
+                else:
+                    to_enrich.append(master_id)
+            
+            if not to_enrich:
+                return {
+                    'status': 'no_new_enrichments',
+                    'message': f'All {len(master_ids)} individuals are already enriched or not found',
+                    'already_enriched': already_enriched,
+                    'not_found': not_found
+                }
+            
+            # Calculate cost
+            batch_cost = len(to_enrich) * self.cost_per_enrichment
+            
+            # Cost control checks
+            if require_confirmation:
+                # Check daily spend
+                daily_spent = self._get_daily_spend()
+                if daily_spent + batch_cost > self.daily_budget_limit:
+                    return {
+                        'status': 'budget_exceeded',
+                        'message': f'Daily budget limit (${self.daily_budget_limit}) would be exceeded. '
+                                  f'Already spent ${daily_spent:.2f} today. Batch cost: ${batch_cost:.2f}',
+                        'batch_size': len(to_enrich),
+                        'action_required': 'Increase daily budget or reduce batch size'
+                    }
+                
+                # Check session spend
+                if self.session_cost + batch_cost > self.require_confirmation_above:
+                    return {
+                        'status': 'confirmation_required',
+                        'message': f'Batch cost ${batch_cost:.2f} would bring session total to '
+                                  f'${self.session_cost + batch_cost:.2f}, exceeding threshold '
+                                  f'(${self.require_confirmation_above})',
+                        'batch_details': {
+                            'total_requested': len(master_ids),
+                            'to_enrich': len(to_enrich),
+                            'already_enriched': len(already_enriched),
+                            'not_found': len(not_found),
+                            'cost_per_record': self.cost_per_enrichment,
+                            'total_cost': batch_cost
+                        },
+                        'action_required': 'Confirm batch enrichment or adjust threshold'
+                    }
+            
+            # Perform batch enrichment
+            logger.info(f"Triggering batch PDL enrichment for {len(to_enrich)} individuals (cost: ${batch_cost})")
+            
+            records = self.pipeline.enrich_batch(to_enrich, min_likelihood=min_likelihood)
+            
+            if records:
+                # Save to BigQuery
+                self.pipeline.save_enrichment_batch(records)
+                
+                # Update session tracking
+                self.session_cost += len(records) * self.cost_per_enrichment
+                for record in records:
+                    self.session_enrichments.append({
+                        'master_id': record.master_id,
+                        'cost': self.cost_per_enrichment,
+                        'timestamp': datetime.now().isoformat()
+                    })
+                
+                # Build result summary
+                enriched_summary = []
+                for record in records:
+                    enriched_summary.append({
+                        'master_id': record.master_id,
+                        'pdl_id': record.pdl_id,
+                        'likelihood': record.likelihood,
+                        'has_email': record.has_email,
+                        'has_phone': record.has_phone,
+                        'has_linkedin': record.has_linkedin
+                    })
+                
+                return {
+                    'status': 'batch_complete',
+                    'message': f'Successfully enriched {len(records)} out of {len(to_enrich)} individuals',
+                    'batch_summary': {
+                        'total_requested': len(master_ids),
+                        'already_enriched': len(already_enriched),
+                        'not_found': len(not_found),
+                        'attempted': len(to_enrich),
+                        'successful': len(records),
+                        'failed': len(to_enrich) - len(records),
+                        'cost': len(records) * self.cost_per_enrichment,
+                        'session_total_cost': self.session_cost
+                    },
+                    'enriched': enriched_summary[:10],  # First 10 for preview
+                    'already_enriched': already_enriched[:5],  # First 5 for preview
+                }
+            else:
+                return {
+                    'status': 'no_matches',
+                    'message': f'No PDL matches found for {len(to_enrich)} individuals at min_likelihood={min_likelihood}',
+                    'suggestion': f'Try lowering min_likelihood parameter (current: {min_likelihood}, try: 4)'
+                }
+                
+        except Exception as e:
+            logger.error(f"Error in batch enrichment: {e}")
+            return {
+                'status': 'error',
+                'error': str(e)
+            }
+    
     def get_session_summary(self) -> Dict[str, Any]:
         """Get summary of enrichments performed in this session"""
         return {
@@ -400,6 +551,32 @@ def pdl_enrichment_tool(master_id: str, action: str = "fetch",
             'status': 'error',
             'message': f'Invalid action: {action}. Use "fetch" or "enrich"'
         }
+
+
+def pdl_batch_enrichment_tool(master_ids: List[str], 
+                              min_likelihood: int = 8,
+                              skip_existing: bool = True,
+                              force: bool = False) -> Dict[str, Any]:
+    """
+    ADK tool function for batch PDL enrichment.
+    
+    Args:
+        master_ids: List of voter master_ids to enrich (max 100)
+        min_likelihood: Minimum PDL confidence (1-10, default 8)
+        skip_existing: Skip individuals already enriched (default True)
+        force: Skip cost confirmations (default False)
+        
+    Returns:
+        Dict with batch enrichment results and summary
+    """
+    tool = PDLEnrichmentTool()
+    
+    return tool.trigger_batch_enrichment(
+        master_ids=master_ids,
+        min_likelihood=min_likelihood,
+        skip_existing=skip_existing,
+        require_confirmation=not force
+    )
 
 
 if __name__ == "__main__":

@@ -45,9 +45,12 @@ python agents/nj_voter_chat_adk/test_search.py
 
 ### Deployment
 
+#### IMPORTANT: Always use deployment scripts
+**Always use the deployment scripts in the scripts/ directory for builds and deployments. Do NOT attempt manual gcloud builds submit or deploy commands directly.**
+
 #### Complete Build and Deploy (Recommended)
 ```bash
-# Full build and deploy with all steps
+# ALWAYS USE THIS SCRIPT for full deployments
 bash scripts/full_deploy.sh
 
 # This script handles:
@@ -193,7 +196,9 @@ Use BigQuery's geography functions for spatial analysis:
 - Google Search API credentials in `google-search-api-key` and `google-search-cx`
 - Service account uses Application Default Credentials (ADC)
 
-always make sure you are in the right directory (the root) before attempting a build and deploy.
-
-always update the front end version number if changes to the front end code where made, before a build and/or deploy
+CRITICAL DEPLOYMENT INSTRUCTIONS:
+1. Always make sure you are in the root directory (/Users/gregorytusar/proj-roth) before attempting a build and deploy
+2. Always update the frontend version number if changes to the frontend code were made, before a build and/or deploy
+3. ALWAYS use the script `bash scripts/full_deploy.sh` for deployments - do NOT use gcloud commands directly
+4. If you need to skip parts of the deployment, use the script flags: --skip-version, --skip-frontend, --skip-backend, or --skip-deploy
 

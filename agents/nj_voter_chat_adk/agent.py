@@ -777,17 +777,22 @@ class NJVoterChatAgent(Agent):
                 return asyncio.run(coro)
 
         async def _consume_async_gen(agen):
-            # Collect ALL chunks, not just the last one!
+            # Use the improved ADK chunk handler for proper partial flag handling
+            from .adk_chunk_handler import ADKChunkHandler
+            
+            handler = ADKChunkHandler()
             all_chunks = []
             last = None
             chunk_count = 0
             total_size = 0
+            
+            # Collect all chunks while processing them properly
             async for chunk in agen:
                 chunk_count += 1
                 chunk_str = str(chunk)
                 total_size += len(chunk_str)
                 
-                # Store ALL chunks for proper processing
+                # Store chunk for final processing
                 all_chunks.append(chunk)
                 
                 # Log significant events
@@ -822,15 +827,16 @@ class NJVoterChatAgent(Agent):
                 "total_size_tokens": total_size // 4
             })
             
-            # FIX: Handle chunks properly based on ADK documentation
-            # Check 'partial' flag to determine if chunks are incremental or complete
-            combined_text = ""
+            # Process chunks with corrected partial flag understanding:
+            # - partial=True: Current output is incomplete, more coming for THIS chunk
+            # - partial=False/None: Current chunk is complete
+            partial_buffer = ""
+            completed_texts = []
             final_chunk = None
             
-            print(f"[ADK] Processing {len(all_chunks)} chunks to extract complete response")
+            print(f"[ADK] Processing {len(all_chunks)} chunks with correct partial flag logic")
             
             for i, chunk in enumerate(all_chunks):
-                # Check if this is a partial chunk (incremental) or complete
                 is_partial = getattr(chunk, 'partial', None)
                 
                 if hasattr(chunk, 'content') and hasattr(chunk.content, 'parts'):
@@ -840,29 +846,37 @@ class NJVoterChatAgent(Agent):
                             text = part.text
                             
                             if is_partial is True:
-                                # Incremental content - append to what we have
-                                combined_text += text
-                                print(f"[ADK] Chunk {i+1}: Incremental text ({len(text)} chars, partial={is_partial})")
-                            elif is_partial is False:
-                                # Complete chunk - replace what we have
-                                combined_text = text
-                                print(f"[ADK] Chunk {i+1}: Complete text replacement ({len(text)} chars, partial={is_partial})")
+                                # This output is incomplete - accumulate in buffer
+                                partial_buffer += text
+                                print(f"[ADK] Chunk {i+1}: Partial text, accumulating ({len(text)} chars, buffer: {len(partial_buffer)} chars)")
                             else:
-                                # No partial flag - assume it's complete (ADK might not always set it)
-                                # But only replace if this chunk has more content
-                                if len(text) > len(combined_text):
-                                    combined_text = text
-                                    print(f"[ADK] Chunk {i+1}: Replacing with larger text ({len(text)} chars, no partial flag)")
+                                # partial=False or None: This chunk is complete
+                                if partial_buffer:
+                                    # Complete the partial sequence
+                                    complete_text = partial_buffer + text
+                                    completed_texts.append(complete_text)
+                                    partial_buffer = ""
+                                    print(f"[ADK] Chunk {i+1}: Completing partial sequence ({len(complete_text)} chars total)")
                                 else:
-                                    print(f"[ADK] Chunk {i+1}: Skipping smaller duplicate ({len(text)} chars, no partial flag)")
+                                    # Standalone complete chunk
+                                    completed_texts.append(text)
+                                    print(f"[ADK] Chunk {i+1}: Complete standalone chunk ({len(text)} chars)")
                     
                     # Keep the last chunk that had content as our template
-                    if combined_text:
+                    if completed_texts or partial_buffer:
                         final_chunk = chunk
             
-            # If we found text across chunks, use the combined response
+            # Handle any remaining partial buffer
+            if partial_buffer:
+                completed_texts.append(partial_buffer)
+                print(f"[ADK] Final partial buffer added: {len(partial_buffer)} chars")
+            
+            # Combine all completed texts
+            combined_text = "".join(completed_texts)
+            
+            # Return result with combined text
             if combined_text and final_chunk:
-                print(f"[ADK] Final combined text: {len(combined_text)} total chars")
+                print(f"[ADK] Final combined text: {len(combined_text)} chars from {len(completed_texts)} segments")
                 
                 # Modify the final chunk to contain all combined text
                 # This preserves the chunk structure while including all content
@@ -871,7 +885,11 @@ class NJVoterChatAgent(Agent):
                         # Replace the text in the first part with combined text
                         if hasattr(final_chunk.content.parts[0], 'text'):
                             final_chunk.content.parts[0].text = combined_text
-                            print(f"[ADK] Updated final chunk with combined text")
+                            print(f"[ADK] Updated final chunk with properly combined text")
+                
+                # Log handler metrics
+                print(f"[ADK] Chunk processing metrics: {len(completed_texts)} complete segments, "
+                      f"{len(combined_text)} total chars")
                 
                 return final_chunk
             

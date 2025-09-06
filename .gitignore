@@ -71,5 +71,19 @@ frontend/node_modules/
 service-account-key.json
 *-service-account*.json
 
+# Environment files
+.env
+.env.*
+!.env.example
+*/.env
+*/.env.*
+!*/.env.example
+
 # Recovery codes
 .env.recovery
+
+# Sensitive files
+googledocs.txt
+*secret*
+*credential*
+*token*

@@ -28,14 +28,26 @@ class CampaignManager:
     def _init_sendgrid(self):
         """Initialize SendGrid client with API key from Secret Manager."""
         try:
+            logger.info("[SENDGRID] Initializing SendGrid client...")
             client = secretmanager.SecretManagerServiceClient()
             project_id = "proj-roth"
             secret_name = f"projects/{project_id}/secrets/sendgrid-api-key/versions/latest"
+            logger.info(f"[SENDGRID] Fetching API key from Secret Manager: {secret_name}")
+            
             response = client.access_secret_version(request={"name": secret_name})
             api_key = response.payload.data.decode("UTF-8")
-            return sendgrid.SendGridAPIClient(api_key=api_key)
+            
+            # Log API key details (first/last few chars for verification)
+            masked_key = f"{api_key[:7]}...{api_key[-4:]}" if len(api_key) > 11 else "KEY_TOO_SHORT"
+            logger.info(f"[SENDGRID] API key retrieved successfully: {masked_key}")
+            
+            sg_client = sendgrid.SendGridAPIClient(api_key=api_key)
+            logger.info("[SENDGRID] SendGrid client initialized successfully")
+            return sg_client
         except Exception as e:
-            logger.error(f"Failed to initialize SendGrid: {e}")
+            logger.error(f"[SENDGRID] Failed to initialize SendGrid: {e}")
+            import traceback
+            logger.error(f"[SENDGRID] Traceback: {traceback.format_exc()}")
             return None
     
     def _init_docs_service(self):
@@ -262,15 +274,23 @@ class CampaignManager:
     
     def send_campaign(self, campaign_id: str, test_email: Optional[str] = None) -> Dict:
         """Send a campaign to all recipients or test email."""
+        logger.info(f"[CAMPAIGN] Starting send_campaign for campaign_id: {campaign_id}, test_email: {test_email}")
+        
         campaign = self.get_campaign(campaign_id)
         if not campaign:
+            logger.error(f"[CAMPAIGN] Campaign {campaign_id} not found")
             return {'success': False, 'error': 'Campaign not found'}
         
+        logger.info(f"[CAMPAIGN] Campaign found: {campaign['name']}")
+        
         # Get email content from Google Docs
+        logger.info(f"[CAMPAIGN] Fetching content from Google Doc: {campaign['google_doc_url']}")
         email_content = self.fetch_google_doc_content(campaign['google_doc_url'])
+        logger.info(f"[CAMPAIGN] Email content fetched, length: {len(email_content)} characters")
         
         if test_email:
             # Send test email
+            logger.info(f"[CAMPAIGN] Preparing test email to: {test_email}")
             recipients = [{
                 'master_id': 'TEST',
                 'email': test_email,
@@ -280,9 +300,12 @@ class CampaignManager:
             }]
         else:
             # Get all recipients
+            logger.info(f"[CAMPAIGN] Fetching recipients from list: {campaign['list_id']}")
             recipients = self.get_list_recipients(campaign['list_id'])
+            logger.info(f"[CAMPAIGN] Found {len(recipients)} recipients with emails")
         
         if not recipients:
+            logger.error("[CAMPAIGN] No recipients found")
             return {'success': False, 'error': 'No recipients found'}
         
         # Update campaign status
@@ -296,8 +319,13 @@ class CampaignManager:
         batch_size = 1000
         sent_count = 0
         
+        logger.info(f"[CAMPAIGN] Starting email send - Total recipients: {len(recipients)}")
+        logger.info(f"[CAMPAIGN] Batch ID: {batch_id}, Batch size: {batch_size}")
+        
         for i in range(0, len(recipients), batch_size):
             batch = recipients[i:i + batch_size]
+            logger.info(f"[CAMPAIGN] Sending batch {i//batch_size + 1} ({len(batch)} recipients)")
+            
             success = self._send_batch(
                 batch, 
                 campaign['subject_line'],
@@ -305,8 +333,12 @@ class CampaignManager:
                 campaign_id,
                 batch_id
             )
+            
             if success:
                 sent_count += len(batch)
+                logger.info(f"[CAMPAIGN] Batch sent successfully. Total sent so far: {sent_count}")
+            else:
+                logger.error(f"[CAMPAIGN] Batch failed. Sent count remains: {sent_count}")
                 
                 # Create events for sent emails
                 for recipient in batch:
@@ -339,18 +371,28 @@ class CampaignManager:
     def _send_batch(self, recipients: List[Dict], subject: str, content: str, 
                     campaign_id: str, batch_id: str) -> bool:
         """Send a batch of emails via SendGrid."""
+        logger.info(f"[SENDGRID] Starting _send_batch for {len(recipients)} recipients")
+        logger.info(f"[SENDGRID] Campaign ID: {campaign_id}, Batch ID: {batch_id}")
+        logger.info(f"[SENDGRID] Subject: {subject}")
+        
         if not self.sg:
-            logger.error("SendGrid client not initialized")
+            logger.error("[SENDGRID] SendGrid client not initialized")
             return False
         
+        logger.info("[SENDGRID] SendGrid client is available")
+        
         try:
+            logger.info("[SENDGRID] Creating Mail object...")
             message = Mail()
             message.from_email = "gregtusar@gwanalytica.ai"  # Update with your verified sender
             message.subject = subject
             message.html_content = content
+            logger.info(f"[SENDGRID] Mail object created with from_email: gregtusar@gwanalytica.ai")
             
             # Add personalizations for each recipient
-            for recipient in recipients:
+            logger.info(f"[SENDGRID] Adding personalizations for {len(recipients)} recipients...")
+            for i, recipient in enumerate(recipients):
+                logger.info(f"[SENDGRID] Processing recipient {i+1}/{len(recipients)}: {recipient['email']}")
                 personalization = Personalization()
                 personalization.add_to(To(
                     email=recipient['email'],
@@ -369,18 +411,30 @@ class CampaignManager:
                 
                 message.add_personalization(personalization)
             
+            logger.info("[SENDGRID] All personalizations added")
+            
             # Send the batch
+            logger.info("[SENDGRID] Sending email batch to SendGrid API...")
             response = self.sg.send(message)
             
+            logger.info(f"[SENDGRID] Response received - Status Code: {response.status_code}")
+            logger.info(f"[SENDGRID] Response Headers: {response.headers}")
+            logger.info(f"[SENDGRID] Response Body: {response.body}")
+            
             if response.status_code in [200, 202]:
-                logger.info(f"Batch sent successfully: {len(recipients)} recipients")
+                logger.info(f"[SENDGRID] SUCCESS - Batch sent successfully: {len(recipients)} recipients")
+                logger.info(f"[SENDGRID] Message ID: {response.headers.get('X-Message-Id', 'N/A')}")
                 return True
             else:
-                logger.error(f"SendGrid error: {response.status_code} - {response.body}")
+                logger.error(f"[SENDGRID] FAILED - SendGrid error: {response.status_code}")
+                logger.error(f"[SENDGRID] Error body: {response.body}")
+                logger.error(f"[SENDGRID] Error headers: {response.headers}")
                 return False
                 
         except Exception as e:
-            logger.error(f"Failed to send batch: {e}")
+            logger.error(f"[SENDGRID] EXCEPTION in _send_batch: {e}")
+            import traceback
+            logger.error(f"[SENDGRID] Traceback: {traceback.format_exc()}")
             return False
     
     def _create_event(self, event_data: Dict):

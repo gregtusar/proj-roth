@@ -35,11 +35,11 @@ class CampaignManager:
             logger.info(f"[SENDGRID] Fetching API key from Secret Manager: {secret_name}")
             
             response = client.access_secret_version(request={"name": secret_name})
-            api_key = response.payload.data.decode("UTF-8")
+            api_key = response.payload.data.decode("UTF-8").strip()  # Strip whitespace and newlines
             
             # Log API key details (first/last few chars for verification)
             masked_key = f"{api_key[:7]}...{api_key[-4:]}" if len(api_key) > 11 else "KEY_TOO_SHORT"
-            logger.info(f"[SENDGRID] API key retrieved successfully: {masked_key}")
+            logger.info(f"[SENDGRID] API key retrieved successfully: {masked_key} (length: {len(api_key)})")
             
             sg_client = sendgrid.SendGridAPIClient(api_key=api_key)
             logger.info("[SENDGRID] SendGrid client initialized successfully")
@@ -576,6 +576,14 @@ class CampaignManager:
                 message.add_personalization(personalization)
             
             logger.info("[SENDGRID] All personalizations added")
+            
+            # Log the message for debugging
+            import json
+            try:
+                message_dict = message.get()
+                logger.info(f"[SENDGRID] Message structure: {json.dumps(message_dict, indent=2)[:2000]}")
+            except Exception as e:
+                logger.error(f"[SENDGRID] Could not serialize message: {e}")
             
             # Send the batch
             logger.info("[SENDGRID] Sending email batch to SendGrid API...")

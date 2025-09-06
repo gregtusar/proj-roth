@@ -143,6 +143,7 @@ class BigQueryReadOnlyTool:
             
             job_config = bigquery.QueryJobConfig()
             job_config.use_legacy_sql = False
+            job_config.use_query_cache = True  # Enable query caching for performance
             job_config.labels = {"agent": "nj_voter_chat"}
             start = time.time()
             

@@ -18,16 +18,24 @@ async def execute_query(query: str, limit: int = 100000) -> Dict[str, Any]:
         client = bigquery.Client(project='proj-roth')
         
         # Add project prefix if not present
-        if 'proj-roth.' not in query:
-            query = query.replace('voter_data.', '`proj-roth.voter_data.')
-            query = query.replace('`proj-roth.voter_data.', '`proj-roth`.voter_data.')
+        # Check if proj-roth is already in the query (with or without backticks)
+        if 'proj-roth' not in query:
+            # Query doesn't have project prefix, add it
+            query = query.replace('voter_data.', '`proj-roth`.voter_data.')
+        # If query already has `proj-roth.voter_data.`, leave it as is
+        # No need to modify queries that already have proper formatting
         
         # Only add limit if not present AND limit > 0
         if limit > 0 and "LIMIT" not in query.upper():
             query = f"{query} LIMIT {limit}"
         
-        # Execute query
-        query_job = client.query(query)
+        # Configure job with caching enabled
+        job_config = bigquery.QueryJobConfig()
+        job_config.use_query_cache = True  # Enable query caching for performance
+        job_config.use_legacy_sql = False
+        
+        # Execute query with caching
+        query_job = client.query(query, job_config=job_config)
         results = list(query_job.result())
         
         execution_time = time.time() - start_time

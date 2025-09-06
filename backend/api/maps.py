@@ -60,7 +60,13 @@ async def get_street_party_data(
     try:
         # Use native BigQuery client to avoid field mapping issues
         client = bigquery.Client(project='proj-roth')
-        query_job = client.query(query)
+        
+        # Configure job with caching enabled
+        job_config = bigquery.QueryJobConfig()
+        job_config.use_query_cache = True  # Enable query caching for performance
+        job_config.use_legacy_sql = False
+        
+        query_job = client.query(query, job_config=job_config)
         results = query_job.result()
         
         streets = []

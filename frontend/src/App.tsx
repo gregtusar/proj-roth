@@ -20,6 +20,7 @@ import QueryTool from './components/QueryTool/QueryTool';
 import VideoAssets from './components/VideoAssets/VideoAssets';
 import DocumentAssets from './components/DocumentAssets/DocumentAssets';
 import Visualizer from './components/Visualizer/Visualizer';
+import CampaignManager from './components/campaigns/CampaignManager';
 import PrivacyPolicy from './components/Legal/PrivacyPolicy';
 import TermsOfService from './components/Legal/TermsOfService';
 
@@ -105,6 +106,7 @@ function App() {
         <Route path="lists" element={<ListManager />} />
         <Route path="videos" element={<VideoAssets />} />
         <Route path="documents" element={<DocumentAssets />} />
+        <Route path="campaign" element={<CampaignManager />} />
         <Route path="street-map" element={<StreetMap />} />
         <Route path="visualizer" element={<Visualizer />} />
         <Route path="settings" element={<Settings />} />

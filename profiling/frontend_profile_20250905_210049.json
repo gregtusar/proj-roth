@@ -1,0 +1,105 @@
+{
+  "timestamp": "2025-09-05T21:00:49.762175",
+  "bundle_analysis": {
+    "static/js": {
+      "main.119478cc.js": {
+        "size_kb": 2347.85,
+        "gzipped_estimate_kb": 704.35
+      }
+    },
+    "static/css": {
+      "main.cbfd1b80.css": {
+        "size_kb": 18.33,
+        "gzipped_estimate_kb": 3.67
+      }
+    },
+    "total_size_kb": 2366.18
+  },
+  "dependencies": {
+    "total_dependencies": 40,
+    "total_dev_dependencies": 7,
+    "large_dependencies": [
+      {
+        "name": "@mui/icons-material",
+        "version": "^7.3.1",
+        "estimated_size_kb": 5000
+      },
+      {
+        "name": "@mui/material",
+        "version": "^7.3.1",
+        "estimated_size_kb": 350
+      },
+      {
+        "name": "leaflet",
+        "version": "^1.9.4",
+        "estimated_size_kb": 140
+      },
+      {
+        "name": "react-dom",
+        "version": "^18.2.0",
+        "estimated_size_kb": 120
+      }
+    ],
+    "dependencies": {
+      "@emotion/react": "^11.14.0",
+      "@emotion/styled": "^11.14.1",
+      "@heroicons/react": "^2.2.0",
+      "@monaco-editor/react": "^4.7.0",
+      "@mui/icons-material": "^7.3.1",
+      "@mui/material": "^7.3.1",
+      "@reduxjs/toolkit": "^1.9.7",
+      "@testing-library/jest-dom": "^5.17.0",
+      "@testing-library/react": "^14.0.0",
+      "@testing-library/user-event": "^14.5.1",
+      "@types/jest": "^29.5.5",
+      "@types/leaflet": "^1.9.20",
+      "@types/node": "^20.8.0",
+      "@types/react": "^18.2.28",
+      "@types/react-dom": "^18.2.13",
+      "@types/react-syntax-highlighter": "^15.5.13",
+      "axios": "^1.5.1",
+      "baseui": "^14.0.0",
+      "date-fns": "^2.30.0",
+      "leaflet": "^1.9.4",
+      "lucide-react": "^0.542.0",
+      "prismjs": "^1.29.0",
+      "react": "^18.2.0",
+      "react-csv": "^2.2.2",
+      "react-dom": "^18.2.0",
+      "react-dropzone": "^14.2.3",
+      "react-hook-form": "^7.47.0",
+      "react-leaflet": "^4.2.1",
+      "react-markdown": "^9.0.0",
+      "react-query": "^3.39.3",
+      "react-redux": "^8.1.3",
+      "react-router-dom": "^6.16.0",
+      "react-scripts": "5.0.1",
+      "react-simple-code-editor": "^0.13.1",
+      "react-syntax-highlighter": "^15.6.3",
+      "socket.io-client": "^4.5.3",
+      "styletron-engine-monolithic": "^1.0.0",
+      "styletron-react": "^6.1.0",
+      "typescript": "^4.9.5",
+      "web-vitals": "^3.5.0"
+    }
+  },
+  "lighthouse": {},
+  "recommendations": [],
+  "code_splitting": {
+    "large_components": [],
+    "dynamic_imports_count": 0,
+    "lazy_components_count": 0,
+    "recommendations": []
+  },
+  "optimizations": {
+    "memo_usage": 0,
+    "useMemo_usage": 2,
+    "useCallback_usage": 2,
+    "pureComponent_usage": 0,
+    "virtual_scrolling": false,
+    "recommendations": [
+      "Low React.memo usage. Consider memoizing expensive components",
+      "Consider virtual scrolling for large lists (react-window)"
+    ]
+  }
+}

@@ -34,6 +34,7 @@ def _set_websocket(ws):
 def extract_response_text(result, attempt_num=1, max_attempts=3):
     """
     Robust response extraction function with multiple fallback methods.
+    Enhanced to handle all ADK response formats including streaming and edge cases.
     
     Args:
         result: The response object from the ADK agent
@@ -41,87 +42,176 @@ def extract_response_text(result, attempt_num=1, max_attempts=3):
         max_attempts: Maximum number of extraction attempts
         
     Returns:
-        str: Extracted response text or error message
+        str: Extracted response text or None if extraction fails
     """
     debug_print(f"[EXTRACT] Attempt {attempt_num}/{max_attempts} - Extracting response from {type(result)}")
+    
+    # Track if we found an explicitly empty response
+    found_empty_response = False
+    extracted_texts = []
     
     # Method 1: Standard ADK response with content.parts
     if hasattr(result, 'content') and hasattr(result.content, 'parts'):
         debug_print(f"[EXTRACT] Method 1: Found content with {len(result.content.parts)} parts")
-        text_parts = []
         
         for i, part in enumerate(result.content.parts):
-            part_text_length = len(part.text) if hasattr(part, 'text') and part.text else 0
-            debug_print(f"[EXTRACT] Part {i}: has_text={hasattr(part, 'text')}, text_length={part_text_length}")
+            part_info = {
+                'has_text': hasattr(part, 'text'),
+                'text_is_none': hasattr(part, 'text') and part.text is None,
+                'text_is_empty': hasattr(part, 'text') and part.text == '',
+                'text_length': len(part.text) if hasattr(part, 'text') and part.text else 0
+            }
+            debug_print(f"[EXTRACT] Part {i}: {part_info}")
             
-            if hasattr(part, 'text') and part.text:
-                text_parts.append(part.text.strip())
-            elif hasattr(part, 'text') and part.text == '':
-                # Log when we get an explicitly empty text response from ADK
-                debug_print(f"[EXTRACT] WARNING: Part {i} has empty text - ADK returned no content")
-                error_print(f"[EXTRACT] ADK returned empty response. This often happens when the model cannot process the request.")
+            if hasattr(part, 'text'):
+                if part.text:
+                    # Found actual text content
+                    text = part.text.strip()
+                    if text:
+                        extracted_texts.append(text)
+                        debug_print(f"[EXTRACT] Part {i}: Extracted {len(text)} chars")
+                elif part.text == '':
+                    # Explicitly empty response from ADK
+                    found_empty_response = True
+                    debug_print(f"[EXTRACT] Part {i}: Empty text (ADK returned no content)")
+                elif part.text is None:
+                    # None response - different from empty string
+                    debug_print(f"[EXTRACT] Part {i}: None text (no response generated)")
+            
+            # Also check for other part types (tool_use, function_call, etc.)
+            if hasattr(part, 'tool_use'):
+                debug_print(f"[EXTRACT] Part {i}: Contains tool_use")
+            if hasattr(part, 'function_call'):
+                debug_print(f"[EXTRACT] Part {i}: Contains function_call")
         
-        if text_parts:
-            final_response = '\n'.join(text_parts)
-            debug_print(f"[EXTRACT] Method 1 SUCCESS: Extracted {len(final_response)} characters")
+        if extracted_texts:
+            # Successfully extracted text from parts
+            final_response = '\n'.join(extracted_texts)
+            debug_print(f"[EXTRACT] Method 1 SUCCESS: Extracted {len(final_response)} characters from {len(extracted_texts)} parts")
             debug_print(f"[EXTRACT] Response preview: {final_response[:200]}...")
             return final_response
-        else:
-            debug_print(f"[EXTRACT] Method 1 FAILED: No text content in parts")
-            # Check if we got empty parts (ADK returned but with no content)
-            if any(hasattr(part, 'text') and part.text == '' for part in result.content.parts):
-                error_print(f"[EXTRACT] ADK returned empty text parts - likely a processing error")
+        elif found_empty_response:
+            # ADK explicitly returned empty - this is different from extraction failure
+            debug_print(f"[EXTRACT] Method 1: ADK returned empty response (not a failure)")
+            error_print(f"[EXTRACT] Model returned empty response. Possible reasons:")
+            error_print(f"  - Request triggered safety filters")
+            error_print(f"  - Model couldn't process the specific request")
+            error_print(f"  - Temporary model issue")
+            # Return a user-friendly message instead of None
+            return "I apologize, but I couldn't generate a response for your request. Please try rephrasing your question or asking something else."
     
     # Method 2: Direct text attribute
-    if hasattr(result, 'text') and result.text:
-        debug_print(f"[EXTRACT] Method 2 SUCCESS: Direct text attribute, {len(result.text)} characters")
-        return result.text.strip()
+    if hasattr(result, 'text'):
+        if result.text:
+            text = result.text.strip()
+            if text:
+                debug_print(f"[EXTRACT] Method 2 SUCCESS: Direct text attribute, {len(text)} characters")
+                return text
+        elif result.text == '':
+            found_empty_response = True
+            debug_print(f"[EXTRACT] Method 2: Empty text attribute")
     
     # Method 3: Response as dict with various possible keys
     if isinstance(result, dict):
         debug_print(f"[EXTRACT] Method 3: Dict response with keys: {list(result.keys())}")
         
-        # Try common response keys
-        for key in ['output', 'response', 'text', 'content', 'message', 'answer']:
-            if key in result and result[key]:
-                debug_print(f"[EXTRACT] Method 3 SUCCESS: Found content in '{key}' key")
-                return str(result[key]).strip()
+        # Try common response keys in priority order
+        priority_keys = ['text', 'output', 'response', 'content', 'message', 'answer', 'result']
+        for key in priority_keys:
+            if key in result:
+                value = result[key]
+                if value:
+                    if isinstance(value, str):
+                        text = value.strip()
+                        if text:
+                            debug_print(f"[EXTRACT] Method 3 SUCCESS: Found text in '{key}' key ({len(text)} chars)")
+                            return text
+                    elif hasattr(value, '__dict__'):
+                        # Nested object - recursively extract
+                        debug_print(f"[EXTRACT] Method 3: Nested object in '{key}', recursing")
+                        nested_text = extract_response_text(value, attempt_num + 1, max_attempts)
+                        if nested_text:
+                            return nested_text
+                elif value == '':
+                    found_empty_response = True
+                    debug_print(f"[EXTRACT] Method 3: Empty value in '{key}' key")
     
-    # Method 4: List of responses (batch responses)
+    # Method 4: List of responses (batch or streaming responses)
     if isinstance(result, list) and result:
         debug_print(f"[EXTRACT] Method 4: List response with {len(result)} items")
         
-        # Try to extract from first item if it has expected structure
-        first_item = result[0]
-        if hasattr(first_item, 'content'):
-            return extract_response_text(first_item, attempt_num, max_attempts)
-        elif isinstance(first_item, str):
-            debug_print(f"[EXTRACT] Method 4 SUCCESS: String in list")
-            return first_item.strip()
+        list_texts = []
+        for idx, item in enumerate(result):
+            if isinstance(item, str):
+                text = item.strip()
+                if text:
+                    list_texts.append(text)
+                    debug_print(f"[EXTRACT] Method 4: Item {idx} is string ({len(text)} chars)")
+            elif hasattr(item, 'content') or hasattr(item, 'text'):
+                # Recursive extraction for structured items
+                item_text = extract_response_text(item, attempt_num + 1, max_attempts)
+                if item_text:
+                    list_texts.append(item_text)
+                    debug_print(f"[EXTRACT] Method 4: Item {idx} extracted ({len(item_text)} chars)")
+        
+        if list_texts:
+            # Check if texts are incremental or duplicates
+            unique_texts = []
+            seen = set()
+            for text in list_texts:
+                if text not in seen:
+                    unique_texts.append(text)
+                    seen.add(text)
+            
+            if len(unique_texts) == 1:
+                debug_print(f"[EXTRACT] Method 4 SUCCESS: Single unique text from list")
+                return unique_texts[0]
+            else:
+                combined = ' '.join(unique_texts)
+                debug_print(f"[EXTRACT] Method 4 SUCCESS: Combined {len(unique_texts)} unique texts")
+                return combined
     
-    # Method 5: String conversion fallback
-    if result is not None:
-        result_str = str(result).strip()
-        if result_str and result_str != 'None' and len(result_str) > 0:
-            debug_print(f"[EXTRACT] Method 5 SUCCESS: String conversion, {len(result_str)} characters")
-            return result_str
-    
-    # Method 6: Check for nested response attributes
-    for attr in ['response', 'output', 'result', 'data']:
+    # Method 5: Check for nested response attributes
+    nested_attrs = ['response', 'output', 'result', 'data', 'message', 'completion']
+    for attr in nested_attrs:
         if hasattr(result, attr):
             nested_result = getattr(result, attr)
-            if nested_result:
-                debug_print(f"[EXTRACT] Method 6: Trying nested attribute '{attr}'")
-                return extract_response_text(nested_result, attempt_num, max_attempts)
+            if nested_result and nested_result != result:  # Avoid infinite recursion
+                debug_print(f"[EXTRACT] Method 5: Trying nested attribute '{attr}'")
+                nested_text = extract_response_text(nested_result, attempt_num + 1, max_attempts)
+                if nested_text:
+                    return nested_text
+    
+    # Method 6: String conversion fallback (last resort)
+    if result is not None and not found_empty_response:
+        try:
+            result_str = str(result).strip()
+            # Filter out unhelpful string representations
+            if (result_str and 
+                result_str != 'None' and 
+                not result_str.startswith('<') and  # Avoid object repr strings
+                not result_str.startswith('object at') and
+                len(result_str) > 10):  # Minimum meaningful length
+                debug_print(f"[EXTRACT] Method 6 SUCCESS: String conversion fallback, {len(result_str)} characters")
+                return result_str
+        except Exception as e:
+            debug_print(f"[EXTRACT] Method 6 failed: String conversion error: {e}")
     
     # All methods failed
-    error_msg = f"[EXTRACT] All extraction methods failed for {type(result)}"
-    debug_print(error_msg)
-    
-    if hasattr(result, '__dict__'):
-        debug_print(f"[EXTRACT] Object attributes: {list(result.__dict__.keys())}")
-    
-    return None
+    if found_empty_response:
+        # We found empty responses - this is different from extraction failure
+        debug_print(f"[EXTRACT] Found empty response markers - model returned no content")
+        return "I couldn't generate a response for your request. Please try rephrasing your question."
+    else:
+        # Complete extraction failure
+        error_msg = f"[EXTRACT] All extraction methods failed for {type(result)}"
+        debug_print(error_msg)
+        
+        if hasattr(result, '__dict__'):
+            attrs = list(result.__dict__.keys())[:10]  # Limit to first 10 attrs
+            debug_print(f"[EXTRACT] Object attributes: {attrs}")
+        
+        return None
 
 def _emit_reasoning_event(event_type: str, data: Dict[str, Any]):
     """Emit a reasoning event through the websocket if available"""
@@ -827,75 +917,154 @@ class NJVoterChatAgent(Agent):
                 "total_size_tokens": total_size // 4
             })
             
-            # Process chunks with corrected partial flag understanding:
-            # - partial=True: Current output is incomplete, more coming for THIS chunk
-            # - partial=False/None: Current chunk is complete
-            partial_buffer = ""
-            completed_texts = []
+            # IMPROVED: Robust ADK response extraction handling all formats
+            combined_text = ""
             final_chunk = None
+            text_parts = []
+            has_empty_response = False
             
             print(f"[ADK] Processing {len(all_chunks)} chunks with correct partial flag logic")
             
+            # First pass: Analyze chunk structure and collect all text
             for i, chunk in enumerate(all_chunks):
-                is_partial = getattr(chunk, 'partial', None)
+                chunk_info = {
+                    'index': i + 1,
+                    'type': type(chunk).__name__,
+                    'has_content': hasattr(chunk, 'content'),
+                    'has_parts': False,
+                    'text_found': False,
+                    'text_length': 0
+                }
                 
+                # Method 1: Standard ADK response with content.parts
                 if hasattr(chunk, 'content') and hasattr(chunk.content, 'parts'):
-                    # Extract text from this chunk's parts
-                    for part in chunk.content.parts:
-                        if hasattr(part, 'text') and part.text:
-                            text = part.text
-                            
-                            if is_partial is True:
-                                # This output is incomplete - accumulate in buffer
-                                partial_buffer += text
-                                print(f"[ADK] Chunk {i+1}: Partial text, accumulating ({len(text)} chars, buffer: {len(partial_buffer)} chars)")
-                            else:
-                                # partial=False or None: This chunk is complete
-                                if partial_buffer:
-                                    # Complete the partial sequence
-                                    complete_text = partial_buffer + text
-                                    completed_texts.append(complete_text)
-                                    partial_buffer = ""
-                                    print(f"[ADK] Chunk {i+1}: Completing partial sequence ({len(complete_text)} chars total)")
-                                else:
-                                    # Standalone complete chunk
-                                    completed_texts.append(text)
-                                    print(f"[ADK] Chunk {i+1}: Complete standalone chunk ({len(text)} chars)")
+                    chunk_info['has_parts'] = True
+                    parts_count = len(chunk.content.parts) if chunk.content.parts else 0
                     
-                    # Keep the last chunk that had content as our template
-                    if completed_texts or partial_buffer:
-                        final_chunk = chunk
+                    for j, part in enumerate(chunk.content.parts):
+                        if hasattr(part, 'text'):
+                            if part.text:
+                                text = part.text.strip()
+                                if text:
+                                    text_parts.append(text)
+                                    chunk_info['text_found'] = True
+                                    chunk_info['text_length'] = len(text)
+                                    print(f"[ADK] Chunk {i+1}.{j+1}: Found text ({len(text)} chars)")
+                            elif part.text == '':
+                                # Explicitly empty response from ADK
+                                has_empty_response = True
+                                print(f"[ADK] Chunk {i+1}.{j+1}: Empty text response (ADK returned no content)")
+                
+                # Method 2: Direct text attribute on chunk
+                elif hasattr(chunk, 'text') and chunk.text:
+                    text = chunk.text.strip()
+                    if text:
+                        text_parts.append(text)
+                        chunk_info['text_found'] = True
+                        chunk_info['text_length'] = len(text)
+                        print(f"[ADK] Chunk {i+1}: Direct text attribute ({len(text)} chars)")
+                
+                # Method 3: Check for response/output attributes
+                elif hasattr(chunk, 'response') and chunk.response:
+                    if isinstance(chunk.response, str):
+                        text = chunk.response.strip()
+                        if text:
+                            text_parts.append(text)
+                            chunk_info['text_found'] = True
+                            chunk_info['text_length'] = len(text)
+                            print(f"[ADK] Chunk {i+1}: Response attribute ({len(text)} chars)")
+                
+                # Keep track of chunks with content structure for final result
+                if chunk_info['text_found'] or (chunk_info['has_parts'] and not has_empty_response):
+                    final_chunk = chunk
+                
+                # Log chunk analysis
+                if chunk_info['text_found']:
+                    print(f"[ADK] Chunk {chunk_info['index']}: {chunk_info['type']} - {chunk_info['text_length']} chars extracted")
+                elif chunk_info['has_parts']:
+                    print(f"[ADK] Chunk {chunk_info['index']}: {chunk_info['type']} - has parts but no text")
+                else:
+                    print(f"[ADK] Chunk {chunk_info['index']}: {chunk_info['type']} - no recognizable content structure")
             
-            # Handle any remaining partial buffer
-            if partial_buffer:
-                completed_texts.append(partial_buffer)
-                print(f"[ADK] Final partial buffer added: {len(partial_buffer)} chars")
+            # Handle incremental vs complete responses
+            # Check if we have partial/streaming indicators
+            if text_parts:
+                # Check for duplicate content (sometimes ADK sends the same response multiple times)
+                unique_texts = []
+                seen = set()
+                for text in text_parts:
+                    if text not in seen:
+                        unique_texts.append(text)
+                        seen.add(text)
+                
+                # Determine if responses are incremental or complete replacements
+                if len(unique_texts) == 1:
+                    # Same text repeated - use it
+                    combined_text = unique_texts[0]
+                    print(f"[ADK] Single unique response found: {len(combined_text)} chars")
+                else:
+                    # Multiple different texts - check if they're incremental
+                    # If each subsequent text contains the previous, it's a complete replacement
+                    is_replacement = True
+                    for i in range(1, len(text_parts)):
+                        if text_parts[i-1] not in text_parts[i]:
+                            is_replacement = False
+                            break
+                    
+                    if is_replacement and text_parts:
+                        # Use the last (most complete) response
+                        combined_text = text_parts[-1]
+                        print(f"[ADK] Using last complete response: {len(combined_text)} chars")
+                    else:
+                        # Incremental responses - combine them
+                        combined_text = ' '.join(unique_texts)
+                        print(f"[ADK] Combined {len(unique_texts)} incremental responses: {len(combined_text)} chars")
             
-            # Combine all completed texts
-            combined_text = "".join(completed_texts)
-            
-            # Return result with combined text
+            # Prepare final result
             if combined_text and final_chunk:
-                print(f"[ADK] Final combined text: {len(combined_text)} chars from {len(completed_texts)} segments")
+                print(f"[ADK] Final response extracted: {len(combined_text)} chars")
                 
-                # Modify the final chunk to contain all combined text
-                # This preserves the chunk structure while including all content
+                # Try to preserve chunk structure while updating with complete text
                 if hasattr(final_chunk, 'content') and hasattr(final_chunk.content, 'parts'):
-                    if final_chunk.content.parts:
-                        # Replace the text in the first part with combined text
-                        if hasattr(final_chunk.content.parts[0], 'text'):
-                            final_chunk.content.parts[0].text = combined_text
-                            print(f"[ADK] Updated final chunk with properly combined text")
+                    if final_chunk.content.parts and hasattr(final_chunk.content.parts[0], 'text'):
+                        final_chunk.content.parts[0].text = combined_text
+                        print(f"[ADK] Updated final chunk with complete response")
+                elif hasattr(final_chunk, 'text'):
+                    final_chunk.text = combined_text
+                    print(f"[ADK] Updated final chunk text attribute")
                 
-                # Log handler metrics
-                print(f"[ADK] Chunk processing metrics: {len(completed_texts)} complete segments, "
-                      f"{len(combined_text)} total chars")
+                # Emit final response info for debugging
+                _emit_reasoning_event("adk_response_extracted", {
+                    "total_chunks": len(all_chunks),
+                    "text_chunks_found": len(text_parts),
+                    "unique_responses": len(unique_texts) if 'unique_texts' in locals() else 1,
+                    "final_length": len(combined_text),
+                    "has_empty_response": has_empty_response
+                })
                 
                 return final_chunk
-            
-            # If no content chunks found at all, return the last chunk (original behavior)
-            print(f"[ADK] No content chunks found in any of {len(all_chunks)} chunks, returning last chunk")
-            return last
+            elif has_empty_response:
+                # ADK explicitly returned empty response
+                print(f"[ADK] WARNING: ADK returned empty response - model may have refused or failed to process")
+                error_print(f"[ADK] Empty response from model. This can happen when:")
+                error_print(f"  - The request violates model safety guidelines")
+                error_print(f"  - The model cannot process the specific request format")
+                error_print(f"  - There's a temporary model issue")
+                
+                # Return last chunk but mark it as empty
+                if last and hasattr(last, 'content') and hasattr(last.content, 'parts'):
+                    if last.content.parts and hasattr(last.content.parts[0], 'text'):
+                        last.content.parts[0].text = "I encountered an issue generating a response. Please try rephrasing your question or try again."
+                
+                return last
+            else:
+                # No text found at all
+                print(f"[ADK] ERROR: No text content found in any of {len(all_chunks)} chunks")
+                error_print(f"[ADK] Failed to extract response from chunks. Debug info:")
+                for i, chunk in enumerate(all_chunks[-3:]):  # Log last 3 chunks for debugging
+                    error_print(f"  Chunk {i}: type={type(chunk).__name__}, attrs={list(chunk.__dict__.keys()) if hasattr(chunk, '__dict__') else 'N/A'}")
+                
+                return last
 
         # Get user context
         user_id = os.environ.get("VOTER_LIST_USER_ID", "default_user")

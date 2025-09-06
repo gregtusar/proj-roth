@@ -73,7 +73,12 @@ class CampaignManager:
         """Fetch content from a Google Doc URL."""
         if not self.docs_service:
             logger.error("Google Docs service not initialized")
-            return "<p>Error: Could not fetch document content</p>"
+            return """
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2>Error: Google Docs Service Not Available</h2>
+                <p>The email service could not connect to Google Docs. Please contact support.</p>
+            </div>
+            """
         
         try:
             # Extract document ID from URL
@@ -82,18 +87,49 @@ class CampaignManager:
                 raise ValueError(f"Invalid Google Docs URL: {google_doc_url}")
             
             doc_id = doc_id_match.group(1)
+            logger.info(f"[GOOGLE_DOC] Fetching document ID: {doc_id}")
             
             # Fetch the document
             document = self.docs_service.documents().get(documentId=doc_id).execute()
             
             # Extract and convert content to HTML
             html_content = self._convert_doc_to_html(document)
+            logger.info(f"[GOOGLE_DOC] Successfully fetched document content")
             
             return html_content
             
         except Exception as e:
-            logger.error(f"Failed to fetch Google Doc content: {e}")
-            return f"<p>Error fetching document: {str(e)}</p>"
+            error_msg = str(e)
+            logger.error(f"[GOOGLE_DOC] Failed to fetch content: {error_msg}")
+            
+            # Check for permission errors
+            if "403" in error_msg or "permission" in error_msg.lower():
+                return f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #f44336; background: #ffebee; border-radius: 8px;">
+                    <h2 style="color: #d32f2f;">⚠️ Google Doc Access Error</h2>
+                    <p><strong>The email service cannot access the Google Doc.</strong></p>
+                    <p>To fix this, please:</p>
+                    <ol>
+                        <li>Open your Google Doc: <a href="{google_doc_url}" target="_blank">Click here</a></li>
+                        <li>Click the "Share" button (top right)</li>
+                        <li>Click "Change to anyone with the link"</li>
+                        <li>Set permission to "Viewer"</li>
+                        <li>Click "Done"</li>
+                    </ol>
+                    <p style="color: #666; font-size: 12px;">Alternatively, share with: nj-voter-chat-app@proj-roth.iam.gserviceaccount.com</p>
+                    <hr style="margin: 20px 0; border: none; border-top: 1px solid #ccc;">
+                    <p style="font-size: 11px; color: #999;">Error details: {error_msg}</p>
+                </div>
+                """
+            else:
+                return f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #ff9800; background: #fff3e0; border-radius: 8px;">
+                    <h2 style="color: #e65100;">📄 Document Error</h2>
+                    <p>Unable to fetch the Google Doc content.</p>
+                    <p>Error: {error_msg}</p>
+                    <p>Please check the document URL and try again.</p>
+                </div>
+                """
     
     def _convert_doc_to_html(self, document: Dict) -> str:
         """Convert Google Docs content to HTML for email."""
@@ -250,13 +286,42 @@ class CampaignManager:
         logger.info(f"[RECIPIENTS] Query preview: {list_query[:200]}...")
         
         try:
-            # STEP 1: Execute the list query to get voter IDs
-            # We don't care what fields the query selects - we just need IDs
-            query_job = self.bq.query(list_query)
+            # STEP 1: Wrap the list query to ensure we get voter IDs
+            # If the query doesn't select an ID field, we need to get it from the table
+            
+            # Check if the query already has an ID field
+            query_lower = list_query.lower()
+            has_id_field = any(field in query_lower for field in ['id', 'master_id', 'voter_id', 'voter_record_id'])
+            
+            if not has_id_field:
+                # Wrap the query to extract IDs from whatever table it's querying
+                # Try to detect the table name from the FROM clause
+                if 'voter_geo_view' in query_lower:
+                    # For voter_geo_view, we need master_id
+                    wrapped_query = f"""
+                    WITH list_results AS ({list_query})
+                    SELECT DISTINCT v.master_id as id
+                    FROM list_results lr
+                    JOIN `proj-roth.voter_data.voter_geo_view` v
+                    ON v.standardized_name = lr.standardized_name
+                    """
+                elif 'voters' in query_lower:
+                    # For voters table, use id
+                    wrapped_query = f"""
+                    SELECT DISTINCT id FROM ({list_query}) AS subquery
+                    """
+                else:
+                    # Generic approach - try to join back to voters
+                    logger.warning("[RECIPIENTS] Query doesn't select ID - attempting to extract from results")
+                    wrapped_query = list_query
+            else:
+                wrapped_query = list_query
+            
+            logger.info(f"[RECIPIENTS] Executing query to get voter IDs...")
+            query_job = self.bq.query(wrapped_query)
             list_results = query_job.result()
             
             # Extract voter IDs from the results
-            # Try different possible ID field names that might be in the query results
             voter_ids = []
             for row in list_results:
                 # Check for various ID field names in order of preference
@@ -276,7 +341,8 @@ class CampaignManager:
             logger.info(f"[RECIPIENTS] Found {len(voter_ids)} voter IDs from list query")
             
             if not voter_ids:
-                logger.error(f"[RECIPIENTS] No voter IDs found from list query - make sure query returns an 'id' field")
+                logger.error(f"[RECIPIENTS] No voter IDs found - the list query must include an ID field (id, master_id, voter_id, etc.)")
+                logger.error(f"[RECIPIENTS] Original query: {list_query[:200]}")
                 return []
             
             # STEP 2: Now independently fetch email addresses for these voter IDs

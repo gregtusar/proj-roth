@@ -6,7 +6,7 @@ import re
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 import sendgrid
-from sendgrid.helpers.mail import Mail, To, CustomArg, Personalization
+from sendgrid.helpers.mail import Mail, To, CustomArg, Personalization, From, Subject, Content
 from firebase_admin import firestore
 from google.cloud import secretmanager
 from google.oauth2 import service_account
@@ -543,11 +543,26 @@ class CampaignManager:
         
         try:
             logger.info("[SENDGRID] Creating Mail object...")
+            logger.info(f"[SENDGRID] Content length: {len(content) if content else 0} characters")
+            logger.info(f"[SENDGRID] Content preview: {content[:200] if content else 'No content'}...")
+            
+            # Create Mail object with from_email parameter
+            # Note: When using personalizations, we need to set content separately
+            from sendgrid.helpers.mail import From, Subject, Content
+            
+            # Use environment variable or default to a verified sender
+            from_email = os.environ.get('SENDGRID_FROM_EMAIL', 'noreply@gwanalytica.ai')
+            logger.info(f"[SENDGRID] Using from_email from env: {from_email}")
+            
+            # Create Mail object - try simpler approach without helpers
             message = Mail()
-            message.from_email = "gregtusar@gwanalytica.ai"  # Update with your verified sender
+            message.from_email = from_email  # Just use the string directly
             message.subject = subject
-            message.html_content = content
-            logger.info(f"[SENDGRID] Mail object created with from_email: gregtusar@gwanalytica.ai")
+            
+            # Add content - MUST be added before personalizations
+            message.add_content(content, "text/html")
+            
+            logger.info(f"[SENDGRID] Mail object created with from_email: {from_email}")
             
             # Add personalizations for each recipient
             logger.info(f"[SENDGRID] Adding personalizations for {len(recipients)} recipients...")
@@ -559,16 +574,9 @@ class CampaignManager:
                     name=f"{recipient['first_name']} {recipient['last_name']}"
                 ))
                 
-                # Add substitution tags for personalization
-                # Note: SendGrid v3 API uses dynamic_template_data instead of substitutions
-                personalization.dynamic_template_data = {
-                    'first_name': recipient['first_name'],
-                    'last_name': recipient['last_name'],
-                    'city': recipient['city'],
-                    'unsubscribe_url': f"https://nj-voter-chat-app-169579073940.us-central1.run.app/unsubscribe/{recipient['master_id']}"
-                }
-                
                 # Add custom args for tracking
+                # Note: We're not using dynamic templates, so no dynamic_template_data needed
+                # The personalization variables are already in the HTML content
                 personalization.add_custom_arg(CustomArg("campaign_id", campaign_id))
                 personalization.add_custom_arg(CustomArg("master_id", recipient['master_id']))
                 personalization.add_custom_arg(CustomArg("batch_id", batch_id))
@@ -582,6 +590,13 @@ class CampaignManager:
             try:
                 message_dict = message.get()
                 logger.info(f"[SENDGRID] Message structure: {json.dumps(message_dict, indent=2)[:2000]}")
+                
+                # Verify content is present
+                if 'content' not in message_dict:
+                    logger.error("[SENDGRID] WARNING: No content field in message!")
+                else:
+                    logger.info(f"[SENDGRID] Content field present with {len(message_dict['content'])} items")
+                    
             except Exception as e:
                 logger.error(f"[SENDGRID] Could not serialize message: {e}")
             
@@ -605,6 +620,19 @@ class CampaignManager:
                 
         except Exception as e:
             logger.error(f"[SENDGRID] EXCEPTION in _send_batch: {e}")
+            
+            # Try to extract error details from the exception
+            if hasattr(e, 'body'):
+                logger.error(f"[SENDGRID] Error body: {e.body}")
+            if hasattr(e, 'headers'):
+                logger.error(f"[SENDGRID] Error headers: {e.headers}")
+            if hasattr(e, 'status_code'):
+                logger.error(f"[SENDGRID] Error status code: {e.status_code}")
+            
+            # Also check if it's a python_http_client exception with more details
+            if hasattr(e, 'to_dict'):
+                logger.error(f"[SENDGRID] Error details: {e.to_dict}")
+            
             import traceback
             logger.error(f"[SENDGRID] Traceback: {traceback.format_exc()}")
             return False

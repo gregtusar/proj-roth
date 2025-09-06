@@ -225,36 +225,89 @@ class CampaignManager:
     
     def get_list_recipients(self, list_id: str) -> List[Dict]:
         """Get recipients from a saved list with their emails from BigQuery."""
-        # Get the saved list
+        logger.info(f"[RECIPIENTS] Getting recipients for list {list_id}")
+        
+        # Get the saved list - check both collections (lists and voter_lists)
         list_doc = self.db.collection('lists').document(list_id).get()
         if not list_doc.exists:
-            logger.error(f"List {list_id} not found")
-            return []
+            # Try the voter_lists collection
+            list_doc = self.db.collection('voter_lists').document(list_id).get()
+            if not list_doc.exists:
+                logger.error(f"[RECIPIENTS] List {list_id} not found in either collection")
+                return []
         
         list_data = list_doc.to_dict()
-        voter_ids = list_data.get('voter_ids', [])
+        logger.info(f"[RECIPIENTS] List data keys: {list_data.keys()}")
         
-        if not voter_ids:
+        # Lists store a SQL query, not voter_ids
+        list_query = list_data.get('query', '')
+        
+        if not list_query:
+            logger.error(f"[RECIPIENTS] No query found in list {list_id}")
             return []
         
-        # Fetch voter emails from BigQuery
-        # Convert voter_ids list to SQL-safe format
-        voter_ids_str = "','".join(voter_ids)
-        query = f"""
-        SELECT 
-            id as master_id,
-            name_first as first_name,
-            name_last as last_name,
-            email,
-            addr_city as city
-        FROM `proj-roth.voter_data.voters`
-        WHERE id IN ('{voter_ids_str}')
-        AND email IS NOT NULL
-        AND email != ''
-        """
+        logger.info(f"[RECIPIENTS] Executing list query to get voter IDs...")
+        logger.info(f"[RECIPIENTS] Query preview: {list_query[:200]}...")
         
         try:
-            query_job = self.bq.query(query)
+            # STEP 1: Execute the list query to get voter IDs
+            # We don't care what fields the query selects - we just need IDs
+            query_job = self.bq.query(list_query)
+            list_results = query_job.result()
+            
+            # Extract voter IDs from the results
+            # Try different possible ID field names that might be in the query results
+            voter_ids = []
+            for row in list_results:
+                # Check for various ID field names in order of preference
+                voter_id = None
+                if hasattr(row, 'id'):
+                    voter_id = row.id
+                elif hasattr(row, 'master_id'):
+                    voter_id = row.master_id
+                elif hasattr(row, 'voter_id'):
+                    voter_id = row.voter_id
+                elif hasattr(row, 'voter_record_id'):
+                    voter_id = row.voter_record_id
+                
+                if voter_id:
+                    voter_ids.append(str(voter_id))
+            
+            logger.info(f"[RECIPIENTS] Found {len(voter_ids)} voter IDs from list query")
+            
+            if not voter_ids:
+                logger.error(f"[RECIPIENTS] No voter IDs found from list query - make sure query returns an 'id' field")
+                return []
+            
+            # STEP 2: Now independently fetch email addresses for these voter IDs
+            # This is a separate query that the campaign system controls
+            # Limit to 1000 IDs per query for safety (can batch if needed)
+            if len(voter_ids) > 1000:
+                logger.warning(f"[RECIPIENTS] List has {len(voter_ids)} voters, limiting to first 1000 for email campaign")
+                voter_ids = voter_ids[:1000]
+            
+            # Convert voter_ids list to SQL-safe format
+            voter_ids_str = "','".join(voter_ids)
+            
+            # Campaign-specific query to get the fields WE need for emails
+            email_query = f"""
+            SELECT DISTINCT
+                id as master_id,
+                name_first as first_name,
+                name_last as last_name,
+                email,
+                addr_residential_city as city
+            FROM `proj-roth.voter_data.voters`
+            WHERE id IN ('{voter_ids_str}')
+            AND email IS NOT NULL
+            AND email != ''
+            AND LENGTH(email) > 3
+            AND email LIKE '%@%'
+            """
+            
+            logger.info(f"[RECIPIENTS] Fetching email addresses for {len(voter_ids)} voters...")
+            
+            query_job = self.bq.query(email_query)
             results = query_job.result()
             
             recipients = []
@@ -267,9 +320,17 @@ class CampaignManager:
                     'city': row.city or ''
                 })
             
+            logger.info(f"[RECIPIENTS] Found {len(recipients)} recipients with valid emails out of {len(voter_ids)} voters")
+            
+            if len(recipients) == 0 and len(voter_ids) > 0:
+                logger.warning(f"[RECIPIENTS] No email addresses found for {len(voter_ids)} voters in the list")
+            
             return recipients
+            
         except Exception as e:
-            logger.error(f"Failed to fetch voter emails: {e}")
+            logger.error(f"[RECIPIENTS] Failed to fetch recipients: {e}")
+            import traceback
+            logger.error(f"[RECIPIENTS] Traceback: {traceback.format_exc()}")
             return []
     
     def send_campaign(self, campaign_id: str, test_email: Optional[str] = None) -> Dict:

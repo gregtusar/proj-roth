@@ -345,7 +345,7 @@ class CampaignManager:
         
         try:
             message = Mail()
-            message.from_email = "noreply@gwanalytica.ai"  # Update with your verified sender
+            message.from_email = "gregtusar@gwanalytica.ai"  # Update with your verified sender
             message.subject = subject
             message.html_content = content
             

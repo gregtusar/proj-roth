@@ -21,3 +21,4 @@ googlemaps==4.10.0
 google-adk==1.11.0
 google-generativeai
 google-api-python-client>=2.100.0
+sendgrid>=6.11.0

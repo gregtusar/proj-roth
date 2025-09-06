@@ -142,6 +142,7 @@ class CampaignManager:
                     html_parts.append(paragraph_html)
         
         # Wrap in basic HTML structure
+        # Note: Using double curly braces for SendGrid template variables
         html_content = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             {''.join(html_parts)}
@@ -559,9 +560,13 @@ class CampaignManager:
                 ))
                 
                 # Add substitution tags for personalization
-                personalization.add_substitution("{{first_name}}", recipient['first_name'])
-                personalization.add_substitution("{{last_name}}", recipient['last_name'])
-                personalization.add_substitution("{{city}}", recipient['city'])
+                # Note: SendGrid v3 API uses dynamic_template_data instead of substitutions
+                personalization.dynamic_template_data = {
+                    'first_name': recipient['first_name'],
+                    'last_name': recipient['last_name'],
+                    'city': recipient['city'],
+                    'unsubscribe_url': f"https://nj-voter-chat-app-169579073940.us-central1.run.app/unsubscribe/{recipient['master_id']}"
+                }
                 
                 # Add custom args for tracking
                 personalization.add_custom_arg(CustomArg("campaign_id", campaign_id))

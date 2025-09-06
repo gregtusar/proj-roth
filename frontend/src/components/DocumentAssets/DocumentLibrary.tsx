@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, DocumentTextIcon, ClockIcon, ArrowTopRightOnSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
-import CreateDocumentModal from './CreateDocumentModal';
+import AddDocumentModal from './AddDocumentModal';
 import DocumentViewer from './DocumentViewer';
 
 interface Document {
@@ -16,7 +16,7 @@ const DocumentLibrary: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showViewer, setShowViewer] = useState(false);
 
@@ -29,7 +29,7 @@ const DocumentLibrary: React.FC = () => {
     setError(null);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/documents', {
+      const response = await fetch('/api/document-links', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -48,9 +48,9 @@ const DocumentLibrary: React.FC = () => {
     }
   };
 
-  const handleDocumentCreated = (newDocument: Document) => {
+  const handleDocumentAdded = (newDocument: Document) => {
     setDocuments([newDocument, ...documents]);
-    setShowCreateModal(false);
+    setShowAddModal(false);
   };
 
   const handleViewDocument = (document: Document) => {
@@ -65,7 +65,7 @@ const DocumentLibrary: React.FC = () => {
 
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/documents/${doc.doc_id}`, {
+      const response = await fetch(`/api/document-links/${doc.doc_id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -108,11 +108,11 @@ const DocumentLibrary: React.FC = () => {
             Document Assets
           </h2>
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => setShowAddModal(true)}
             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <PlusIcon className="h-5 w-5 mr-2" />
-            Create Document
+            Add Document
           </button>
         </div>
         <p className="text-gray-600 mt-2">
@@ -128,17 +128,17 @@ const DocumentLibrary: React.FC = () => {
 
       {documents.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <DocumentTextIcon className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+          <DocumentTextIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No documents yet</h3>
           <p className="text-gray-600 mb-4">
             Create your first document to get started.
           </p>
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => setShowAddModal(true)}
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <PlusIcon className="h-5 w-5 mr-2" />
-            Create Your First Document
+            Add Your First Document
           </button>
         </div>
       ) : (
@@ -200,10 +200,10 @@ const DocumentLibrary: React.FC = () => {
         </div>
       )}
 
-      {showCreateModal && (
-        <CreateDocumentModal
-          onClose={() => setShowCreateModal(false)}
-          onDocumentCreated={handleDocumentCreated}
+      {showAddModal && (
+        <AddDocumentModal
+          onClose={() => setShowAddModal(false)}
+          onDocumentAdded={handleDocumentAdded}
         />
       )}
 

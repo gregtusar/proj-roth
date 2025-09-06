@@ -66,20 +66,23 @@ VISUALIZATION RULES:
    - Streets/areas (return type: "streets")
 
 2. For INDIVIDUAL VOTERS queries:
-   - Must include: id, name_first || ' ' || name_last AS name, demo_party AS party, city, county, location (geography field)
-   - Include ST_X(location) AS longitude and ST_Y(location) AS latitude
+   - Use the voter_geo_view table which has all voter data with addresses
+   - Must include: master_id, name_first || ' ' || name_last AS name, demo_party AS party, city, county_name AS county
+   - Include latitude and longitude fields
    - Do NOT add a LIMIT clause - return all matching results
    - Focus on specific criteria (party, city, voting history, etc.)
 
 3. For STREETS queries:
    - Query from proj-roth.voter_data.street_party_summary table
-   - Must include: street_name, city, county, republican_count, democrat_count, unaffiliated_count, 
-     total_voters, republican_pct, democrat_pct, ST_X(location) AS longitude, ST_Y(location) AS latitude
+   - Must include: street_name, city, county, republican_count, democrat_count, 
+     unaffiliated_count, total_voters, republican_pct, democrat_pct, 
+     street_center_latitude AS latitude, street_center_longitude AS longitude
    - Can include all streets or filter by criteria
    - Default minimum voters: 5
 
 4. ALWAYS include proper geographic fields for mapping:
-   - Use ST_X(location) AS longitude, ST_Y(location) AS latitude
+   - For voter_geo_view: use latitude and longitude fields directly
+   - For street_party_summary: use street_center_latitude AS latitude, street_center_longitude AS longitude
    - Never return raw geography objects
 
 5. Generate clean SQL without markdown formatting
@@ -94,14 +97,14 @@ Examples:
 User: "Show all Democratic voters in Westfield"
 Output: {{
   "type": "voters",
-  "sql": "SELECT id, name_first || ' ' || name_last AS name, demo_party AS party, city, county, ST_X(location) AS longitude, ST_Y(location) AS latitude FROM `proj-roth.voter_data.voters` WHERE city = 'WESTFIELD' AND demo_party = 'DEM'",
+  "sql": "SELECT master_id, name_first || ' ' || name_last AS name, demo_party AS party, city, county_name AS county, longitude, latitude FROM `proj-roth.voter_data.voter_geo_view` WHERE city = 'WESTFIELD' AND demo_party = 'DEMOCRAT'",
   "description": "Democratic voters in Westfield"
 }}
 
 User: "Show streets with high Republican concentration"
 Output: {{
   "type": "streets",
-  "sql": "SELECT street_name, city, county, republican_count, democrat_count, unaffiliated_count, total_voters, republican_pct, democrat_pct, ST_X(location) AS longitude, ST_Y(location) AS latitude FROM `proj-roth.voter_data.street_party_summary` WHERE republican_pct > 60 AND total_voters >= 10",
+  "sql": "SELECT street_name, city, county, republican_count, democrat_count, unaffiliated_count, total_voters, republican_pct, democrat_pct, street_center_latitude AS latitude, street_center_longitude AS longitude FROM `proj-roth.voter_data.street_party_summary` WHERE republican_pct > 60 AND total_voters >= 10",
   "description": "Streets with high Republican concentration (>60%)"
 }}"""
 

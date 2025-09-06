@@ -7,8 +7,9 @@ import logging
 from datetime import datetime
 
 from backend.campaigns import CampaignManager
-from core.auth import get_current_user
-from core.database import get_firestore_client, get_bigquery_client
+from api.auth import get_current_user
+from google.cloud import firestore, bigquery
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +36,10 @@ campaign_manager = None
 def get_campaign_manager():
     global campaign_manager
     if campaign_manager is None:
+        project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "proj-roth")
         campaign_manager = CampaignManager(
-            get_firestore_client(),
-            get_bigquery_client()
+            firestore.Client(project=project_id),
+            bigquery.Client(project=project_id)
         )
     return campaign_manager
 
@@ -159,7 +161,8 @@ async def delete_campaign(
             raise HTTPException(status_code=400, detail="Cannot delete sent campaigns")
         
         # Delete the campaign
-        db = get_firestore_client()
+        project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "proj-roth")
+        db = firestore.Client(project=project_id)
         db.collection('campaigns').document(campaign_id).delete()
         
         return {
@@ -267,7 +270,8 @@ async def get_campaign_events(
 ):
     """Get event stream for a campaign."""
     try:
-        db = get_firestore_client()
+        project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "proj-roth")
+        db = firestore.Client(project=project_id)
         
         # Build query
         query = db.collection('events').where('email_data.campaign_id', '==', campaign_id)

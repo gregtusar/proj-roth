@@ -20,13 +20,9 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy backend requirements and install Python dependencies
-COPY backend/requirements.txt backend/requirements_simple.txt ./
-# Install base dependencies first
-RUN pip install --no-cache-dir -r requirements_simple.txt
-# Install sendgrid for email campaigns
-RUN pip install --no-cache-dir sendgrid>=6.11.0
-# Then install ADK dependencies
-RUN pip install --no-cache-dir google-genai>=0.4.0 googlemaps>=4.10.0 google-adk>=1.11.0 || echo "ADK installation failed, continuing..."
+COPY backend/requirements.txt ./
+# Install all dependencies from requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend code
 COPY backend/ ./backend/

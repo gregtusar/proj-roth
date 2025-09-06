@@ -57,9 +57,9 @@ const CampaignManager: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get('/api/campaigns');
-      if (response.data.success) {
-        setCampaigns(response.data.campaigns);
+      const data = await api.get('/campaigns');
+      if (data.success) {
+        setCampaigns(data.campaigns);
       }
     } catch (err: any) {
       setError('Failed to load campaigns');

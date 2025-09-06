@@ -1,0 +1,173 @@
+{
+  "timestamp": "2025-09-05T21:00:16.403207",
+  "tables": {
+    "voters": {
+      "table_name": "voters",
+      "row_count": 623536,
+      "size_bytes": 208813218,
+      "size_mb": 199.13980293273926,
+      "created": "2025-08-21T03:25:36.258000+00:00",
+      "modified": "2025-08-21T03:25:38.319000+00:00",
+      "schema_fields": 62,
+      "partitioned": false,
+      "clustered": true,
+      "clustering_fields": [
+        "master_id",
+        "address_id",
+        "vendor_voter_id",
+        "demo_party"
+      ]
+    },
+    "street_party_summary": {
+      "table_name": "street_party_summary",
+      "row_count": 12206,
+      "size_bytes": 1539372,
+      "size_mb": 1.4680595397949219,
+      "created": "2025-08-22T00:50:55.087000+00:00",
+      "modified": "2025-08-22T00:50:55.088000+00:00",
+      "schema_fields": 15,
+      "partitioned": false,
+      "clustered": true,
+      "clustering_fields": [
+        "county"
+      ]
+    },
+    "donations": {
+      "table_name": "donations",
+      "row_count": 353337,
+      "size_bytes": 78258994,
+      "size_mb": 74.63359260559082,
+      "created": "2025-09-03T02:36:14.837000+00:00",
+      "modified": "2025-09-03T02:36:14.837000+00:00",
+      "schema_fields": 15,
+      "partitioned": true,
+      "clustered": true,
+      "clustering_fields": [
+        "master_id",
+        "committee_name",
+        "election_year"
+      ]
+    }
+  },
+  "queries": [
+    {
+      "query": "SELECT COUNT(*) FROM `proj-roth.voter_data.voters`",
+      "description": "Simple count",
+      "bytes_processed": 0,
+      "bytes_processed_mb": 0.0,
+      "time_to_first_row_ms": 762.1766250013025,
+      "total_time_ms": 909.301959000004,
+      "row_count": 1,
+      "slot_millis": 125,
+      "cache_hit": false,
+      "estimated_cost_usd": 0.0,
+      "optimization": "Consider using APPROX_COUNT_DISTINCT for large tables"
+    },
+    {
+      "query": "\n                    SELECT demo_party, COUNT(*) as count \n                    FROM `proj-roth.voter_data.voters` \n                    GROUP BY demo_party\n                ",
+      "description": "Party distribution aggregation",
+      "bytes_processed": 7505345,
+      "bytes_processed_mb": 7.157654762268066,
+      "time_to_first_row_ms": 1188.848666002741,
+      "total_time_ms": 1352.659541000321,
+      "row_count": 10,
+      "slot_millis": 169,
+      "cache_hit": false,
+      "estimated_cost_usd": 4.266294695298711e-05,
+      "optimization": "Consider materialized view for frequently used aggregations"
+    },
+    {
+      "query": "\n                    SELECT * FROM `proj-roth.voter_data.voters` \n                    WHERE city = 'WESTFIELD' \n                    LIMIT 1000\n                ",
+      "description": "City-based filtering",
+      "error": "400 POST https://bigquery.googleapis.com/bigquery/v2/projects/proj-roth/jobs?prettyPrint=false: Unrecognized name: city at [3:27]\n\nLocation: None\nJob ID: f6a8c7c3-fa2a-40f5-b95f-814bc334ba39\n",
+      "optimization": "Consider clustering by city for better performance"
+    },
+    {
+      "query": "\n                    SELECT v.*, s.total_voters, s.dem_voters, s.rep_voters\n                    FROM `proj-roth.voter_data.voters` v\n                    LEFT JOIN `proj-roth.voter_data.street_party_su...",
+      "description": "Join with summary table",
+      "error": "400 POST https://bigquery.googleapis.com/bigquery/v2/projects/proj-roth/jobs?prettyPrint=false: Name addr_residential_line1 not found inside v at [5:26]\n\nLocation: None\nJob ID: 2b7da8e6-63cc-4314-a699-819708470685\n",
+      "optimization": "Consider denormalizing frequently joined data"
+    },
+    {
+      "query": "\n                    SELECT city, \n                           COUNT(*) as total,\n                           COUNT(CASE WHEN demo_party = 'DEM' THEN 1 END) as democrats,\n                           COUN...",
+      "description": "City demographics with conditional aggregation",
+      "error": "400 POST https://bigquery.googleapis.com/bigquery/v2/projects/proj-roth/jobs?prettyPrint=false: Unrecognized name: city at [2:28]\n\nLocation: None\nJob ID: f39d9297-443e-4157-bd4d-6561bd5885ac\n",
+      "optimization": "Use COUNTIF instead of COUNT(CASE) for better readability"
+    },
+    {
+      "query": "\n                    SELECT *\n                    FROM `proj-roth.voter_data.voters`\n                    WHERE ST_DWITHIN(\n                        location,\n                        ST_GEOGPOINT(-74.34...",
+      "description": "Geospatial proximity search",
+      "error": "400 POST https://bigquery.googleapis.com/bigquery/v2/projects/proj-roth/jobs?prettyPrint=false: Unrecognized name: location at [5:25]\n\nLocation: None\nJob ID: cec7f5fb-01c9-4512-9fa2-cdf73d5a5979\n",
+      "optimization": "Consider spatial indexing with S2 cells for large-scale geo queries"
+    }
+  ],
+  "indexes": {
+    "total_columns": 62,
+    "index_candidates": [
+      {
+        "column": "demo_party",
+        "data_type": "STRING",
+        "reason": "High cardinality filter column"
+      }
+    ]
+  },
+  "partitioning": {},
+  "recommendations": [
+    "\u26a0\ufe0f Found 1 queries taking >1 second. Consider query optimization or materialized views.",
+    "\ud83d\udcbe Low cache hit rate. Consider enabling query caching for frequently run queries."
+  ],
+  "data_distribution": {
+    "party_distribution": [
+      {
+        "party": "REPUBLICAN",
+        "count": 214979,
+        "percentage": 34.48
+      },
+      {
+        "party": "UNAFFILIATED",
+        "count": 206605,
+        "percentage": 33.13
+      },
+      {
+        "party": "DEMOCRAT",
+        "count": 195637,
+        "percentage": 31.38
+      },
+      {
+        "party": "LIBERTARIAN",
+        "count": 2695,
+        "percentage": 0.43
+      },
+      {
+        "party": "CONSERVATIVE",
+        "count": 1050,
+        "percentage": 0.17
+      },
+      {
+        "party": "GREEN",
+        "count": 940,
+        "percentage": 0.15
+      },
+      {
+        "party": "CONSTITUTION",
+        "count": 720,
+        "percentage": 0.12
+      },
+      {
+        "party": "SOCIALIST",
+        "count": 504,
+        "percentage": 0.08
+      },
+      {
+        "party": "NATURAL LAW",
+        "count": 314,
+        "percentage": 0.05
+      },
+      {
+        "party": "REFORM",
+        "count": 92,
+        "percentage": 0.01
+      }
+    ]
+  }
+}

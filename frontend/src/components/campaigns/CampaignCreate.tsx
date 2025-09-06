@@ -51,9 +51,13 @@ const CampaignCreate: React.FC<CampaignCreateProps> = ({ open, onClose, onCreate
 
   const loadLists = async () => {
     try {
-      const response = await api.get('/api/lists');
-      if (response.data.success) {
-        setLists(response.data.lists || []);
+      const data = await api.get('/lists/');
+      // Lists endpoint returns array directly, not wrapped in success/lists
+      console.log('Lists API response:', data);
+      if (data) {
+        const listsData = Array.isArray(data) ? data : [];
+        console.log('Setting lists:', listsData);
+        setLists(listsData);
       }
     } catch (err) {
       console.error('Error loading lists:', err);
@@ -83,16 +87,16 @@ const CampaignCreate: React.FC<CampaignCreateProps> = ({ open, onClose, onCreate
     setError(null);
     
     try {
-      const response = await api.post('/api/campaigns', formData);
-      if (response.data.success) {
+      const data = await api.post('/campaigns', formData);
+      if (data.success) {
         // Fetch the created campaign details
-        const campaignResponse = await api.get(`/api/campaigns/${response.data.campaign_id}`);
-        if (campaignResponse.data.success) {
-          onCreated(campaignResponse.data.campaign);
+        const campaignData = await api.get(`/campaigns/${data.campaign_id}`);
+        if (campaignData.success) {
+          onCreated(campaignData.campaign);
         }
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create campaign');
+      setError(err.detail || 'Failed to create campaign');
     } finally {
       setLoading(false);
     }
@@ -157,16 +161,17 @@ const CampaignCreate: React.FC<CampaignCreateProps> = ({ open, onClose, onCreate
                 onChange={handleInputChange('list_id') as any}
                 label="Select List"
               >
+                {console.log('Rendering lists dropdown, lists:', lists)}
                 {lists.map((list) => (
                   <MenuItem key={list.id} value={list.id}>
-                    {list.name} ({list.voter_count || 0} recipients)
+                    {list.name} ({list.row_count || list.voter_count || 0} recipients)
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
             {formData.list_id && (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Selected: {getSelectedList()?.name} with {getSelectedList()?.voter_count || 0} recipients
+                Selected: {getSelectedList()?.name} with {getSelectedList()?.row_count || getSelectedList()?.voter_count || 0} recipients
               </Typography>
             )}
           </Box>
@@ -235,7 +240,7 @@ const CampaignCreate: React.FC<CampaignCreateProps> = ({ open, onClose, onCreate
                 List
               </Typography>
               <Typography variant="body1" gutterBottom>
-                {getSelectedList()?.name} ({getSelectedList()?.voter_count || 0} recipients)
+                {getSelectedList()?.name} ({getSelectedList()?.row_count || getSelectedList()?.voter_count || 0} recipients)
               </Typography>
               
               <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>

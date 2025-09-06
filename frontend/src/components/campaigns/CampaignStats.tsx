@@ -40,10 +40,10 @@ const CampaignStats: React.FC<CampaignStatsProps> = ({ campaignIds }) => {
     try {
       // Load campaign details and stats for each selected campaign
       const campaignPromises = campaignIds.map(id => 
-        api.get(`/api/campaigns/${id}`)
+        api.get(`/campaigns/${id}`)
       );
       const statsPromises = campaignIds.map(id => 
-        api.get(`/api/campaigns/${id}/stats`)
+        api.get(`/campaigns/${id}/stats`)
       );
 
       const campaignResponses = await Promise.all(campaignPromises);

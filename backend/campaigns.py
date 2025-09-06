@@ -300,15 +300,15 @@ class CampaignManager:
                     # For voter_geo_view, we need master_id
                     wrapped_query = f"""
                     WITH list_results AS ({list_query})
-                    SELECT DISTINCT v.master_id as id
+                    SELECT DISTINCT v.master_id
                     FROM list_results lr
                     JOIN `proj-roth.voter_data.voter_geo_view` v
                     ON v.standardized_name = lr.standardized_name
                     """
                 elif 'voters' in query_lower:
-                    # For voters table, use id
+                    # For voters table, use master_id
                     wrapped_query = f"""
-                    SELECT DISTINCT id FROM ({list_query}) AS subquery
+                    SELECT DISTINCT master_id FROM ({list_query}) AS subquery
                     """
                 else:
                     # Generic approach - try to join back to voters
@@ -356,15 +356,16 @@ class CampaignManager:
             voter_ids_str = "','".join(voter_ids)
             
             # Campaign-specific query to get the fields WE need for emails
+            # Note: voters table uses 'master_id' not 'id'
             email_query = f"""
             SELECT DISTINCT
-                id as master_id,
+                master_id,
                 name_first as first_name,
                 name_last as last_name,
                 email,
                 addr_residential_city as city
             FROM `proj-roth.voter_data.voters`
-            WHERE id IN ('{voter_ids_str}')
+            WHERE master_id IN ('{voter_ids_str}')
             AND email IS NOT NULL
             AND email != ''
             AND LENGTH(email) > 3
@@ -372,11 +373,13 @@ class CampaignManager:
             """
             
             logger.info(f"[RECIPIENTS] Fetching email addresses for {len(voter_ids)} voters...")
+            logger.info(f"[RECIPIENTS] Sample voter IDs to lookup: {voter_ids[:5]}")
             
             query_job = self.bq.query(email_query)
             results = query_job.result()
             
             recipients = []
+            emails_found = []
             for row in results:
                 recipients.append({
                     'master_id': row.master_id,
@@ -385,8 +388,11 @@ class CampaignManager:
                     'last_name': row.last_name or '',
                     'city': row.city or ''
                 })
+                emails_found.append(row.email)
             
             logger.info(f"[RECIPIENTS] Found {len(recipients)} recipients with valid emails out of {len(voter_ids)} voters")
+            if len(recipients) > 0:
+                logger.info(f"[RECIPIENTS] Sample emails found: {emails_found[:3]}")
             
             if len(recipients) == 0 and len(voter_ids) > 0:
                 logger.warning(f"[RECIPIENTS] No email addresses found for {len(voter_ids)} voters in the list")

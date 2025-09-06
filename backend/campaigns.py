@@ -356,20 +356,22 @@ class CampaignManager:
             voter_ids_str = "','".join(voter_ids)
             
             # Campaign-specific query to get the fields WE need for emails
-            # Note: voters table uses 'master_id' not 'id'
+            # Note: Need to join voters and individuals tables to get both email and names
             email_query = f"""
             SELECT DISTINCT
-                master_id,
-                name_first as first_name,
-                name_last as last_name,
-                email,
-                addr_residential_city as city
-            FROM `proj-roth.voter_data.voters`
-            WHERE master_id IN ('{voter_ids_str}')
-            AND email IS NOT NULL
-            AND email != ''
-            AND LENGTH(email) > 3
-            AND email LIKE '%@%'
+                v.master_id,
+                i.name_first as first_name,
+                i.name_last as last_name,
+                v.email,
+                COALESCE(a.city, v.municipal_name, '') as city
+            FROM `proj-roth.voter_data.voters` v
+            LEFT JOIN `proj-roth.voter_data.individuals` i ON v.master_id = i.master_id
+            LEFT JOIN `proj-roth.voter_data.addresses` a ON v.address_id = a.address_id
+            WHERE v.master_id IN ('{voter_ids_str}')
+            AND v.email IS NOT NULL
+            AND v.email != ''
+            AND LENGTH(v.email) > 3
+            AND v.email LIKE '%@%'
             """
             
             logger.info(f"[RECIPIENTS] Fetching email addresses for {len(voter_ids)} voters...")
@@ -396,6 +398,30 @@ class CampaignManager:
             
             if len(recipients) == 0 and len(voter_ids) > 0:
                 logger.warning(f"[RECIPIENTS] No email addresses found for {len(voter_ids)} voters in the list")
+                
+                # Debug: Check if these voters exist at all and what their email status is
+                debug_query = f"""
+                SELECT 
+                    v.master_id,
+                    v.email,
+                    CASE 
+                        WHEN v.email IS NULL THEN 'No email'
+                        WHEN v.email = '' THEN 'Empty email'
+                        WHEN LENGTH(v.email) <= 3 THEN 'Too short'
+                        WHEN v.email NOT LIKE '%@%' THEN 'Invalid format'
+                        ELSE 'Should have matched'
+                    END as email_status
+                FROM `proj-roth.voter_data.voters` v
+                WHERE v.master_id IN ('{voter_ids_str}')
+                LIMIT 5
+                """
+                try:
+                    debug_job = self.bq.query(debug_query)
+                    debug_results = debug_job.result()
+                    for row in debug_results:
+                        logger.info(f"[RECIPIENTS DEBUG] Voter {row.master_id}: email='{row.email}', status={row.email_status}")
+                except Exception as e:
+                    logger.warning(f"[RECIPIENTS DEBUG] Could not debug email status: {e}")
             
             return recipients
             

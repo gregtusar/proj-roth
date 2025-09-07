@@ -49,9 +49,9 @@ const CampaignDetail: React.FC<CampaignDetailProps> = ({ campaign, onUpdate, onS
   const loadStats = async () => {
     setLoading(true);
     try {
-      const response = await api.get(`/campaigns/${campaign.campaign_id}/stats`);
-      if (response.data.success) {
-        setStats(response.data.stats);
+      const data = await api.get<any>(`/campaigns/${campaign.campaign_id}/stats`);
+      if (data.success) {
+        setStats(data.stats);
       }
     } catch (err) {
       console.error('Error loading stats:', err);
@@ -67,7 +67,7 @@ const CampaignDetail: React.FC<CampaignDetailProps> = ({ campaign, onUpdate, onS
     
     try {
       const response = await api.post(`/campaigns/${campaign.campaign_id}/send`);
-      if (response.data.success) {
+      if (response.success) {
         setSuccess('Campaign is being sent! This may take a few minutes.');
         setShowSendDialog(false);
         onSent();
@@ -98,7 +98,7 @@ const CampaignDetail: React.FC<CampaignDetailProps> = ({ campaign, onUpdate, onS
       const response = await api.post(`/campaigns/${campaign.campaign_id}/test`, {
         test_email: testEmail
       });
-      if (response.data.success) {
+      if (response.success) {
         setSuccess(`Test email sent to ${testEmail}`);
         setShowTestDialog(false);
         setTestEmail('');

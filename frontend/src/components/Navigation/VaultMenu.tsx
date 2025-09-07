@@ -25,32 +25,31 @@ const MenuLabel = styled('span', {
   fontSize: '14px',
 });
 
-interface ToolsMenuProps {
+interface VaultMenuProps {
   isCompact?: boolean;
 }
 
-const ToolsMenu: React.FC<ToolsMenuProps> = ({ isCompact = false }) => {
+const VaultMenu: React.FC<VaultMenuProps> = ({ isCompact = false }) => {
   const navigate = useNavigate();
   const { isDarkMode } = useSelector((state: RootState) => state.settings);
 
-  const tools = [
-    { id: 'lists', icon: '📋', label: 'List Manager', path: '/lists' },
-    { id: 'campaign', icon: '📢', label: 'Campaign Manager', path: '/campaign' },
-    { id: 'streetmap', icon: '🗺️', label: 'Street Map', path: '/street-map' },
-    { id: 'visualizer', icon: '🎯', label: 'Visualizer', path: '/visualizer' },
+  const vaultItems = [
+    { id: 'documents', icon: '📄', label: 'Documents', path: '/documents' },
+    { id: 'images', icon: '🖼️', label: 'Images', path: '/images' },
+    { id: 'videos', icon: '🎥', label: 'Videos', path: '/videos' },
   ];
 
-  const handleToolClick = (path: string) => {
+  const handleItemClick = (path: string) => {
     navigate(path);
   };
 
   if (isCompact) {
     return (
       <MenuContainer>
-        {tools.map((tool) => (
+        {vaultItems.map((item) => (
           <Button
-            key={tool.id}
-            onClick={() => handleToolClick(tool.path)}
+            key={item.id}
+            onClick={() => handleItemClick(item.path)}
             kind={KIND.tertiary}
             size={SIZE.mini}
             shape="circle"
@@ -67,7 +66,7 @@ const ToolsMenu: React.FC<ToolsMenuProps> = ({ isCompact = false }) => {
               },
             }}
           >
-            {tool.icon}
+            {item.icon}
           </Button>
         ))}
       </MenuContainer>
@@ -76,10 +75,10 @@ const ToolsMenu: React.FC<ToolsMenuProps> = ({ isCompact = false }) => {
 
   return (
     <MenuContainer>
-      {tools.map((tool) => (
+      {vaultItems.map((item) => (
         <MenuItem
-          key={tool.id}
-          onClick={() => handleToolClick(tool.path)}
+          key={item.id}
+          onClick={() => handleItemClick(item.path)}
           kind={KIND.tertiary}
           size={SIZE.compact}
           overrides={{
@@ -96,12 +95,12 @@ const ToolsMenu: React.FC<ToolsMenuProps> = ({ isCompact = false }) => {
             },
           }}
         >
-          <MenuIcon>{tool.icon}</MenuIcon>
-          <MenuLabel>{tool.label}</MenuLabel>
+          <MenuIcon>{item.icon}</MenuIcon>
+          <MenuLabel>{item.label}</MenuLabel>
         </MenuItem>
       ))}
     </MenuContainer>
   );
 };
 
-export default ToolsMenu;
+export default VaultMenu;

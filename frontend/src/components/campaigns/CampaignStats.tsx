@@ -50,13 +50,13 @@ const CampaignStats: React.FC<CampaignStatsProps> = ({ campaignIds }) => {
       const statsResponses = await Promise.all(statsPromises);
 
       const campaignsData = campaignResponses
-        .filter(r => r.data.success)
-        .map(r => r.data.campaign);
+        .filter(r => r.success)
+        .map(r => r.campaign);
       
       const statsData: { [key: string]: CampaignStatsType } = {};
       statsResponses.forEach((r, index) => {
-        if (r.data.success) {
-          statsData[campaignIds[index]] = r.data.stats;
+        if (r.success) {
+          statsData[campaignIds[index]] = r.stats;
         }
       });
 

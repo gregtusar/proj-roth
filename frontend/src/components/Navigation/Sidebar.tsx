@@ -9,6 +9,7 @@ import { clearMessages } from '../../store/chatSlice';
 import { logout } from '../../store/authSlice';
 import RecentChats from './RecentChats';
 import ToolsMenu from './ToolsMenu';
+import VaultMenu from './VaultMenu';
 import { getVersionDisplay, BUILD_TIME } from '../../config/version';
 
 const SidebarContainer = styled('aside', ({ $isOpen, $isDarkMode }: { $isOpen: boolean; $isDarkMode: boolean }) => ({
@@ -98,6 +99,14 @@ const SectionTitle = styled('h3', ({ $isOpen, $isDarkMode }: { $isOpen: boolean;
   display: $isOpen ? 'block' : 'none',
   letterSpacing: '0.5px',
 }));
+
+const SettingsButton = styled(Button, {
+  width: '100%',
+  marginTop: 'auto',
+  marginBottom: '4px',
+  justifyContent: 'flex-start',
+  textAlign: 'left',
+});
 
 const UserInfo = styled('div', ({ $isOpen, $isDarkMode }: { $isOpen: boolean; $isDarkMode: boolean }) => ({
   display: $isOpen ? 'flex' : 'none',
@@ -208,17 +217,52 @@ const Sidebar: React.FC = () => {
         </NavSection>
 
         <NavSection>
-          <SectionTitle $isOpen={isOpen}>Recent Chats</SectionTitle>
+          <SectionTitle $isOpen={isOpen} $isDarkMode={isDarkMode}>Recent Chats</SectionTitle>
           <RecentChats isCompact={!isOpen} />
         </NavSection>
 
         <NavSection>
-          <SectionTitle $isOpen={isOpen}>Tools</SectionTitle>
+          <SectionTitle $isOpen={isOpen} $isDarkMode={isDarkMode}>Tools</SectionTitle>
           <ToolsMenu isCompact={!isOpen} />
+        </NavSection>
+
+        <NavSection>
+          <SectionTitle $isOpen={isOpen} $isDarkMode={isDarkMode}>Vault</SectionTitle>
+          <VaultMenu isCompact={!isOpen} />
         </NavSection>
       </Content>
 
-      <Footer>
+      <Footer $isDarkMode={isDarkMode}>
+        <SettingsButton
+          onClick={() => navigate('/settings')}
+          kind={KIND.tertiary}
+          size={SIZE.compact}
+          overrides={{
+            BaseButton: {
+              style: {
+                width: '100%',
+                color: isDarkMode ? '#f3f4f6' : '#111827',
+                fontWeight: '400',
+                justifyContent: isOpen ? 'flex-start' : 'center',
+                paddingLeft: isOpen ? '12px' : '0',
+                marginBottom: '12px',
+                ':hover': {
+                  backgroundColor: isDarkMode ? '#374151' : '#f3f4f6',
+                },
+              },
+            },
+          }}
+        >
+          {isOpen ? (
+            <>
+              <span style={{ marginRight: '8px', fontSize: '16px' }}>⚙️</span>
+              <span style={{ fontSize: '14px' }}>Settings</span>
+            </>
+          ) : (
+            '⚙️'
+          )}
+        </SettingsButton>
+        
         {isOpen && (
           <div style={{ 
             padding: '8px 16px', 

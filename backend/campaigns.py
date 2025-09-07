@@ -6,7 +6,7 @@ import re
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 import sendgrid
-from sendgrid.helpers.mail import Mail, To, CustomArg, Personalization, From, Subject, Content
+from sendgrid.helpers.mail import Mail, To, CustomArg, Personalization, From, Subject, Content, Substitution
 from firebase_admin import firestore
 from google.cloud import secretmanager
 from google.oauth2 import service_account
@@ -497,8 +497,6 @@ class CampaignManager:
             if success:
                 sent_count += len(batch)
                 logger.info(f"[CAMPAIGN] Batch sent successfully. Total sent so far: {sent_count}")
-            else:
-                logger.error(f"[CAMPAIGN] Batch failed. Sent count remains: {sent_count}")
                 
                 # Create events for sent emails
                 for recipient in batch:
@@ -512,6 +510,8 @@ class CampaignManager:
                             'sendgrid_batch_id': batch_id
                         }
                     })
+            else:
+                logger.error(f"[CAMPAIGN] Batch failed. Sent count remains: {sent_count}")
         
         # Update campaign status
         final_status = 'sent' if sent_count == len(recipients) else 'partial'
@@ -574,9 +574,12 @@ class CampaignManager:
                     name=f"{recipient['first_name']} {recipient['last_name']}"
                 ))
                 
-                # Add custom args for tracking
-                # Note: We're not using dynamic templates, so no dynamic_template_data needed
-                # The personalization variables are already in the HTML content
+                # Add substitutions for personalization variables in the email content
+                # SendGrid will replace {{first_name}} and {{last_name}} in the HTML
+                personalization.add_substitution(Substitution("{{first_name}}", recipient.get('first_name', '')))
+                personalization.add_substitution(Substitution("{{last_name}}", recipient.get('last_name', '')))
+                
+                # Add custom args for tracking (these are for webhooks, not substitutions)
                 personalization.add_custom_arg(CustomArg("campaign_id", campaign_id))
                 personalization.add_custom_arg(CustomArg("master_id", recipient['master_id']))
                 personalization.add_custom_arg(CustomArg("batch_id", batch_id))
@@ -660,9 +663,13 @@ class CampaignManager:
         }
         
         for sg_event in events:
-            # Extract custom args
-            campaign_id = sg_event.get('campaign_id')
-            master_id = sg_event.get('master_id')
+            # Log the event structure for debugging
+            logger.info(f"[WEBHOOK] Received event type: {sg_event.get('event')}")
+            logger.debug(f"[WEBHOOK] Full event data: {sg_event}")
+            
+            # Extract custom args - they might be in unique_args or at top level
+            campaign_id = sg_event.get('campaign_id') or sg_event.get('unique_args', {}).get('campaign_id')
+            master_id = sg_event.get('master_id') or sg_event.get('unique_args', {}).get('master_id')
             
             if not campaign_id or not master_id:
                 logger.warning(f"Missing tracking data in webhook event: {sg_event}")
@@ -724,23 +731,56 @@ class CampaignManager:
         """Get detailed statistics for a campaign."""
         campaign = self.get_campaign(campaign_id)
         if not campaign:
+            logger.error(f"[STATS] Campaign not found: {campaign_id}")
             return None
+        
+        logger.info(f"[STATS] Getting stats for campaign: {campaign_id}")
+        logger.info(f"[STATS] Campaign name: {campaign.get('name')}")
         
         # Get event counts by type
         events_ref = self.db.collection('events')
         event_counts = {}
         
+        # First, let's check if there are ANY events at all
+        all_events_test = list(events_ref.limit(5).stream())
+        logger.info(f"[STATS] Sample of events in collection (first 5):")
+        for evt in all_events_test:
+            evt_data = evt.to_dict()
+            logger.info(f"[STATS]   - Type: {evt_data.get('event_type')}, Campaign: {evt_data.get('email_data', {}).get('campaign_id')}")
+        
         event_types = ['email_sent', 'email_delivered', 'email_opened', 
                       'email_clicked', 'email_bounced', 'email_unsubscribed']
         
+        logger.info(f"[STATS] Searching for events with campaign_id: {campaign_id}")
+        
         for event_type in event_types:
-            query = events_ref.where('event_type', '==', event_type)\
-                             .where('email_data.campaign_id', '==', campaign_id)
-            count = len(list(query.stream()))
+            # Try to get events - first check if any exist for this campaign
+            all_events = events_ref.where('event_type', '==', event_type).stream()
+            
+            # Filter by campaign_id manually since nested queries can be problematic
+            matching_docs = []
+            for doc in all_events:
+                doc_data = doc.to_dict()
+                email_data = doc_data.get('email_data', {})
+                doc_campaign_id = email_data.get('campaign_id')
+                
+                # Log first few for debugging
+                if event_type == 'email_opened' and len(matching_docs) < 2:
+                    logger.info(f"[STATS] Checking {event_type} event - doc campaign_id: '{doc_campaign_id}' vs target: '{campaign_id}'")
+                
+                if doc_campaign_id == campaign_id:
+                    matching_docs.append(doc)
+            
+            count = len(matching_docs)
             event_counts[event_type] = count
+            if count > 0:
+                logger.info(f"[STATS] Found {count} {event_type} events for campaign {campaign_id}")
         
         # Calculate rates
-        total = campaign['stats']['total_recipients']
+        total = campaign.get('stats', {}).get('total_recipients', 0)
+        logger.info(f"[STATS] Total recipients from campaign stats: {total}")
+        logger.info(f"[STATS] Event counts summary: {event_counts}")
+        
         if total > 0:
             stats = {
                 'total_recipients': total,
@@ -756,6 +796,8 @@ class CampaignManager:
                 'bounce_rate': (event_counts.get('email_bounced', 0) / total) * 100
             }
         else:
-            stats = campaign['stats']
+            stats = campaign.get('stats', {})
+            logger.warning(f"[STATS] No total_recipients found, returning campaign stats as-is: {stats}")
         
+        logger.info(f"[STATS] Final stats object: {stats}")
         return stats

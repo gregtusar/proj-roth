@@ -1,6 +1,6 @@
 {
   "name": "greywolf-analytica-frontend",
-  "version": "2.3.100",
+  "version": "2.3.101",
   "private": true,
   "dependencies": {
     "@emotion/react": "^11.14.0",

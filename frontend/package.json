@@ -1,6 +1,6 @@
 {
   "name": "greywolf-analytica-frontend",
-  "version": "2.3.90",
+  "version": "2.3.91",
   "private": true,
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -72,6 +72,7 @@
     ]
   },
   "devDependencies": {
+    "@types/lodash": "^4.17.20",
     "@types/prismjs": "^1.26.5",
     "@types/react-csv": "^1.1.10",
     "@typescript-eslint/eslint-plugin": "^6.7.5",

@@ -1,9 +1,16 @@
 import { createTheme, lightThemePrimitives, darkThemePrimitives } from 'baseui';
 import { ThemePrimitives } from 'baseui/themes';
 
+// Use Inter font (Uber's standard) with proper fallbacks
+const UBER_FONT_FAMILY = '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+const UBER_MONO_FAMILY = '"JetBrains Mono", "Fira Code", Monaco, Consolas, "Courier New", monospace';
+
 // Custom color primitives for light theme
 const customLightPrimitives: Partial<ThemePrimitives> = {
   ...lightThemePrimitives,
+  // Use Uber's font system
+  primaryFontFamily: UBER_FONT_FAMILY,
+  
   // Brand colors
   primary: '#1a73e8',
   primary50: '#e8f0fe',
@@ -30,6 +37,9 @@ const customLightPrimitives: Partial<ThemePrimitives> = {
 // Custom color primitives for dark theme
 const customDarkPrimitives: Partial<ThemePrimitives> = {
   ...darkThemePrimitives,
+  // Use Uber's font system
+  primaryFontFamily: UBER_FONT_FAMILY,
+  
   // Brand colors for dark mode
   primary: '#4285f4',
   primary50: '#1a1a2e',
@@ -40,36 +50,32 @@ const customDarkPrimitives: Partial<ThemePrimitives> = {
   primary500: '#4285f4',
   primary600: '#669df6',
   primary700: '#8ab4f8',
-  
-  // Use standard Base UI background properties
-  // backgroundPrimary: '#1a1a1a', - not supported
-  // backgroundSecondary: '#252525', - not supported
-  // backgroundTertiary: '#2f2f2f', - not supported
 };
 
-// Create light theme with your custom overrides
+// Create light theme - Base UI v14 doesn't support overrides in createTheme
+// Typography will use the primaryFontFamily from primitives
 export const customLightTheme = createTheme(customLightPrimitives);
 
-// Create dark theme  
+// Create dark theme
 export const customDarkTheme = createTheme(customDarkPrimitives);
 
-// TODO: Your theme overrides need to be applied differently in Base UI v14
-// The second parameter to createTheme is no longer supported
-// We'll need to use component overrides or CSS-in-JS to apply custom styling
-
-// Export design tokens for use in styled components
-export const tokens = {
-  spacing: customLightTheme.sizing,
-  borders: customLightTheme.borders,
-  animation: customLightTheme.animation,
-  zIndex: customLightTheme.zIndex,
+// Terminal theme with monospace font
+const terminalPrimitives: Partial<ThemePrimitives> = {
+  ...darkThemePrimitives,
+  primaryFontFamily: UBER_MONO_FAMILY,
+  // Terminal green colors
+  primary: '#00ff00',
+  primary50: '#001100',
+  primary100: '#003300',
+  primary200: '#005500',
+  primary300: '#007700',
+  primary400: '#009900',
+  primary500: '#00bb00',
+  primary600: '#00dd00',
+  primary700: '#00ff00',
 };
 
-// Simple terminal theme (fallback)
-export const terminalTheme = createTheme({
-  ...darkThemePrimitives,
-  primaryFontFamily: 'Monaco, Consolas, "Courier New", monospace',
-});
+export const terminalTheme = createTheme(terminalPrimitives);
 
 // Theme type enum
 export enum ThemeType {

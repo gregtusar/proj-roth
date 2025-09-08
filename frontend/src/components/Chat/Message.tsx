@@ -26,7 +26,7 @@ const MessageContent = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDark
   fontSize: '14px',
   lineHeight: '1.6',
   color: $isDarkMode ? '#e0e0e0' : '#111827',
-  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  // Let Base UI theme handle font-family
   fontKerning: 'normal',
   textRendering: 'optimizeLegibility',
   '& p': {

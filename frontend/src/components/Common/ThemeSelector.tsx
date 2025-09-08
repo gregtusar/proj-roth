@@ -3,15 +3,14 @@ import { Select, TYPE } from 'baseui/select';
 import { styled } from 'baseui';
 import { ThemeType } from '../../theme/customTheme';
 import { LabelMedium } from './Typography';
-import { tokens } from '../../theme/customTheme';
 
-const Container = styled('div', {
+const Container = styled('div', ({ $theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  gap: tokens.spacing.scale600,
-});
+  gap: $theme.sizing.scale600,
+}));
 
-const ThemePreview = styled<'div', { $themeType: ThemeType }>('div', ({ $themeType }) => {
+const ThemePreview = styled<'div', { $themeType: ThemeType }>('div', ({ $themeType, $theme }) => {
   const getColors = () => {
     switch ($themeType) {
       case ThemeType.LIGHT:
@@ -49,7 +48,7 @@ const ThemePreview = styled<'div', { $themeType: ThemeType }>('div', ({ $themeTy
     borderRadius: '4px',
     border: `2px solid ${colors.accent}`,
     background: `linear-gradient(135deg, ${colors.bg} 50%, ${colors.text} 50%)`,
-    marginRight: tokens.spacing.scale300,
+    marginRight: $theme.sizing.scale300,
     boxShadow: $themeType === ThemeType.TERMINAL ? `0 0 5px ${colors.accent}` : 'none',
   };
 });

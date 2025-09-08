@@ -11,36 +11,35 @@ import { Message } from '../../types/chat';
 import ReasoningDisplay from './ReasoningDisplay';
 import { Terminal } from '../Common/Icons';
 import { Caption } from '../Common/Typography';
-import { tokens } from '../../theme/customTheme';
 
-const Container = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
-  padding: `${tokens.spacing.scale600} ${tokens.spacing.scale800}`,
+const Container = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode, $theme }) => ({
+  padding: `${$theme.sizing.scale600} ${$theme.sizing.scale800}`,
   borderTop: `1px solid ${$isDarkMode ? '#374151' : '#e5e7eb'}`,
   backgroundColor: $isDarkMode ? '#1f2937' : '#ffffff',
-  transition: tokens.animation.timing300 + ' ease',
+  transition: $theme.animation.timing300 + ' ease',
 }));
 
-const InputContainer = styled('div', {
+const InputContainer = styled('div', ({ $theme }) => ({
   display: 'flex',
-  gap: tokens.spacing.scale550,
+  gap: $theme.sizing.scale550,
   alignItems: 'center',
-});
+}));
 
 const StyledTextarea = styled(Textarea, {
   flex: 1,
 });
 
-const CharCount = styled(Caption, {
-  marginTop: tokens.spacing.scale200,
+const CharCount = styled(Caption, ({ $theme }) => ({
+  marginTop: $theme.sizing.scale200,
   textAlign: 'right',
-});
+}));
 
-const VerboseToggleContainer = styled('div', {
+const VerboseToggleContainer = styled('div', ({ $theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  gap: tokens.spacing.scale400,
-  marginBottom: tokens.spacing.scale550,
-});
+  gap: $theme.sizing.scale400,
+  marginBottom: $theme.sizing.scale550,
+}));
 
 interface MessageInputProps {
   modelId?: string;

@@ -9,55 +9,53 @@ import { Pagination } from 'baseui/pagination';
 import { Select } from 'baseui/select';
 import { Input } from 'baseui/input';
 import { Button } from 'baseui/button';
-import { styled } from 'baseui';
+import { styled, useStyletron } from 'baseui';
 import { Search, Filter } from './Icons';
-import { tokens } from '../../theme/customTheme';
 
 // Re-export Base UI table components
 export { Table, TableBuilder, TableBuilderColumn };
 
 // Table container with toolbar
-const TableContainer = styled('div', {
+const TableContainer = styled('div', ({ $theme }) => ({
   display: 'flex',
   flexDirection: 'column',
-  gap: tokens.spacing.scale600,
+  gap: $theme.sizing.scale600,
   height: '100%',
-});
+}));
 
-const TableToolbar = styled('div', {
+const TableToolbar = styled('div', ({ $theme }) => ({
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  padding: `${tokens.spacing.scale400} 0`,
-  gap: tokens.spacing.scale600,
-});
+  padding: `${$theme.sizing.scale400} 0`,
+  gap: $theme.sizing.scale600,
+}));
 
-const ToolbarLeft = styled('div', {
+const ToolbarLeft = styled('div', ({ $theme }) => ({
   display: 'flex',
-  gap: tokens.spacing.scale400,
+  gap: $theme.sizing.scale400,
   alignItems: 'center',
   flex: 1,
-});
+}));
 
-const ToolbarRight = styled('div', {
+const ToolbarRight = styled('div', ({ $theme }) => ({
   display: 'flex',
-  gap: tokens.spacing.scale400,
+  gap: $theme.sizing.scale400,
   alignItems: 'center',
-});
+}));
 
 const TableContent = styled('div', {
   flex: 1,
   overflow: 'auto',
 });
 
-const TableFooter = styled('div', {
+const TableFooter = styled('div', ({ $theme }) => ({
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  padding: `${tokens.spacing.scale400} 0`,
-  borderTop: '1px solid',
-  borderColor: 'inherit',
-});
+  padding: `${$theme.sizing.scale400} 0`,
+  borderTop: `1px solid ${$theme.colors.borderOpaque}`,
+}));
 
 // Enhanced table component with common features
 interface EnhancedTableProps {
@@ -200,7 +198,7 @@ export const EnhancedTable: React.FC<EnhancedTableProps> = ({
 
       {paginated && filteredData.length > 0 && (
         <TableFooter>
-          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacing.scale400 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span>Rows per page:</span>
             <Select
               size="compact"
@@ -245,7 +243,7 @@ export const EnhancedTable: React.FC<EnhancedTableProps> = ({
 
 // Styled table for custom implementations
 export const StyledDataTable = styled(StyledTable, ({ $theme }) => ({
-  borderRadius: tokens.borders.radius400,
+  borderRadius: $theme.borders.radius400,
   overflow: 'hidden',
   boxShadow: $theme.lighting.shadow400,
 }));

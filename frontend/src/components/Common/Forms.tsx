@@ -13,7 +13,6 @@ import { FileUploader } from 'baseui/file-uploader';
 import { PhoneInput, COUNTRIES } from 'baseui/phone-input';
 import { PaymentCard } from 'baseui/payment-card';
 import { styled } from 'baseui';
-import { tokens } from '../../theme/customTheme';
 import { FieldLabel } from './Typography';
 
 // Re-export all Base UI form components
@@ -43,36 +42,36 @@ export {
 };
 
 // Form layout components
-export const Form = styled('form', {
+export const Form = styled('form', ({ $theme }) => ({
   display: 'flex',
   flexDirection: 'column',
-  gap: tokens.spacing.scale600,
-});
+  gap: $theme.sizing.scale600,
+}));
 
-export const FormRow = styled('div', {
+export const FormRow = styled('div', ({ $theme }) => ({
   display: 'flex',
-  gap: tokens.spacing.scale600,
+  gap: $theme.sizing.scale600,
   '@media (max-width: 768px)': {
     flexDirection: 'column',
   },
-});
+}));
 
-export const FormColumn = styled('div', {
+export const FormColumn = styled('div', ({ $theme }) => ({
   flex: 1,
   display: 'flex',
   flexDirection: 'column',
-  gap: tokens.spacing.scale600,
-});
+  gap: $theme.sizing.scale600,
+}));
 
 export const FormSection = styled('fieldset', ({ $theme }) => ({
   border: `1px solid ${$theme.colors.borderOpaque}`,
-  borderRadius: tokens.borders.radius400,
-  padding: tokens.spacing.scale700,
-  marginBottom: tokens.spacing.scale600,
+  borderRadius: $theme.borders.radius400,
+  padding: $theme.sizing.scale700,
+  marginBottom: $theme.sizing.scale600,
 }));
 
 export const FormSectionTitle = styled('legend', ({ $theme }) => ({
-  padding: `0 ${tokens.spacing.scale400}`,
+  padding: `0 ${$theme.sizing.scale400}`,
   fontSize: '16px',
   fontWeight: 500,
   color: $theme.colors.contentPrimary,
@@ -288,15 +287,14 @@ export const CheckboxField: React.FC<CheckboxFieldProps> = ({
 };
 
 // Form buttons
-export const FormActions = styled('div', {
+export const FormActions = styled('div', ({ $theme }) => ({
   display: 'flex',
-  gap: tokens.spacing.scale400,
+  gap: $theme.sizing.scale400,
   justifyContent: 'flex-end',
-  marginTop: tokens.spacing.scale700,
-  paddingTop: tokens.spacing.scale600,
-  borderTop: '1px solid',
-  borderColor: 'inherit',
-});
+  marginTop: $theme.sizing.scale700,
+  paddingTop: $theme.sizing.scale600,
+  borderTop: `1px solid ${$theme.colors.borderOpaque}`,
+}));
 
 export const SubmitButton: React.FC<{
   children: React.ReactNode;

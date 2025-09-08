@@ -24,6 +24,7 @@ import CampaignManager from './components/campaigns/CampaignManager';
 import VoterCRM from './components/VoterCRM/VoterCRM';
 import PrivacyPolicy from './components/Legal/PrivacyPolicy';
 import TermsOfService from './components/Legal/TermsOfService';
+import FontTest from './components/FontTest';
 
 function App() {
   const dispatch = useDispatch<AppDispatch>();
@@ -108,6 +109,7 @@ function App() {
         <Route path="street-map" element={<StreetMap />} />
         <Route path="visualizer" element={<Visualizer />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="font-test" element={<FontTest />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

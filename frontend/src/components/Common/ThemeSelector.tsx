@@ -139,17 +139,23 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
             ),
           },
           OptionContent: {
-            component: ({ option, ...props }: any) => (
-              <div {...props}>
-                <OptionContent>
-                  <ThemePreview $themeType={option.id as ThemeType} />
-                  <div>
-                    <div style={{ fontWeight: 500 }}>{option.label}</div>
-                    <div style={{ fontSize: '11px', opacity: 0.7 }}>{option.description}</div>
-                  </div>
-                </OptionContent>
-              </div>
-            ),
+            component: ({ option, ...props }: any) => {
+              // Guard against undefined option
+              if (!option) {
+                return <div {...props}>Loading...</div>;
+              }
+              return (
+                <div {...props}>
+                  <OptionContent>
+                    <ThemePreview $themeType={option.id as ThemeType} />
+                    <div>
+                      <div style={{ fontWeight: 500 }}>{option.label}</div>
+                      <div style={{ fontSize: '11px', opacity: 0.7 }}>{option.description}</div>
+                    </div>
+                  </OptionContent>
+                </div>
+              );
+            },
           },
         }}
       />

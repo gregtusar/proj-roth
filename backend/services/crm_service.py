@@ -344,6 +344,7 @@ class CRMService:
                                 "created_at": event_data.get("timestamp", event_data.get("created_at")),
                                 "notes": f"Campaign: {email_data.get('campaign_name', 'Unknown')}\nStatus: {email_data.get('status', 'Unknown')}",
                                 "voter_master_id": master_id,
+                                "created_by": event_data.get("created_by", "system"),  # Default to "system" for email events
                                 "metadata": {
                                     "campaign_id": email_data.get("campaign_id"),
                                     "campaign_name": email_data.get("campaign_name"),

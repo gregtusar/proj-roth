@@ -62,6 +62,41 @@ const SearchResults = styled('div', ({ $theme }) => ({
   fontSize: '14px',
   lineHeight: 1.6,
   color: $theme.colors.contentPrimary,
+  maxHeight: '300px',
+  overflow: 'auto',
+}));
+
+const SearchResultItem = styled('div', ({ $theme }) => ({
+  marginBottom: '12px',
+  paddingBottom: '12px',
+  borderBottom: `1px solid ${$theme.colors.borderOpaque}`,
+  ':last-child': {
+    borderBottom: 'none',
+    marginBottom: 0,
+    paddingBottom: 0,
+  },
+}));
+
+const SearchResultTitle = styled('div', ({ $theme }) => ({
+  fontSize: '14px',
+  fontWeight: 600,
+  color: $theme.colors.contentPrimary,
+  marginBottom: '4px',
+}));
+
+const SearchResultSnippet = styled('div', ({ $theme }) => ({
+  fontSize: '13px',
+  color: $theme.colors.contentSecondary,
+  lineHeight: 1.5,
+}));
+
+const SearchResultLink = styled('a', ({ $theme }) => ({
+  fontSize: '12px',
+  color: $theme.colors.primary,
+  textDecoration: 'none',
+  ':hover': {
+    textDecoration: 'underline',
+  },
 }));
 
 interface BasicInfoProps {
@@ -197,10 +232,49 @@ const BasicInfo: React.FC<BasicInfoProps> = ({ profile, searchResults }) => {
         <Section>
           <SectionTitle>Additional Information</SectionTitle>
           <SearchResults>
-            {typeof searchResults === 'string' 
-              ? searchResults 
-              : JSON.stringify(searchResults, null, 2)
-            }
+            {(() => {
+              // Handle different response formats
+              if (typeof searchResults === 'string') {
+                return <div>{searchResults}</div>;
+              }
+              
+              if (searchResults.error) {
+                return (
+                  <InfoLabel style={{ color: 'inherit' }}>
+                    Unable to fetch additional information at this time.
+                  </InfoLabel>
+                );
+              }
+              
+              if (searchResults.results && Array.isArray(searchResults.results)) {
+                if (searchResults.results.length === 0) {
+                  return (
+                    <InfoLabel style={{ color: 'inherit' }}>
+                      No additional information found.
+                    </InfoLabel>
+                  );
+                }
+                
+                return searchResults.results.map((result: any, index: number) => (
+                  <SearchResultItem key={index}>
+                    <SearchResultTitle>{result.title}</SearchResultTitle>
+                    <SearchResultSnippet>{result.snippet}</SearchResultSnippet>
+                    {result.link && (
+                      <SearchResultLink href={result.link} target="_blank" rel="noopener noreferrer">
+                        View source →
+                      </SearchResultLink>
+                    )}
+                  </SearchResultItem>
+                ));
+              }
+              
+              // Fallback for unexpected format
+              return (
+                <pre style={{ fontSize: '12px', overflow: 'auto' }}>
+                  {JSON.stringify(searchResults, null, 2)}
+                </pre>
+              );
+            })()}
           </SearchResults>
         </Section>
       )}

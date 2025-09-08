@@ -3,7 +3,8 @@ import { styled } from 'baseui';
 import { Button } from 'baseui/button';
 import { Spinner } from 'baseui/spinner';
 import { Tag } from 'baseui/tag';
-import { ArrowLeft } from 'baseui/icon';
+import { ArrowLeft, ChevronDown, ChevronRight } from 'baseui/icon';
+import { Accordion, Panel } from 'baseui/accordion';
 
 const Container = styled('div', {
   padding: '24px',
@@ -87,6 +88,25 @@ const JsonDisplay = styled('pre', ({ $theme }) => ({
   borderRadius: '6px',
   overflow: 'auto',
   maxHeight: '400px',
+  fontFamily: 'monospace',
+  lineHeight: 1.5,
+}));
+
+const RawDataToggle = styled('button', ({ $theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  background: 'none',
+  border: 'none',
+  color: $theme.colors.primary,
+  fontSize: '14px',
+  fontWeight: 500,
+  cursor: 'pointer',
+  padding: '8px 0',
+  marginBottom: '12px',
+  ':hover': {
+    opacity: 0.8,
+  },
 }));
 
 const StatusBadge = styled('div', {
@@ -109,6 +129,8 @@ const PDLEnrichment: React.FC<PDLEnrichmentProps> = ({ enrichmentData, onRefresh
     setIsRefreshing(false);
   };
 
+  const [showRawData, setShowRawData] = useState(false);
+  
   const renderEnrichmentData = () => {
     if (!enrichmentData) {
       return (
@@ -278,10 +300,15 @@ const PDLEnrichment: React.FC<PDLEnrichmentProps> = ({ enrichmentData, onRefresh
           </Section>
         )}
 
-        {/* Raw Data (collapsed by default) */}
+        {/* Raw Data (collapsible) */}
         <Section>
-          <SectionTitle>Raw PDL Data</SectionTitle>
-          <JsonDisplay>{JSON.stringify(pdl_data, null, 2)}</JsonDisplay>
+          <RawDataToggle onClick={() => setShowRawData(!showRawData)}>
+            {showRawData ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+            View Raw PDL Data
+          </RawDataToggle>
+          {showRawData && (
+            <JsonDisplay>{JSON.stringify(pdl_data, null, 2)}</JsonDisplay>
+          )}
         </Section>
       </>
     );

@@ -1,8 +1,8 @@
 /* Terminal Mode Styles */
 
 .terminal-mode {
-  /* Add glow effect to all text */
-  text-shadow: 0 0 3px currentColor;
+  /* Add subtle glow effect to all text */
+  text-shadow: 0 0 1px rgba(0, 255, 0, 0.8);
 }
 
 /* Terminal cursor animation */
@@ -47,12 +47,12 @@
 /* Terminal button hover effect */
 .terminal-mode button:hover {
   box-shadow: 0 0 10px rgba(0, 255, 0, 0.6);
-  text-shadow: 0 0 5px #00ff00;
+  text-shadow: 0 0 2px #00ff00;
 }
 
 /* Terminal link hover effect */
 .terminal-mode a:hover {
-  text-shadow: 0 0 8px #00ff00;
+  text-shadow: 0 0 3px #00ff00;
   text-decoration: none;
 }
 
@@ -187,7 +187,7 @@
 
 /* Terminal error glow */
 .terminal-mode .error {
-  text-shadow: 0 0 5px #ff0040;
+  text-shadow: 0 0 2px #ff0040;
   animation: error-pulse 1s infinite;
 }
 
@@ -198,7 +198,7 @@
 
 /* Terminal success glow */
 .terminal-mode .success {
-  text-shadow: 0 0 5px #00ff00;
+  text-shadow: 0 0 2px #00ff00;
   animation: success-pulse 0.5s;
 }
 
@@ -210,7 +210,7 @@
 
 /* Terminal warning amber glow */
 .terminal-mode .warning {
-  text-shadow: 0 0 5px #ffb000;
+  text-shadow: 0 0 2px #ffb000;
   color: #ffb000;
 }
 

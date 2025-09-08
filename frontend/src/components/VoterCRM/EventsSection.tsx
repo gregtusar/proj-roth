@@ -3,6 +3,7 @@ import { styled } from 'baseui';
 import { Button } from 'baseui/button';
 import { Textarea } from 'baseui/textarea';
 import { Select } from 'baseui/select';
+import { Pagination } from 'baseui/pagination';
 import { Plus } from 'baseui/icon';
 import { toaster } from 'baseui/toast';
 import axios from 'axios';

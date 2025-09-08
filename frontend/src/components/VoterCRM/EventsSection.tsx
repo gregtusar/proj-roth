@@ -49,7 +49,15 @@ const EventsList = styled('div', ({ $theme }) => ({
   backgroundColor: $theme.colors.backgroundSecondary,
   borderRadius: '8px',
   overflow: 'hidden',
+  maxHeight: '600px',
+  overflowY: 'auto',
 }));
+
+const PaginationContainer = styled('div', {
+  display: 'flex',
+  justifyContent: 'center',
+  marginTop: '20px',
+});
 
 const EventItem = styled('div', ({ $theme }) => ({
   padding: '16px',
@@ -112,6 +120,8 @@ const EventsSection: React.FC<EventsSectionProps> = ({ events, masterId, onEvent
   const [eventType, setEventType] = useState<any>([{ id: 'call_notes', label: 'Call Notes' }]);
   const [eventNotes, setEventNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const eventsPerPage = 10;
 
   const eventTypeOptions = [
     { id: 'call_notes', label: 'Call Notes' },
@@ -237,23 +247,38 @@ const EventsSection: React.FC<EventsSectionProps> = ({ events, masterId, onEvent
       <div>
         <SectionTitle>Event History</SectionTitle>
         {events && events.length > 0 ? (
-          <EventsList>
-            {events.map((event) => (
-              <EventItem key={event.event_id}>
-                <EventHeader>
-                  <EventType>{getEventTypeLabel(event.event_type)}</EventType>
-                  <EventDate>{formatEventDate(event.created_at)}</EventDate>
-                </EventHeader>
-                <EventNotes>{event.notes}</EventNotes>
-                <EventMeta>
-                  Created by: {event.created_by || 'Unknown'}
-                  {event.metadata && Object.keys(event.metadata).length > 0 && (
-                    <> • {JSON.stringify(event.metadata)}</>
-                  )}
-                </EventMeta>
-              </EventItem>
-            ))}
-          </EventsList>
+          <>
+            <EventsList>
+              {events
+                .slice((currentPage - 1) * eventsPerPage, currentPage * eventsPerPage)
+                .map((event) => (
+                  <EventItem key={event.event_id}>
+                    <EventHeader>
+                      <EventType>{getEventTypeLabel(event.event_type)}</EventType>
+                      <EventDate>{formatEventDate(event.created_at)}</EventDate>
+                    </EventHeader>
+                    <EventNotes>{event.notes}</EventNotes>
+                    <EventMeta>
+                      Created by: {event.created_by || 'Unknown'}
+                      {event.metadata && event.metadata.campaign_name && (
+                        <> • Campaign: {event.metadata.campaign_name}</>
+                      )}
+                    </EventMeta>
+                  </EventItem>
+                ))}
+            </EventsList>
+            {events.length > eventsPerPage && (
+              <PaginationContainer>
+                <Pagination
+                  numPages={Math.ceil(events.length / eventsPerPage)}
+                  currentPage={currentPage}
+                  onPageChange={({ nextPage }) => {
+                    setCurrentPage(Math.min(Math.max(nextPage, 1), Math.ceil(events.length / eventsPerPage)));
+                  }}
+                />
+              </PaginationContainer>
+            )}
+          </>
         ) : (
           <NoEventsMessage>No events recorded for this voter</NoEventsMessage>
         )}

@@ -291,7 +291,17 @@ async def invoke_agent_tool(tool_name: str, args: dict) -> dict:
             return {"error": f"Unknown tool: {tool_name}"}
         
         tool = tools[tool_name]
-        result = await asyncio.to_thread(tool.run, args)
+        
+        # Handle different tool interfaces
+        if tool_name == "google_search":
+            # GoogleSearchTool uses 'search' method
+            query = args.get("query", "")
+            num_results = args.get("num_results", 5)
+            result = await asyncio.to_thread(tool.search, query, num_results)
+        else:
+            # Other tools use 'run' method
+            result = await asyncio.to_thread(tool.run, args)
+        
         return {"result": result}
         
     except Exception as e:

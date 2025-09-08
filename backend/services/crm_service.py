@@ -289,27 +289,81 @@ class CRMService:
     ) -> List[Dict[str, Any]]:
         """
         Get CRM events for a voter from Firestore.
+        Includes both direct CRM events and email campaign events.
         """
         try:
+            events = []
+            
+            # First, get the voter's email address for email campaign events
+            voter_email = None
+            try:
+                email_query = f"""
+                SELECT email
+                FROM `{self.settings.GOOGLE_CLOUD_PROJECT}.voter_data.voters`
+                WHERE master_id = '{master_id}'
+                LIMIT 1
+                """
+                email_result = await self.bq_service.execute_query(email_query)
+                if email_result.get("rows"):
+                    voter_email = email_result["rows"][0].get("email")
+            except Exception as e:
+                logger.warning(f"Could not fetch voter email: {e}")
+            
             events_ref = self.firestore_client.collection(self.events_collection)
             
-            # Build query
-            query = events_ref.where("voter_master_id", "==", master_id)
+            # Query 1: Get events with voter_master_id (direct CRM events)
+            try:
+                query1 = events_ref.where("voter_master_id", "==", master_id)
+                if event_type:
+                    query1 = query1.where("event_type", "==", event_type)
+                query1 = query1.order_by("created_at", direction=firestore.Query.DESCENDING).limit(limit)
+                
+                for doc in query1.stream():
+                    event_data = doc.to_dict()
+                    event_data["event_id"] = doc.id
+                    events.append(event_data)
+            except Exception as e:
+                logger.debug(f"No direct CRM events found: {e}")
             
-            if event_type:
-                query = query.where("event_type", "==", event_type)
+            # Query 2: Get email campaign events if we have an email
+            if voter_email:
+                try:
+                    # Email campaign events have structure: email_data.email_address
+                    all_events = events_ref.limit(500).stream()  # Get more events to filter
+                    
+                    for doc in all_events:
+                        event_data = doc.to_dict()
+                        
+                        # Check if this is an email campaign event for this voter
+                        email_data = event_data.get("email_data", {})
+                        if email_data.get("email_address") == voter_email:
+                            # Format the event for display
+                            formatted_event = {
+                                "event_id": doc.id,
+                                "event_type": event_data.get("event_type", "email_campaign"),
+                                "created_at": event_data.get("timestamp", event_data.get("created_at")),
+                                "notes": f"Campaign: {email_data.get('campaign_name', 'Unknown')}\nStatus: {email_data.get('status', 'Unknown')}",
+                                "voter_master_id": master_id,
+                                "metadata": {
+                                    "campaign_id": email_data.get("campaign_id"),
+                                    "campaign_name": email_data.get("campaign_name"),
+                                    "email_status": email_data.get("status"),
+                                    "email_address": voter_email
+                                }
+                            }
+                            
+                            # Apply event_type filter if specified
+                            if not event_type or formatted_event["event_type"] == event_type:
+                                events.append(formatted_event)
+                                
+                except Exception as e:
+                    logger.debug(f"No email campaign events found: {e}")
             
-            # Order by created_at descending and limit
-            query = query.order_by("created_at", direction=firestore.Query.DESCENDING).limit(limit)
+            # Sort all events by created_at descending
+            events.sort(key=lambda x: x.get("created_at", datetime.min), reverse=True)
             
-            # Execute query
-            docs = query.stream()
-            
-            events = []
-            for doc in docs:
-                event_data = doc.to_dict()
-                event_data["event_id"] = doc.id
-                events.append(event_data)
+            # Apply limit
+            events = events[:limit]
             
             return events
             

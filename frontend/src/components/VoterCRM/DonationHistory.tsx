@@ -116,7 +116,9 @@ interface DonationHistoryProps {
 const DonationHistory: React.FC<DonationHistoryProps> = ({ history }) => {
   const [activeTab, setActiveTab] = useState('0');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const [recipientPage, setRecipientPage] = useState(1);
+  const itemsPerPage = 10;
+  const recipientsPerPage = 5;
 
   if (!history) {
     return (
@@ -234,47 +236,66 @@ const DonationHistory: React.FC<DonationHistoryProps> = ({ history }) => {
 
         <Tab title="By Recipient">
           {Object.keys(by_recipient).length > 0 ? (
-            Object.entries(by_recipient)
-              .sort((a: any, b: any) => b[1].total - a[1].total)
-              .map(([recipient, data]: any) => (
-                <RecipientSection key={recipient}>
-                  <RecipientHeader>
-                    <RecipientName>
-                      {recipient}
-                      {getPartyTag(recipient)}
-                    </RecipientName>
-                    <RecipientStats>
-                      <span>{data.count} donations</span>
-                      <span>•</span>
-                      <strong>{formatCurrency(data.total)}</strong>
-                    </RecipientStats>
-                  </RecipientHeader>
-                  <DonationTable>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHeaderCell>Date</TableHeaderCell>
-                        <TableHeaderCell>Amount</TableHeaderCell>
-                        <TableHeaderCell>Election</TableHeaderCell>
-                        <TableHeaderCell>Report Type</TableHeaderCell>
-                      </TableRow>
-                    </TableHeader>
-                    <tbody>
-                      {data.donations.map((donation: any, index: number) => (
-                        <TableRow key={index}>
-                          <TableCell>{formatDate(donation.date)}</TableCell>
-                          <TableCell>
-                            <strong>{formatCurrency(donation.amount)}</strong>
-                          </TableCell>
-                          <TableCell>
-                            {donation.election_type} {donation.election_year}
-                          </TableCell>
-                          <TableCell>{donation.report_type || '—'}</TableCell>
+            <>
+              {Object.entries(by_recipient)
+                .sort((a: any, b: any) => b[1].total - a[1].total)
+                .slice((recipientPage - 1) * recipientsPerPage, recipientPage * recipientsPerPage)
+                .map(([recipient, data]: any) => (
+                  <RecipientSection key={recipient}>
+                    <RecipientHeader>
+                      <RecipientName>
+                        {recipient}
+                        {getPartyTag(recipient)}
+                      </RecipientName>
+                      <RecipientStats>
+                        <span>{data.count} donations</span>
+                        <span>•</span>
+                        <strong>{formatCurrency(data.total)}</strong>
+                      </RecipientStats>
+                    </RecipientHeader>
+                    <DonationTable>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHeaderCell>Date</TableHeaderCell>
+                          <TableHeaderCell>Amount</TableHeaderCell>
+                          <TableHeaderCell>Election</TableHeaderCell>
+                          <TableHeaderCell>Report Type</TableHeaderCell>
                         </TableRow>
-                      ))}
-                    </tbody>
-                  </DonationTable>
-                </RecipientSection>
-              ))
+                      </TableHeader>
+                      <tbody>
+                        {data.donations.slice(0, 10).map((donation: any, index: number) => (
+                          <TableRow key={index}>
+                            <TableCell>{formatDate(donation.date)}</TableCell>
+                            <TableCell>
+                              <strong>{formatCurrency(donation.amount)}</strong>
+                            </TableCell>
+                            <TableCell>
+                              {donation.election_type} {donation.election_year}
+                            </TableCell>
+                            <TableCell>{donation.report_type || '—'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </tbody>
+                    </DonationTable>
+                    {data.donations.length > 10 && (
+                      <div style={{ marginTop: '8px', padding: '8px', fontSize: '12px', color: '#666' }}>
+                        Showing first 10 of {data.donations.length} donations to this recipient
+                      </div>
+                    )}
+                  </RecipientSection>
+                ))}
+              {Object.keys(by_recipient).length > recipientsPerPage && (
+                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
+                  <Pagination
+                    numPages={Math.ceil(Object.keys(by_recipient).length / recipientsPerPage)}
+                    currentPage={recipientPage}
+                    onPageChange={({ nextPage }) => {
+                      setRecipientPage(Math.min(Math.max(nextPage, 1), Math.ceil(Object.keys(by_recipient).length / recipientsPerPage)));
+                    }}
+                  />
+                </div>
+              )}
+            </>
           ) : (
             <NoDataMessage>No donation history found</NoDataMessage>
           )}

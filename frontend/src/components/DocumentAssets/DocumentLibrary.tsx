@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PlusIcon, DocumentTextIcon, ClockIcon, ArrowTopRightOnSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, DocumentTextIcon, ClockIcon, ArrowTopRightOnSquareIcon, TrashIcon } from '../Common/Icons';
 import { format } from 'date-fns';
 import AddDocumentModal from './AddDocumentModal';
 import DocumentViewer from './DocumentViewer';

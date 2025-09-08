@@ -3,7 +3,6 @@ import {
   Box,
   Paper,
   Typography,
-  Grid,
   Card,
   CardContent,
   Table,
@@ -15,9 +14,9 @@ import {
   CircularProgress,
   Button
 } from '@mui/material';
+import Grid from '@mui/material/GridLegacy';
 // Recharts import removed - using table-based analytics instead
-import RefreshIcon from '@mui/icons-material/Refresh';
-import DownloadIcon from '@mui/icons-material/Download';
+import { RefreshIcon, DownloadIcon } from '../Common/Icons';
 import { Campaign, CampaignStats as CampaignStatsType } from '../../types/campaigns';
 import api from '../../services/api';
 
@@ -46,8 +45,8 @@ const CampaignStats: React.FC<CampaignStatsProps> = ({ campaignIds }) => {
         api.get(`/campaigns/${id}/stats`)
       );
 
-      const campaignResponses = await Promise.all(campaignPromises);
-      const statsResponses = await Promise.all(statsPromises);
+      const campaignResponses: any[] = await Promise.all(campaignPromises);
+      const statsResponses: any[] = await Promise.all(statsPromises);
 
       const campaignsData = campaignResponses
         .filter(r => r.success)

@@ -51,7 +51,7 @@ const CampaignCreate: React.FC<CampaignCreateProps> = ({ open, onClose, onCreate
 
   const loadLists = async () => {
     try {
-      const data = await api.get('/lists/');
+      const data: any = await api.get('/lists/');
       // Lists endpoint returns array directly, not wrapped in success/lists
       console.log('Lists API response:', data);
       if (data) {
@@ -87,10 +87,10 @@ const CampaignCreate: React.FC<CampaignCreateProps> = ({ open, onClose, onCreate
     setError(null);
     
     try {
-      const data = await api.post('/campaigns', formData);
+      const data: any = await api.post('/campaigns', formData);
       if (data.success) {
         // Fetch the created campaign details
-        const campaignData = await api.get(`/campaigns/${data.campaign_id}`);
+        const campaignData: any = await api.get(`/campaigns/${data.campaign_id}`);
         if (campaignData.success) {
           onCreated(campaignData.campaign);
         }
@@ -161,7 +161,6 @@ const CampaignCreate: React.FC<CampaignCreateProps> = ({ open, onClose, onCreate
                 onChange={handleInputChange('list_id') as any}
                 label="Select List"
               >
-                {console.log('Rendering lists dropdown, lists:', lists)}
                 {lists.map((list) => (
                   <MenuItem key={list.id} value={list.id}>
                     {list.name} ({list.row_count || list.voter_count || 0} recipients)

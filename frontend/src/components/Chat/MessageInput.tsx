@@ -9,42 +9,38 @@ import { addMessage, toggleVerboseMode, clearReasoningEvents, addReasoningEvent 
 import wsService from '../../services/websocket';
 import { Message } from '../../types/chat';
 import ReasoningDisplay from './ReasoningDisplay';
-import { Terminal } from 'lucide-react';
+import { Terminal } from '../Common/Icons';
+import { Caption } from '../Common/Typography';
+import { tokens } from '../../theme/customTheme';
 
-const Container = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
-  padding: '16px 24px',
-  borderTop: $isDarkMode ? '1px solid #374151' : '1px solid #e5e7eb',
+const Container = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
+  padding: `${tokens.spacing.scale600} ${tokens.spacing.scale800}`,
+  borderTop: `1px solid ${$isDarkMode ? '#374151' : '#e5e7eb'}`,
   backgroundColor: $isDarkMode ? '#1f2937' : '#ffffff',
-  transition: 'background-color 0.3s ease, border-color 0.3s ease',
+  transition: tokens.animation.timing300 + ' ease',
 }));
 
 const InputContainer = styled('div', {
   display: 'flex',
-  gap: '12px',
-  alignItems: 'center', // Center align the send button with input
+  gap: tokens.spacing.scale550,
+  alignItems: 'center',
 });
 
 const StyledTextarea = styled(Textarea, {
   flex: 1,
 });
 
-const CharCount = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
-  fontSize: '12px',
-  color: $isDarkMode ? '#a0a0a0' : '#666',
-  marginTop: '4px',
+const CharCount = styled(Caption, {
+  marginTop: tokens.spacing.scale200,
   textAlign: 'right',
-  transition: 'color 0.3s ease',
-}));
+});
 
-const VerboseToggleContainer = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const VerboseToggleContainer = styled('div', {
   display: 'flex',
   alignItems: 'center',
-  gap: '8px',
-  marginBottom: '12px',
-  fontSize: '14px',
-  color: $isDarkMode ? '#a0a0a0' : '#666',
-  transition: 'color 0.3s ease',
-}));
+  gap: tokens.spacing.scale400,
+  marginBottom: tokens.spacing.scale550,
+});
 
 interface MessageInputProps {
   modelId?: string;
@@ -53,7 +49,7 @@ interface MessageInputProps {
 const MessageInput: React.FC<MessageInputProps> = ({ modelId }) => {
   const [message, setMessage] = useState('');
   const dispatch = useDispatch<AppDispatch>();
-  const { messages, isLoading, currentSessionId, verboseMode, currentReasoning } = useSelector(
+  const { messages, isLoading, currentSessionId, verboseMode } = useSelector(
     (state: RootState) => state.chat
   );
   const { isDarkMode } = useSelector((state: RootState) => state.settings);
@@ -110,10 +106,10 @@ const MessageInput: React.FC<MessageInputProps> = ({ modelId }) => {
   return (
     <Container $isDarkMode={isDarkMode}>
       {/* Verbose mode toggle */}
-      <VerboseToggleContainer $isDarkMode={isDarkMode}>
+      <VerboseToggleContainer>
         <Checkbox
           checked={verboseMode}
-          onChange={e => dispatch(toggleVerboseMode())}
+          onChange={_e => dispatch(toggleVerboseMode())}
           overrides={{
             Root: {
               style: {
@@ -147,14 +143,13 @@ const MessageInput: React.FC<MessageInputProps> = ({ modelId }) => {
         <StyledTextarea
           inputRef={inputRef}
           value={message}
-          onChange={(e) => setMessage((e.target as HTMLTextAreaElement).value)}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Ask about voter data, demographics, or political information..."
           size={SIZE.large}
           disabled={isLoading}
           autoFocus
           rows={2}
-          maxRows={6}
           resize="vertical"
           overrides={{
             Root: {

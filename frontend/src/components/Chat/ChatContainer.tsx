@@ -11,7 +11,7 @@ import MessageInput from './MessageInput';
 import ModelSelector, { AVAILABLE_MODELS } from './ModelSelector';
 import wsService from '../../services/websocket';
 
-const Container = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const Container = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   display: 'flex',
   flexDirection: 'column',
   height: '100%',
@@ -19,21 +19,6 @@ const Container = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => (
   backgroundColor: $isDarkMode ? '#1a1a1a' : '#ffffff',
   transition: 'background-color 0.3s ease',
 }));
-
-const Header = styled('div', {
-  padding: '16px 24px',
-  borderBottom: '1px solid #e0e0e0',
-  backgroundColor: '#ffffff',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-});
-
-const Title = styled('h2', {
-  margin: 0,
-  fontSize: '18px',
-  fontWeight: 600,
-});
 
 const ChatArea = styled('div', {
   flex: 1,

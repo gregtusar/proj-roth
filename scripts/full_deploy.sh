@@ -175,7 +175,7 @@ deploy_to_cloud_run() {
         --max-instances 10 \
         --min-instances 0 \
         --session-affinity \
-        --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},PROJECT_ID=${PROJECT_ID},CORS_ALLOWED_ORIGINS=https://gwanalytica.ai;https://nj-voter-chat-app-169579073940.us-central1.run.app;http://localhost:3000" \
+        --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},PROJECT_ID=${PROJECT_ID},REDIS_HOST=10.30.78.3,REDIS_PORT=6379,CORS_ALLOWED_ORIGINS=https://gwanalytica.ai;https://nj-voter-chat-app-169579073940.us-central1.run.app;http://localhost:3000" \
         --set-secrets="GOOGLE_MAPS_API_KEY=google-maps-api-key:latest"
     
     if [ $? -eq 0 ]; then

@@ -225,49 +225,50 @@ const QueryTool: React.FC = () => {
           <EditorHeader>
             <EditorTitle>SQL Query</EditorTitle>
             <ButtonGroup size={SIZE.mini}>
-              {!isEditingSQL ? (
-                <>
+              {!isEditingSQL ? [
                   <Button
+                    key="edit"
                     onClick={() => setIsEditingSQL(true)}
                     kind={KIND.secondary}
                     size={SIZE.mini}
                   >
                     Edit
-                  </Button>
+                  </Button>,
                   <Button
+                    key="run"
                     onClick={executeQuery}
                     kind={KIND.primary}
                     size={SIZE.mini}
                     isLoading={isRunningQuery}
                   >
                     Run Query
-                  </Button>
+                  </Button>,
                   <Button
+                    key="save"
                     onClick={() => setSaveDialog({ ...saveDialog, open: true })}
                     kind={KIND.secondary}
                     size={SIZE.mini}
                   >
                     Save as List
                   </Button>
-                </>
-              ) : (
-                <>
+              ] : [
                   <Button 
+                    key="cancel"
                     onClick={handleCancelEdit} 
                     kind={KIND.tertiary} 
                     size={SIZE.mini}
                   >
                     Cancel
-                  </Button>
+                  </Button>,
                   <Button 
+                    key="save-changes"
                     onClick={handleSaveChanges} 
                     kind={KIND.primary} 
                     size={SIZE.mini}
                   >
                     Save
                   </Button>
-                </>
-              )}
+              ]}
             </ButtonGroup>
           </EditorHeader>
 

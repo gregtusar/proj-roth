@@ -16,9 +16,7 @@ import {
   TablePagination,
   Tooltip
 } from '@mui/material';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
+import { VisibilityIcon, RefreshIcon, CompareArrowsIcon } from '../Common/Icons';
 import { Campaign } from '../../types/campaigns';
 import { format } from 'date-fns';
 
@@ -48,7 +46,7 @@ const CampaignList: React.FC<CampaignListProps> = ({
     }
   };
 
-  const handleClick = (event: React.MouseEvent<unknown>, id: string) => {
+  const handleClick = (_event: React.MouseEvent<unknown>, id: string) => {
     const selectedIndex = selected.indexOf(id);
     let newSelected: string[] = [];
 
@@ -72,7 +70,7 @@ const CampaignList: React.FC<CampaignListProps> = ({
     onMultiSelect(selected);
   };
 
-  const handleChangePage = (event: unknown, newPage: number) => {
+  const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);
   };
 

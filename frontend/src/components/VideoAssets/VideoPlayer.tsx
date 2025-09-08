@@ -22,7 +22,6 @@ import {
   Close as CloseIcon,
   Download as DownloadIcon,
   ContentCopy as CopyIcon,
-  Share as ShareIcon,
   Check as CheckIcon
 } from '@mui/icons-material';
 
@@ -140,7 +139,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ open, onClose, video }) => {
       
       <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', flex: 1 }}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)}>
+          <Tabs value={activeTab} onChange={(_e, v) => setActiveTab(v)}>
             <Tab label="Player" />
             <Tab label="Versions" />
             <Tab label="Details" />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { XMarkIcon, LinkIcon, DocumentPlusIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, LinkIcon, DocumentPlusIcon } from '../Common/Icons';
 
 interface AddDocumentModalProps {
   onClose: () => void;

@@ -1,0 +1,294 @@
+/* Terminal Mode Styles */
+
+.terminal-mode {
+  /* Add glow effect to all text */
+  text-shadow: 0 0 3px currentColor;
+}
+
+/* Terminal cursor animation */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* Scanline effect for terminal mode */
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+/* Terminal mode specific overrides */
+.terminal-mode::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(to bottom, transparent, rgba(0, 255, 0, 0.3), transparent);
+  animation: scanline 8s linear infinite;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Terminal input cursor */
+.terminal-mode input:focus::after,
+.terminal-mode textarea:focus::after {
+  content: '_';
+  animation: blink 1s infinite;
+  color: #00ff00;
+  font-weight: bold;
+}
+
+/* Terminal button hover effect */
+.terminal-mode button:hover {
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.6);
+  text-shadow: 0 0 5px #00ff00;
+}
+
+/* Terminal link hover effect */
+.terminal-mode a:hover {
+  text-shadow: 0 0 8px #00ff00;
+  text-decoration: none;
+}
+
+/* Terminal scrollbar */
+.terminal-mode ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.terminal-mode ::-webkit-scrollbar-track {
+  background: #0a0a0a;
+  border: 1px solid #00ff00;
+}
+
+.terminal-mode ::-webkit-scrollbar-thumb {
+  background: #00ff00;
+  border: 1px solid #0a0a0a;
+}
+
+.terminal-mode ::-webkit-scrollbar-thumb:hover {
+  background: #33ff33;
+  box-shadow: 0 0 5px #00ff00;
+}
+
+/* Terminal selection */
+.terminal-mode ::selection {
+  background: #00ff00;
+  color: #0a0a0a;
+}
+
+.terminal-mode ::-moz-selection {
+  background: #00ff00;
+  color: #0a0a0a;
+}
+
+/* Terminal focus outline */
+.terminal-mode *:focus {
+  outline: 1px solid #00ff00;
+  outline-offset: 2px;
+}
+
+/* Typewriter effect for messages */
+@keyframes typewriter {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+/* Matrix rain effect (optional) */
+@keyframes matrix-rain {
+  0% {
+    transform: translateY(-100%);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+
+/* CRT monitor effect */
+.terminal-mode .crt-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.terminal-mode .crt-effect::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    rgba(0, 255, 0, 0.03) 50%,
+    rgba(0, 0, 0, 0.03) 50%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Glowing borders */
+.terminal-mode .card,
+.terminal-mode .modal,
+.terminal-mode .dropdown {
+  border: 1px solid #00ff00;
+  box-shadow: 
+    0 0 5px rgba(0, 255, 0, 0.3),
+    inset 0 0 5px rgba(0, 255, 0, 0.1);
+}
+
+/* Terminal ASCII art decoration */
+.terminal-mode .logo::before {
+  content: '◊◊◊';
+  display: block;
+  font-family: 'Courier New', monospace;
+  color: #00ff00;
+  font-size: 10px;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+  opacity: 0.7;
+}
+
+/* Terminal prompt indicator */
+.terminal-mode .input-container::before {
+  content: '> ';
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  margin-right: 4px;
+}
+
+/* Terminal loading animation */
+@keyframes terminal-loading {
+  0% { content: '[    ]'; }
+  25% { content: '[■   ]'; }
+  50% { content: '[■■  ]'; }
+  75% { content: '[■■■ ]'; }
+  100% { content: '[■■■■]'; }
+}
+
+.terminal-mode .loading::after {
+  content: '[    ]';
+  animation: terminal-loading 1s steps(1) infinite;
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+}
+
+/* Terminal error glow */
+.terminal-mode .error {
+  text-shadow: 0 0 5px #ff0040;
+  animation: error-pulse 1s infinite;
+}
+
+@keyframes error-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Terminal success glow */
+.terminal-mode .success {
+  text-shadow: 0 0 5px #00ff00;
+  animation: success-pulse 0.5s;
+}
+
+@keyframes success-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Terminal warning amber glow */
+.terminal-mode .warning {
+  text-shadow: 0 0 5px #ffb000;
+  color: #ffb000;
+}
+
+/* Terminal table styling */
+.terminal-mode table {
+  border-collapse: collapse;
+  border: 1px solid #00ff00;
+}
+
+.terminal-mode th,
+.terminal-mode td {
+  border: 1px solid #00ff00;
+  padding: 8px;
+}
+
+.terminal-mode th {
+  background: rgba(0, 255, 0, 0.1);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Terminal code blocks */
+.terminal-mode pre,
+.terminal-mode code {
+  background: #001100;
+  border: 1px solid #00ff00;
+  color: #00ff00;
+  padding: 2px 4px;
+  border-radius: 0;
+}
+
+/* Terminal badges and tags */
+.terminal-mode .badge,
+.terminal-mode .tag {
+  background: transparent;
+  border: 1px solid #00ff00;
+  color: #00ff00;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 2px 6px;
+}
+
+/* Terminal notification */
+.terminal-mode .notification {
+  border: 1px solid #00ff00;
+  background: rgba(0, 255, 0, 0.05);
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+/* ASCII box drawing characters for fun */
+.terminal-mode .box-top { border-top: 2px solid #00ff00; }
+.terminal-mode .box-bottom { border-bottom: 2px solid #00ff00; }
+.terminal-mode .box-left { border-left: 2px solid #00ff00; }
+.terminal-mode .box-right { border-right: 2px solid #00ff00; }
+
+/* Terminal navigation active indicator */
+.terminal-mode .nav-active {
+  background: rgba(0, 255, 0, 0.1);
+  border-left: 3px solid #00ff00;
+  box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.2);
+}
+
+/* Retro computer boot sequence (for login screen) */
+@keyframes boot-sequence {
+  0% { content: 'INITIALIZING...'; }
+  20% { content: 'LOADING KERNEL...'; }
+  40% { content: 'CHECKING MEMORY...'; }
+  60% { content: 'MOUNTING FILESYSTEMS...'; }
+  80% { content: 'STARTING SERVICES...'; }
+  100% { content: 'SYSTEM READY'; }
+}
+
+.terminal-mode .boot-text::before {
+  content: 'INITIALIZING...';
+  animation: boot-sequence 3s steps(1) forwards;
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}

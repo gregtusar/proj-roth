@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Grid,
   Card,
   CardMedia,
   CardContent,
@@ -10,7 +9,6 @@ import {
   Button,
   IconButton,
   Chip,
-  Stack,
   TextField,
   InputAdornment,
   Select,
@@ -20,24 +18,18 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
-  Tab,
-  Tabs,
   Alert,
   CircularProgress,
-  Tooltip,
   Menu,
   ListItemIcon,
   ListItemText
 } from '@mui/material';
+import Grid from '@mui/material/GridLegacy';
 import {
   Search as SearchIcon,
-  FilterList as FilterIcon,
   PlayArrow as PlayIcon,
   Download as DownloadIcon,
-  Edit as EditIcon,
   Delete as DeleteIcon,
-  Share as ShareIcon,
   MoreVert as MoreIcon,
   ContentCopy as CopyIcon,
   Instagram as InstagramIcon,

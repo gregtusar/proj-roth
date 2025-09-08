@@ -12,7 +12,7 @@ const LayoutContainer = styled('div', {
   overflow: 'hidden',
 });
 
-const MainContent = styled('main', ({ $sidebarOpen, $isDarkMode }: { $sidebarOpen: boolean; $isDarkMode: boolean }) => ({
+const MainContent = styled<'main', { $sidebarOpen: boolean; $isDarkMode: boolean }>('main', ({ $sidebarOpen, $isDarkMode }) => ({
   flex: 1,
   marginLeft: $sidebarOpen ? '260px' : '60px',
   transition: 'margin-left 0.3s ease, background-color 0.3s ease',

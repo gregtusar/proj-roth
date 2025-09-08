@@ -9,7 +9,6 @@ import {
   updateSession,
   replaceMessage,
   addReasoningEvent,
-  clearReasoningEvents,
 } from '../store/chatSlice';
 import { MessageQueue, QueuedMessage } from './messageQueue';
 
@@ -20,7 +19,7 @@ const CONNECTION_TIMEOUT_MS = 600000; // 10 minutes - do not change format
 
 class WebSocketService {
   private socket: Socket | null = null;
-  private reconnectAttempts = 0;
+  private _reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private isConnecting = false;
   private activeSessionId: string | null = null;
@@ -112,12 +111,12 @@ class WebSocketService {
 
     this.socket.on('connect', () => {
       console.log('WebSocket connected');
-      this.reconnectAttempts = 0;
+      this._reconnectAttempts = 0;
       this.isConnecting = false;
       
       // Check if we need to recover any incomplete messages
       const state = store.getState();
-      if (state.chat.currentSessionId && state.chat.isStreaming) {
+      if (state.chat.currentSessionId && state.chat.streamingMessage) {
         console.log('[WebSocket] Reconnected during streaming, requesting recovery');
         const lastMessage = state.chat.messages[state.chat.messages.length - 1];
         this.socket?.emit('recover_message', {
@@ -229,7 +228,7 @@ class WebSocketService {
     });
 
     this.socket.on('reconnect_attempt', (attemptNumber: number) => {
-      this.reconnectAttempts = attemptNumber;
+      this._reconnectAttempts = attemptNumber;
       console.log(`Reconnection attempt ${attemptNumber}`);
     });
 
@@ -411,6 +410,7 @@ class WebSocketService {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       is_active: true,
+      is_public: false,
       message_count: 1,
       metadata: {}
     };

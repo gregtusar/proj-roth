@@ -43,3 +43,27 @@ async def list_tools(current_user: dict = Depends(get_current_user)):
     Get list of available agent tools
     """
     return get_available_tools()
+
+class SearchRequest(BaseModel):
+    query: str
+
+@router.post("/search")
+async def search_agent(
+    request: SearchRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Use the agent to search for information
+    """
+    try:
+        # Use the google_search tool to find information
+        result = await invoke_agent_tool("google_search", {"query": request.query})
+        
+        if "error" in result:
+            return {"error": result["error"], "results": []}
+        
+        return {"results": result.get("result", [])}
+        
+    except Exception as e:
+        # Return empty results on error rather than failing
+        return {"error": str(e), "results": []}

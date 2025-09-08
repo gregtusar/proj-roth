@@ -43,7 +43,7 @@ const ListContainer = styled('div', {
   padding: '16px',
 });
 
-const ListItem = styled('div', ({ $selected }: { $selected: boolean }) => ({
+const ListItem = styled<'div', { $selected: boolean }>('div', ({ $selected }) => ({
   padding: '12px',
   marginBottom: '8px',
   backgroundColor: $selected ? '#e3f2fd' : '#ffffff',
@@ -235,7 +235,7 @@ const ListManager: React.FC = () => {
                     </ListMeta>
                   </ListContent>
                   <DeleteButton
-                    onClick={(e) => handleDeleteClick(e, list)}
+                    onClick={(e: React.MouseEvent) => handleDeleteClick(e, list)}
                     title="Delete list"
                   >
                     <Delete size={20} />

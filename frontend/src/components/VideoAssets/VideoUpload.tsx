@@ -41,7 +41,7 @@ interface UploadingFile {
   videoId?: string;
 }
 
-const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadComplete, onClose }) => {
+const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadComplete }) => {
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [metadataDialog, setMetadataDialog] = useState<{
     open: boolean;
@@ -102,7 +102,6 @@ const VideoUpload: React.FC<VideoUploadProps> = ({ onUploadComplete, onClose }) 
     file: File,
     metadata: { title: string; description?: string; tags: string[]; campaign?: string }
   ) => {
-    const uploadId = Date.now().toString();
     const newUpload: UploadingFile = {
       file,
       progress: 0,

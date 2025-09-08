@@ -3,7 +3,6 @@ import {
   FormControl,
   Select,
   MenuItem,
-  SelectChangeEvent,
   Box,
   Typography,
   Tooltip,
@@ -100,15 +99,14 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   disabled = false,
   showDescription = true
 }) => {
-  const selectedModel = AVAILABLE_MODELS.find(m => m.id === value) || AVAILABLE_MODELS[0];
 
-  const handleChange = (event: SelectChangeEvent) => {
+  const handleChange = (event: any) => {
     onChange(event.target.value);
   };
 
-  const renderValue = (value: string) => {
+  const renderValue = (value: unknown) => {
     const model = AVAILABLE_MODELS.find(m => m.id === value);
-    if (!model) return value;
+    if (!model) return value as React.ReactNode;
 
     return (
       <ModelOption>

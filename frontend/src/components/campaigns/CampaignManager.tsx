@@ -57,7 +57,7 @@ const CampaignManager: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get('/campaigns');
+      const data: any = await api.get('/campaigns');
       if (data.success) {
         setCampaigns(data.campaigns);
       }
@@ -69,7 +69,7 @@ const CampaignManager: React.FC = () => {
     }
   };
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 

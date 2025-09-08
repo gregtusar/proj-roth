@@ -5,7 +5,7 @@ import { Activity, Database, Search, MapPin, Save, AlertCircle, Zap, ChevronDown
 import { styled } from 'baseui';
 
 // Styled components for better formatting
-const VerboseContainer = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const VerboseContainer = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   backgroundColor: $isDarkMode ? '#1f2937' : '#f9fafb',
   border: `1px solid ${$isDarkMode ? '#374151' : '#e5e7eb'}`,
   borderRadius: '8px',
@@ -16,7 +16,7 @@ const VerboseContainer = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean 
   transition: 'all 0.3s ease',
 }));
 
-const VerboseHeader = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const VerboseHeader = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   padding: '8px 12px',
   borderBottom: `1px solid ${$isDarkMode ? '#374151' : '#e5e7eb'}`,
   display: 'flex',
@@ -41,14 +41,14 @@ const VerboseContent = styled('div', {
   lineHeight: '1.5',
 });
 
-const EventGroup = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const EventGroup = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   marginBottom: '12px',
   border: `1px solid ${$isDarkMode ? '#374151' : '#e5e7eb'}`,
   borderRadius: '6px',
   backgroundColor: $isDarkMode ? '#1f2937' : '#ffffff',
 }));
 
-const EventGroupHeader = styled('div', ({ $isDarkMode, $isExpanded }: { $isDarkMode: boolean; $isExpanded: boolean }) => ({
+const EventGroupHeader = styled<'div', { $isDarkMode: boolean; $isExpanded: boolean }>('div', ({ $isDarkMode, $isExpanded }) => ({
   padding: '8px 12px',
   backgroundColor: $isDarkMode ? '#111827' : '#f3f4f6',
   borderBottom: $isExpanded ? `1px solid ${$isDarkMode ? '#374151' : '#e5e7eb'}` : 'none',
@@ -69,7 +69,7 @@ const EventGroupContent = styled('div', {
   overflowY: 'auto',
 });
 
-const EventItem = styled('div', ({ $isDarkMode, $isActive }: { $isDarkMode: boolean, $isActive: boolean }) => ({
+const EventItem = styled<'div', { $isDarkMode: boolean; $isActive: boolean }>('div', ({ $isDarkMode, $isActive }) => ({
   padding: '6px 8px',
   marginBottom: '4px',
   backgroundColor: $isActive 
@@ -89,20 +89,20 @@ const EventHeader = styled('div', {
   marginBottom: '4px',
 });
 
-const EventTitle = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const EventTitle = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   fontSize: '12px',
   fontWeight: 600,
   color: $isDarkMode ? '#f3f4f6' : '#111827',
 }));
 
-const EventDetail = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const EventDetail = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   fontSize: '11px',
   color: $isDarkMode ? '#9ca3af' : '#6b7280',
   marginLeft: '24px',
   wordBreak: 'break-word',
 }));
 
-const TokenInfo = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const TokenInfo = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   fontSize: '10px',
   color: $isDarkMode ? '#9ca3af' : '#6b7280',
   marginTop: '4px',
@@ -549,7 +549,7 @@ const ReasoningDisplay: React.FC = () => {
                             <EventHeader>
                               {getIcon(event.type, event.data)}
                               <EventTitle $isDarkMode={isDarkMode}>
-                                Step {eventIndex + 1}: {event.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                Step {eventIndex + 1}: {event.type.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                               </EventTitle>
                             </EventHeader>
                             <EventDetail $isDarkMode={isDarkMode}>

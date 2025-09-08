@@ -4,7 +4,6 @@ import {
   Paper,
   Typography,
   Button,
-  Grid,
   Card,
   CardContent,
   Divider,
@@ -19,9 +18,8 @@ import {
   DialogContent,
   DialogActions
 } from '@mui/material';
-import SendIcon from '@mui/icons-material/Send';
-import EmailIcon from '@mui/icons-material/Email';
-import RefreshIcon from '@mui/icons-material/Refresh';
+import Grid from '@mui/material/GridLegacy';
+import { SendIcon, EmailIcon, RefreshIcon } from '../Common/Icons';
 import { Campaign, CampaignStats as CampaignStatsType } from '../../types/campaigns';
 import api from '../../services/api';
 import { format } from 'date-fns';
@@ -66,7 +64,7 @@ const CampaignDetail: React.FC<CampaignDetailProps> = ({ campaign, onUpdate, onS
     setSuccess(null);
     
     try {
-      const response = await api.post(`/campaigns/${campaign.campaign_id}/send`);
+      const response: any = await api.post(`/campaigns/${campaign.campaign_id}/send`);
       if (response.success) {
         setSuccess('Campaign is being sent! This may take a few minutes.');
         setShowSendDialog(false);
@@ -95,7 +93,7 @@ const CampaignDetail: React.FC<CampaignDetailProps> = ({ campaign, onUpdate, onS
     setSuccess(null);
     
     try {
-      const response = await api.post(`/campaigns/${campaign.campaign_id}/test`, {
+      const response: any = await api.post(`/campaigns/${campaign.campaign_id}/test`, {
         test_email: testEmail
       });
       if (response.success) {

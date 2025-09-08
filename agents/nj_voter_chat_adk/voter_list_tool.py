@@ -17,7 +17,7 @@ class VoterListTool:
     def __init__(self, project_id: str = "proj-roth"):
         self.project_id = project_id
         self.client = firestore.Client(project=project_id)
-        self.collection_name = "voter_lists"
+        self.collection_name = "lists"
     
     def save_voter_list(
         self,

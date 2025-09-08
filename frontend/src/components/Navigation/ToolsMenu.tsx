@@ -34,11 +34,12 @@ const ToolsMenu: React.FC<ToolsMenuProps> = ({ isCompact = false }) => {
   const { isDarkMode } = useSelector((state: RootState) => state.settings);
 
   const tools = [
-    { id: 'lists', icon: '📋', label: 'List Manager', path: '/lists' },
     { id: 'campaign', icon: '📢', label: 'Campaign Manager', path: '/campaign' },
+    { id: 'lists', icon: '📋', label: 'List Manager', path: '/lists' },
     { id: 'streetmap', icon: '🗺️', label: 'Street Map', path: '/street-map' },
     { id: 'visualizer', icon: '🎯', label: 'Visualizer', path: '/visualizer' },
-  ];
+    { id: 'crm', icon: '👤', label: 'Voter CRM', path: '/voter-crm' },
+  ].sort((a, b) => a.label.localeCompare(b.label));
 
   const handleToolClick = (path: string) => {
     navigate(path);

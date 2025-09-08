@@ -13,13 +13,13 @@ import { useAuthCheck } from '../../hooks/useAuthCheck';
 
 const { BaseLayer } = LayersControl;
 
-const Container = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const Container = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   height: '100%',
   display: 'flex',
   backgroundColor: $isDarkMode ? '#1a1a1a' : '#f5f5f5',
 }));
 
-const LeftPanel = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const LeftPanel = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   width: '400px',
   backgroundColor: $isDarkMode ? '#1f2937' : '#ffffff',
   borderRight: $isDarkMode ? '1px solid #374151' : '1px solid #e0e0e0',
@@ -28,33 +28,33 @@ const LeftPanel = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => (
   overflow: 'hidden',
 }));
 
-const ChatHeader = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const ChatHeader = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   padding: '20px',
   borderBottom: $isDarkMode ? '1px solid #374151' : '1px solid #e0e0e0',
   backgroundColor: $isDarkMode ? '#111827' : '#f9fafb',
 }));
 
-const ChatInput = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const ChatInput = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   padding: '16px',
   borderTop: $isDarkMode ? '1px solid #374151' : '1px solid #e0e0e0',
   backgroundColor: $isDarkMode ? '#1f2937' : '#ffffff',
 }));
 
-const SampleDataContainer = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const SampleDataContainer = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   flex: 1,
   overflowY: 'auto',
   padding: '16px',
   backgroundColor: $isDarkMode ? '#1f2937' : '#ffffff',
 }));
 
-const SampleDataTable = styled('table', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const SampleDataTable = styled<'table', { $isDarkMode: boolean }>('table', ({ $isDarkMode }) => ({
   width: '100%',
   fontSize: '12px',
   borderCollapse: 'collapse',
   color: $isDarkMode ? '#f3f4f6' : '#111827',
 }));
 
-const TableHeader = styled('th', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const TableHeader = styled<'th', { $isDarkMode: boolean }>('th', ({ $isDarkMode }) => ({
   padding: '8px 4px',
   textAlign: 'left',
   borderBottom: $isDarkMode ? '1px solid #374151' : '1px solid #e0e0e0',
@@ -63,7 +63,7 @@ const TableHeader = styled('th', ({ $isDarkMode }: { $isDarkMode: boolean }) => 
   fontSize: '11px',
 }));
 
-const TableCell = styled('td', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const TableCell = styled<'td', { $isDarkMode: boolean }>('td', ({ $isDarkMode }) => ({
   padding: '6px 4px',
   borderBottom: $isDarkMode ? '1px solid #374151' : '1px solid #e0e0e0',
   fontSize: '11px',
@@ -90,7 +90,7 @@ const LoadingOverlay = styled('div', {
   boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
 });
 
-const Legend = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const Legend = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   position: 'absolute',
   bottom: '20px',
   right: '20px',
@@ -104,7 +104,7 @@ const Legend = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
   color: $isDarkMode ? '#f3f4f6' : '#1a1a1a',
 }));
 
-const LegendTitle = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const LegendTitle = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   fontWeight: 'bold',
   marginBottom: '8px',
   fontSize: '16px',
@@ -117,7 +117,7 @@ const LegendItem = styled('div', {
   marginBottom: '4px',
 });
 
-const LegendColor = styled('div', ({ $color }: { $color: string }) => ({
+const LegendColor = styled<'div', { $color: string }>('div', ({ $color }) => ({
   width: '20px',
   height: '20px',
   borderRadius: '50%',
@@ -126,7 +126,7 @@ const LegendColor = styled('div', ({ $color }: { $color: string }) => ({
   border: '1px solid #333',
 }));
 
-const QueryInfo = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const QueryInfo = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   padding: '12px',
   backgroundColor: $isDarkMode ? '#111827' : '#f3f4f6',
   borderRadius: '4px',
@@ -135,7 +135,7 @@ const QueryInfo = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => (
   color: $isDarkMode ? '#f3f4f6' : '#111827',
 }));
 
-const ErrorMessage = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const ErrorMessage = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   padding: '12px',
   backgroundColor: $isDarkMode ? '#7f1d1d' : '#fee2e2',
   color: $isDarkMode ? '#fecaca' : '#dc2626',

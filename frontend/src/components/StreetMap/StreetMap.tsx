@@ -9,7 +9,7 @@ import { RootState } from '../../store';
 
 const { BaseLayer } = LayersControl;
 
-const Container = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const Container = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   height: '100%',
   display: 'flex',
   flexDirection: 'column',
@@ -21,7 +21,7 @@ const MapWrapper = styled('div', {
   position: 'relative',
 });
 
-const LoadingContainer = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const LoadingContainer = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   display: 'flex',
   justifyContent: 'center',
   alignItems: 'center',
@@ -30,7 +30,7 @@ const LoadingContainer = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean 
   color: $isDarkMode ? '#f3f4f6' : '#1a1a1a',
 }));
 
-const Legend = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const Legend = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   position: 'absolute',
   bottom: '20px',
   left: '20px',
@@ -44,7 +44,7 @@ const Legend = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
   color: $isDarkMode ? '#f3f4f6' : '#1a1a1a',
 }));
 
-const LegendTitle = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const LegendTitle = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   fontWeight: 'bold',
   marginBottom: '8px',
   fontSize: '16px',
@@ -57,7 +57,7 @@ const LegendItem = styled('div', {
   marginBottom: '4px',
 });
 
-const LegendColor = styled('div', ({ $color }: { $color: string }) => ({
+const LegendColor = styled<'div', { $color: string }>('div', ({ $color }) => ({
   width: '20px',
   height: '20px',
   borderRadius: '50%',

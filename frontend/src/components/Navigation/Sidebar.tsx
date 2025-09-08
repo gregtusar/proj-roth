@@ -1,10 +1,10 @@
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { styled } from 'baseui';
 import { Button, KIND, SIZE, SHAPE } from 'baseui/button';
 import { RootState, AppDispatch } from '../../store';
-import { toggleSidebar, setActiveSection } from '../../store/sidebarSlice';
+import { toggleSidebar } from '../../store/sidebarSlice';
 import { clearMessages } from '../../store/chatSlice';
 import { logout } from '../../store/authSlice';
 import RecentChats from './RecentChats';
@@ -12,7 +12,7 @@ import ToolsMenu from './ToolsMenu';
 import VaultMenu from './VaultMenu';
 import { getVersionDisplay, BUILD_TIME } from '../../config/version';
 
-const SidebarContainer = styled('aside', ({ $isOpen, $isDarkMode }: { $isOpen: boolean; $isDarkMode: boolean }) => ({
+const SidebarContainer = styled<'aside', { $isOpen: boolean; $isDarkMode: boolean }>('aside', ({ $isOpen, $isDarkMode }) => ({
   position: 'fixed',
   top: 0,
   left: 0,
@@ -28,7 +28,7 @@ const SidebarContainer = styled('aside', ({ $isOpen, $isDarkMode }: { $isOpen: b
   borderRight: $isDarkMode ? '1px solid #374151' : '1px solid #e5e7eb',
 }));
 
-const Header = styled('div', ({ $isOpen, $isDarkMode }: { $isOpen: boolean; $isDarkMode: boolean }) => ({
+const Header = styled<'div', { $isOpen: boolean; $isDarkMode: boolean }>('div', ({ $isOpen, $isDarkMode }) => ({
   padding: '20px 16px',
   borderBottom: $isDarkMode ? '1px solid #374151' : '1px solid #e5e7eb',
   display: 'flex',
@@ -37,7 +37,7 @@ const Header = styled('div', ({ $isOpen, $isDarkMode }: { $isOpen: boolean; $isD
   backgroundColor: $isDarkMode ? '#111827' : '#ffffff',
 }));
 
-const Logo = styled('div', ({ $isOpen, $isDarkMode }: { $isOpen: boolean; $isDarkMode: boolean }) => ({
+const Logo = styled<'div', { $isOpen: boolean; $isDarkMode: boolean }>('div', ({ $isOpen: _$isOpen, $isDarkMode }) => ({
   fontSize: '18px',
   fontWeight: '600',
   display: 'flex',
@@ -52,13 +52,13 @@ const LogoImage = styled('img', {
   objectFit: 'contain',
 });
 
-const LogoText = styled('span', ({ $isOpen, $isDarkMode }: { $isOpen: boolean; $isDarkMode: boolean }) => ({
+const LogoText = styled<'span', { $isOpen: boolean; $isDarkMode: boolean }>('span', ({ $isOpen, $isDarkMode }) => ({
   display: $isOpen ? 'block' : 'none',
   color: $isDarkMode ? '#f3f4f6' : '#111827',
   fontWeight: '600',
 }));
 
-const VersionText = styled('div', ({ $isOpen, $isDarkMode }: { $isOpen: boolean; $isDarkMode: boolean }) => ({
+const VersionText = styled<'div', { $isOpen: boolean; $isDarkMode: boolean }>('div', ({ $isOpen, $isDarkMode }) => ({
   display: $isOpen ? 'block' : 'none',
   fontSize: '11px',
   color: $isDarkMode ? '#6b7280' : '#9ca3af',
@@ -73,7 +73,7 @@ const Content = styled('div', {
   padding: '8px',
 });
 
-const Footer = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const Footer = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   padding: '16px',
   borderTop: $isDarkMode ? '1px solid #374151' : '1px solid #e5e7eb',
   backgroundColor: $isDarkMode ? '#111827' : '#ffffff',
@@ -89,7 +89,7 @@ const NavButton = styled(Button, {
   marginBottom: '4px',
 });
 
-const SectionTitle = styled('h3', ({ $isOpen, $isDarkMode }: { $isOpen: boolean; $isDarkMode: boolean }) => ({
+const SectionTitle = styled<'h3', { $isOpen: boolean; $isDarkMode: boolean }>('h3', ({ $isOpen, $isDarkMode }) => ({
   fontSize: '12px',
   fontWeight: 700,
   textTransform: 'uppercase',
@@ -108,7 +108,7 @@ const SettingsButton = styled(Button, {
   textAlign: 'left',
 });
 
-const UserInfo = styled('div', ({ $isOpen, $isDarkMode }: { $isOpen: boolean; $isDarkMode: boolean }) => ({
+const UserInfo = styled<'div', { $isOpen: boolean; $isDarkMode: boolean }>('div', ({ $isOpen, $isDarkMode }) => ({
   display: $isOpen ? 'flex' : 'none',
   alignItems: 'center',
   gap: '12px',
@@ -124,7 +124,7 @@ const UserAvatar = styled('img', {
   borderRadius: '50%',
 });
 
-const UserName = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const UserName = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   fontSize: '14px',
   fontWeight: '500',
   color: $isDarkMode ? '#f3f4f6' : '#111827',
@@ -132,9 +132,8 @@ const UserName = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
 
 const Sidebar: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const dispatch = useDispatch<AppDispatch>();
-  const { isOpen, activeSection } = useSelector(
+  const { isOpen, activeSection: _activeSection } = useSelector(
     (state: RootState) => state.sidebar
   );
   const { user } = useSelector((state: RootState) => state.auth);
@@ -274,10 +273,10 @@ const Sidebar: React.FC = () => {
           </div>
         )}
         {user && (
-          <UserInfo $isOpen={isOpen}>
+          <UserInfo $isOpen={isOpen} $isDarkMode={isDarkMode}>
             {user.picture && <UserAvatar src={user.picture} alt={user.name} />}
             <div style={{ flex: 1 }}>
-              <UserName>{user.name}</UserName>
+              <UserName $isDarkMode={isDarkMode}>{user.name}</UserName>
               <div style={{ fontSize: '12px', color: '#6b7280' }}>{user.email}</div>
             </div>
           </UserInfo>

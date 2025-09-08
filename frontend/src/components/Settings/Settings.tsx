@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { styled } from 'baseui';
 import { Heading, HeadingLevel } from 'baseui/heading';
 import { Checkbox, LABEL_PLACEMENT } from 'baseui/checkbox';
 import { Button, KIND, SIZE } from 'baseui/button';
 import { Textarea } from 'baseui/textarea';
-import { Notification, KIND as NotificationKind } from 'baseui/notification';
-import { RootState, AppDispatch } from '../../store';
-import { toggleDarkMode } from '../../store/settingsSlice';
+import { KIND as NotificationKind } from 'baseui/notification';
+import { RootState } from '../../store';
 import * as settingsService from '../../services/settings';
+import ThemeSelector from '../Common/ThemeSelector';
 
-const Container = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const Container = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   height: '100%',
   backgroundColor: $isDarkMode ? '#1a1a1a' : '#f5f5f5',
   padding: '32px',
@@ -19,7 +19,7 @@ const Container = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => (
   overflowY: 'auto',
 }));
 
-const Card = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const Card = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   backgroundColor: $isDarkMode ? '#2d2d2d' : '#ffffff',
   borderRadius: '12px',
   padding: '24px',
@@ -33,7 +33,7 @@ const Section = styled('div', {
   marginBottom: '32px',
 });
 
-const SectionTitle = styled('h3', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const SectionTitle = styled<'h3', { $isDarkMode: boolean }>('h3', ({ $isDarkMode }) => ({
   fontSize: '18px',
   fontWeight: '600',
   marginBottom: '16px',
@@ -41,7 +41,7 @@ const SectionTitle = styled('h3', ({ $isDarkMode }: { $isDarkMode: boolean }) =>
   transition: 'color 0.3s ease',
 }));
 
-const SectionDescription = styled('p', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const SectionDescription = styled<'p', { $isDarkMode: boolean }>('p', ({ $isDarkMode }) => ({
   fontSize: '14px',
   color: $isDarkMode ? '#a0a0a0' : '#6b7280',
   marginBottom: '20px',
@@ -56,7 +56,7 @@ const SettingRow = styled('div', {
   borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
 });
 
-const SettingLabel = styled('label', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const SettingLabel = styled<'label', { $isDarkMode: boolean }>('label', ({ $isDarkMode }) => ({
   fontSize: '14px',
   fontWeight: '500',
   color: $isDarkMode ? '#e0e0e0' : '#374151',
@@ -64,7 +64,7 @@ const SettingLabel = styled('label', ({ $isDarkMode }: { $isDarkMode: boolean })
   transition: 'color 0.3s ease',
 }));
 
-const SettingDescription = styled('span', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const SettingDescription = styled<'span', { $isDarkMode: boolean }>('span', ({ $isDarkMode }) => ({
   fontSize: '12px',
   color: $isDarkMode ? '#808080' : '#9ca3af',
   display: 'block',
@@ -79,10 +79,8 @@ const ButtonContainer = styled('div', {
 });
 
 const Settings: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const { isDarkMode } = useSelector((state: RootState) => state.settings);
-  const { user } = useSelector((state: RootState) => state.auth);
   
   const [customPrompt, setCustomPrompt] = useState('');
   const [originalPrompt, setOriginalPrompt] = useState('');
@@ -143,9 +141,6 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleDarkModeToggle = () => {
-    dispatch(toggleDarkMode());
-  };
 
   const handleDismiss = () => {
     navigate(-1); // Go back to previous page
@@ -181,38 +176,13 @@ const Settings: React.FC = () => {
           <SettingRow>
             <div style={{ flex: 1 }}>
               <SettingLabel $isDarkMode={isDarkMode}>
-                Dark Mode
+                Theme
                 <SettingDescription $isDarkMode={isDarkMode}>
-                  Switch between light and dark themes
+                  Choose your preferred visual theme
                 </SettingDescription>
               </SettingLabel>
             </div>
-            <Checkbox
-              checked={isDarkMode}
-              onChange={handleDarkModeToggle}
-              labelPlacement={LABEL_PLACEMENT.right}
-              overrides={{
-                Root: {
-                  style: {
-                    alignItems: 'center',
-                  },
-                },
-                Checkmark: {
-                  style: {
-                    backgroundColor: isDarkMode ? '#3b82f6' : undefined,
-                    borderColor: isDarkMode ? '#3b82f6' : undefined,
-                  },
-                },
-                Label: {
-                  style: {
-                    color: isDarkMode ? '#e0e0e0' : '#374151',
-                    fontSize: '14px',
-                  },
-                },
-              }}
-            >
-              {isDarkMode ? 'Enabled' : 'Disabled'}
-            </Checkbox>
+            <ThemeSelector size="default" showLabel={false} />
           </SettingRow>
         </Section>
 

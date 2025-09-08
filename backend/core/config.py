@@ -58,8 +58,10 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = load_secret("google-oauth-client-id", "")
     GOOGLE_CLIENT_SECRET: str = load_secret("google-oauth-client-secret", "")
     
-    # Redis (for session management)
-    REDIS_URL: str = "redis://localhost:6379"
+    # Redis (for session management and caching)
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
+    REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
+    REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
     
     # Firestore (for data persistence)
     FIRESTORE_COLLECTION_USERS: str = "users"
@@ -74,3 +76,7 @@ class Settings(BaseSettings):
         case_sensitive = True
 
 settings = Settings()
+
+def get_settings() -> Settings:
+    """Get application settings."""
+    return settings

@@ -9,7 +9,7 @@ import { Tag, KIND as TagKind } from 'baseui/tag';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 
-const MessageContainer = styled('div', ({ $role, $isDarkMode }: { $role: string; $isDarkMode: boolean }) => ({
+const MessageContainer = styled<'div', { $role: string; $isDarkMode: boolean }>('div', ({ $role, $isDarkMode }) => ({
   display: 'flex',
   gap: '12px',
   padding: '12px',
@@ -21,7 +21,7 @@ const MessageContainer = styled('div', ({ $role, $isDarkMode }: { $role: string;
   transition: 'background-color 0.3s ease, border-color 0.3s ease',
 }));
 
-const MessageContent = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const MessageContent = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   flex: 1,
   fontSize: '14px',
   lineHeight: '1.6',
@@ -51,7 +51,7 @@ const MessageContent = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean })
   transition: 'color 0.3s ease',
 }));
 
-const ToolCallContainer = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const ToolCallContainer = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   marginTop: '8px',
   padding: '8px',
   backgroundColor: $isDarkMode ? '#404040' : '#f5f5f5',
@@ -76,7 +76,7 @@ const StreamingIndicator = styled('span', {
   },
 });
 
-const CopyButton = styled('button', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const CopyButton = styled<'button', { $isDarkMode: boolean }>('button', ({ $isDarkMode }) => ({
   display: 'inline-flex',
   alignItems: 'center',
   gap: '4px',
@@ -177,8 +177,9 @@ const Message: React.FC<MessageProps> = ({ message, isStreaming = false }) => {
       <MessageContent $isDarkMode={isDarkMode}>
         <ReactMarkdown
           components={{
-            code({ node, inline, className, children, ...props }) {
+            code({ node, className, children, ...props }: any) {
               const match = /language-(\w+)/.exec(className || '');
+              const inline = !className || !match;
               return !inline && match ? (
                 <SyntaxHighlighter
                   style={oneDark}

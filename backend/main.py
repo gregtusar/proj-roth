@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.config import settings
-from api import auth, chat, lists_firestore as lists, agent, maps, sessions, query, videos, visualize, documents, campaigns, document_links
+from api import auth, chat, lists_firestore as lists, agent, maps, sessions, query, videos, visualize, documents, campaigns, document_links, crm
 from api import settings as settings_api
 from core.websocket import sio, sio_app
 
@@ -21,7 +21,29 @@ from core.websocket import sio, sio_app
 async def lifespan(app: FastAPI):
     # Startup
     print(f"Starting {settings.APP_NAME} v{settings.VERSION}")
+    
+    # Initialize voter index in background
+    try:
+        from services.voter_index_service import VoterIndexService
+        import asyncio
+        
+        async def init_index():
+            try:
+                voter_index = VoterIndexService()
+                print("Initializing voter name index in background...")
+                await voter_index.initialize()
+                stats = await voter_index.get_stats()
+                print(f"Voter index initialized: {stats}")
+            except Exception as e:
+                print(f"Failed to initialize voter index: {e}")
+        
+        # Start initialization in background
+        asyncio.create_task(init_index())
+    except Exception as e:
+        print(f"Error starting voter index initialization: {e}")
+    
     yield
+    
     # Shutdown
     print("Shutting down...")
 
@@ -55,6 +77,12 @@ app.include_router(settings_api.router, prefix="/api", tags=["Settings"])
 app.include_router(documents.router, prefix="/api", tags=["Documents"])
 app.include_router(document_links.router, prefix="/api/document-links", tags=["Document Links"])
 app.include_router(campaigns.router, prefix="/api", tags=["Campaigns"])
+app.include_router(crm.router, tags=["CRM"])
+
+# Debug routes (only in development)
+if settings.DEBUG or os.getenv("ENABLE_DEBUG_ROUTES") == "true":
+    from api import debug
+    app.include_router(debug.router, prefix="/api", tags=["Debug"])
 
 # Mount Socket.IO app
 app.mount("/socket.io", sio_app)

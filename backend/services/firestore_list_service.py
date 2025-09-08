@@ -20,7 +20,7 @@ class FirestoreListService:
             self.client = firestore.AsyncClient(project=self.project_id)
             
             # Collection reference
-            self.lists_collection = self.client.collection('voter_lists')
+            self.lists_collection = self.client.collection('lists')
             
             self.connected = True
             print(f"[Firestore Lists] Service initialized successfully for project: {self.project_id}")

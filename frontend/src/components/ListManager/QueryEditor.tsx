@@ -41,13 +41,6 @@ const StyledEditor = styled('div', {
   },
 });
 
-const ButtonContainer = styled('div', {
-  marginTop: '12px',
-  display: 'flex',
-  justifyContent: 'flex-end',
-  gap: '8px',
-});
-
 interface QueryEditorProps {
   list: VoterList;
 }
@@ -133,9 +126,9 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ list }) => {
       <EditorHeader>
         <EditorTitle>SQL Query</EditorTitle>
         <ButtonGroup size={SIZE.mini}>
-          {!isEditing ? (
-            <>
+          {!isEditing ? [
               <Button
+                key="regenerate"
                 onClick={handleRegenerateQuery}
                 kind={KIND.tertiary}
                 size={SIZE.mini}
@@ -156,15 +149,17 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ list }) => {
                 }}
               >
                 Regenerate SQL
-              </Button>
+              </Button>,
               <Button
+                key="edit"
                 onClick={() => setIsEditing(true)}
                 kind={KIND.secondary}
                 size={SIZE.mini}
               >
                 Edit
-              </Button>
+              </Button>,
               <Button
+                key="run"
                 onClick={handleRun}
                 kind={KIND.primary}
                 size={SIZE.mini}
@@ -172,18 +167,18 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ list }) => {
               >
                 Run Query
               </Button>
-            </>
-          ) : (
-            <>
+          ] : [
               <Button 
+                key="cancel"
                 onClick={handleCancel} 
                 kind={KIND.tertiary} 
                 size={SIZE.mini}
                 disabled={isSaving}
               >
                 Cancel
-              </Button>
+              </Button>,
               <Button 
+                key="save"
                 onClick={handleSave} 
                 kind={KIND.primary} 
                 size={SIZE.mini}
@@ -192,8 +187,7 @@ const QueryEditor: React.FC<QueryEditorProps> = ({ list }) => {
               >
                 Save
               </Button>
-            </>
-          )}
+          ]}
         </ButtonGroup>
       </EditorHeader>
 

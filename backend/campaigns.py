@@ -135,9 +135,12 @@ class CampaignManager:
         """Convert Google Docs content to HTML for email."""
         html_parts = []
         
+        # Store inline objects for reference
+        inline_objects = document.get('inlineObjects', {})
+        
         for element in document.get('body', {}).get('content', []):
             if 'paragraph' in element:
-                paragraph_html = self._process_paragraph(element['paragraph'])
+                paragraph_html = self._process_paragraph(element['paragraph'], inline_objects)
                 if paragraph_html:
                     html_parts.append(paragraph_html)
         
@@ -155,7 +158,7 @@ class CampaignManager:
         
         return html_content
     
-    def _process_paragraph(self, paragraph: Dict) -> str:
+    def _process_paragraph(self, paragraph: Dict, inline_objects: Dict = None) -> str:
         """Process a paragraph element into HTML."""
         text_parts = []
         
@@ -180,6 +183,14 @@ class CampaignManager:
                     styled_text = f"<u>{styled_text}</u>"
                 
                 text_parts.append(styled_text)
+            
+            elif 'inlineObjectElement' in element and inline_objects:
+                # Process inline images
+                inline_obj_id = element['inlineObjectElement'].get('inlineObjectId')
+                if inline_obj_id and inline_obj_id in inline_objects:
+                    image_html = self._process_inline_image(inline_objects[inline_obj_id])
+                    if image_html:
+                        text_parts.append(image_html)
         
         if text_parts:
             full_text = ''.join(text_parts)
@@ -188,7 +199,11 @@ class CampaignManager:
             style = paragraph.get('paragraphStyle', {})
             named_style = style.get('namedStyleType', 'NORMAL_TEXT')
             
-            if named_style == 'HEADING_1':
+            # Check if this paragraph contains only images
+            if all('<img' in part for part in text_parts):
+                # Return images without paragraph wrapper for better formatting
+                return full_text
+            elif named_style == 'HEADING_1':
                 return f"<h1>{full_text}</h1>"
             elif named_style == 'HEADING_2':
                 return f"<h2>{full_text}</h2>"
@@ -198,6 +213,59 @@ class CampaignManager:
                 return f"<p>{full_text}</p>"
         
         return ""
+    
+    def _process_inline_image(self, inline_object: Dict) -> str:
+        """Process an inline image object from Google Docs."""
+        try:
+            # Get the embedded object properties
+            embedded_object = inline_object.get('inlineObjectProperties', {}).get('embeddedObject', {})
+            
+            # Extract image properties
+            image_properties = embedded_object.get('imageProperties', {})
+            content_uri = image_properties.get('contentUri', '')
+            
+            if not content_uri:
+                # Try to get the source URI as fallback
+                content_uri = image_properties.get('sourceUri', '')
+            
+            if content_uri:
+                # Get dimensions if available
+                size = embedded_object.get('size', {})
+                width = size.get('width', {}).get('magnitude', 0)
+                height = size.get('height', {}).get('magnitude', 0)
+                
+                # Convert points to pixels (1 point = 1.333 pixels approximately)
+                if width:
+                    width = int(width * 1.333)
+                if height:
+                    height = int(height * 1.333)
+                
+                # Build the image tag with responsive styling
+                style_parts = [
+                    "max-width: 100%",
+                    "height: auto",
+                    "display: block",
+                    "margin: 20px auto"
+                ]
+                
+                # Add specific dimensions if available, but keep responsive
+                if width and width > 0:
+                    # Cap width at 600px for email
+                    display_width = min(width, 600)
+                    style_parts.append(f"width: {display_width}px")
+                
+                style = "; ".join(style_parts)
+                
+                # Log image processing
+                logger.info(f"[GOOGLE_DOC] Processing image: {content_uri[:50]}... (width: {width}px)")
+                
+                return f'<img src="{content_uri}" style="{style}" alt="Image from document" />'
+            
+            return ""
+            
+        except Exception as e:
+            logger.error(f"[GOOGLE_DOC] Error processing inline image: {str(e)}")
+            return ""
     
     def create_campaign(self, campaign_data: Dict) -> str:
         """Create a new campaign in Firestore."""
@@ -264,14 +332,11 @@ class CampaignManager:
         """Get recipients from a saved list with their emails from BigQuery."""
         logger.info(f"[RECIPIENTS] Getting recipients for list {list_id}")
         
-        # Get the saved list - check both collections (lists and voter_lists)
+        # Get the saved list
         list_doc = self.db.collection('lists').document(list_id).get()
         if not list_doc.exists:
-            # Try the voter_lists collection
-            list_doc = self.db.collection('voter_lists').document(list_id).get()
-            if not list_doc.exists:
-                logger.error(f"[RECIPIENTS] List {list_id} not found in either collection")
-                return []
+            logger.error(f"[RECIPIENTS] List {list_id} not found")
+            return []
         
         list_data = list_doc.to_dict()
         logger.info(f"[RECIPIENTS] List data keys: {list_data.keys()}")

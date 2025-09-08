@@ -20,7 +20,7 @@ const ChatItem = styled(Button, {
   textAlign: 'left',
 });
 
-const ChatTitle = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const ChatTitle = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   fontSize: '14px',
   fontWeight: 500,
   color: $isDarkMode ? '#f3f4f6' : '#111827',
@@ -31,13 +31,13 @@ const ChatTitle = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => (
   paddingRight: '8px',
 }));
 
-const ChatDate = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const ChatDate = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   fontSize: '12px',
   color: $isDarkMode ? '#9ca3af' : '#6b7280',
   marginTop: '2px',
 }));
 
-const EmptyState = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const EmptyState = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   padding: '16px',
   fontSize: '14px',
   color: $isDarkMode ? '#9ca3af' : '#6b7280',
@@ -51,7 +51,7 @@ const ChatItemContainer = styled('div', {
   gap: '4px',
 });
 
-const EditableTitle = styled('input', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const EditableTitle = styled<'input', { $isDarkMode: boolean }>('input', ({ $isDarkMode }) => ({
   fontSize: '14px',
   fontWeight: 500,
   color: $isDarkMode ? '#f3f4f6' : '#111827',
@@ -186,7 +186,7 @@ const RecentChats: React.FC<RecentChatsProps> = ({ isCompact = false }) => {
       {sessions.slice(0, 10).map((session, index) => (
         <div key={session.session_id} style={{ position: 'relative', zIndex: sessions.length - index }}>
           <ChatItem
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent) => {
               console.log('[ChatItem] onClick fired, event target:', e.target);
               // Don't navigate if clicking on the menu button (check for data-menu-button attribute)
               const target = e.target as HTMLElement;
@@ -222,14 +222,14 @@ const RecentChats: React.FC<RecentChatsProps> = ({ isCompact = false }) => {
                   <EditableTitle
                     $isDarkMode={isDarkMode}
                     value={editingName}
-                    onChange={(e) => setEditingName(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingName(e.target.value)}
                     onBlur={handleSaveRename}
-                    onKeyPress={(e) => {
+                    onKeyPress={(e: React.KeyboardEvent) => {
                       if (e.key === 'Enter') {
                         handleSaveRename();
                       }
                     }}
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
                     autoFocus
                   />
                 ) : (

@@ -5,7 +5,7 @@ import { RootState } from '../../store';
 import Message from './Message';
 import { Spinner } from 'baseui/spinner';
 
-const Container = styled('div', ({ $isDarkMode }: { $isDarkMode?: boolean }) => ({
+const Container = styled<'div', { $isDarkMode?: boolean }>('div', ({ $isDarkMode }) => ({
   flex: 1,
   overflowY: 'auto',
   padding: '24px',
@@ -22,7 +22,7 @@ const LoadingContainer = styled('div', {
   padding: '20px',
 });
 
-const EmptyState = styled('div', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const EmptyState = styled<'div', { $isDarkMode: boolean }>('div', ({ $isDarkMode }) => ({
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -39,14 +39,14 @@ const EmptyStateIcon = styled('div', {
   marginBottom: '16px',
 });
 
-const EmptyStateText = styled('p', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const EmptyStateText = styled<'p', { $isDarkMode: boolean }>('p', ({ $isDarkMode }) => ({
   fontSize: '16px',
   color: $isDarkMode ? '#e0e0e0' : '#374151',
   transition: 'color 0.3s ease',
   marginBottom: '8px',
 }));
 
-const EmptyStateHint = styled('p', ({ $isDarkMode }: { $isDarkMode: boolean }) => ({
+const EmptyStateHint = styled<'p', { $isDarkMode: boolean }>('p', ({ $isDarkMode }) => ({
   fontSize: '14px',
   color: $isDarkMode ? '#808080' : '#999',
   transition: 'color 0.3s ease',
@@ -103,7 +103,7 @@ const MessageList: React.FC = () => {
       
       {isLoading && !streamingMessage && (
         <LoadingContainer>
-          <Spinner size={32} />
+          <Spinner $size={32} />
         </LoadingContainer>
       )}
     </Container>

@@ -279,7 +279,7 @@ async def invoke_agent_tool(tool_name: str, args: dict) -> dict:
     try:
         from agents.nj_voter_chat_adk.bigquery_tool import BigQueryReadOnlyTool
         from agents.nj_voter_chat_adk.geocoding_tool import GeocodingTool
-        from agents.nj_voter_chat_adk.search_tool import GoogleSearchTool
+        from agents.nj_voter_chat_adk.google_search_tool import GoogleSearchTool
         
         tools = {
             "bigquery_select": BigQueryReadOnlyTool(),

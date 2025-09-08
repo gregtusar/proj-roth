@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from './store';
@@ -21,6 +21,7 @@ import VideoAssets from './components/VideoAssets/VideoAssets';
 import DocumentAssets from './components/DocumentAssets/DocumentAssets';
 import Visualizer from './components/Visualizer/Visualizer';
 import CampaignManager from './components/campaigns/CampaignManager';
+import VoterCRM from './components/VoterCRM/VoterCRM';
 import PrivacyPolicy from './components/Legal/PrivacyPolicy';
 import TermsOfService from './components/Legal/TermsOfService';
 
@@ -32,11 +33,7 @@ function App() {
     // Log version info on app startup
     logVersionInfo();
     
-    // Initialize dark mode preference
-    const isDarkMode = localStorage.getItem('darkMode') === 'true';
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark-mode');
-    }
+    // Theme initialization is now handled in index.tsx ThemeWrapper
     
     // Try to refresh token on app load
     const token = localStorage.getItem('access_token');
@@ -107,6 +104,7 @@ function App() {
         <Route path="videos" element={<VideoAssets />} />
         <Route path="documents" element={<DocumentAssets />} />
         <Route path="campaign" element={<CampaignManager />} />
+        <Route path="voter-crm" element={<VoterCRM />} />
         <Route path="street-map" element={<StreetMap />} />
         <Route path="visualizer" element={<Visualizer />} />
         <Route path="settings" element={<Settings />} />

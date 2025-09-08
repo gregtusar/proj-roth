@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { XMarkIcon, PencilIcon, CheckIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, PencilIcon, CheckIcon, XCircleIcon } from '../Common/Icons';
 
 interface DocumentViewerProps {
   document: {

@@ -26,7 +26,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   if (isLoading) {
     return (
       <LoadingContainer>
-        <Spinner size={96} />
+        <Spinner $size={96} />
       </LoadingContainer>
     );
   }

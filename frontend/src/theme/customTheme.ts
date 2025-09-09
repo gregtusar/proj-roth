@@ -50,10 +50,21 @@ const customDarkPrimitives: Partial<ThemePrimitives> = {
   primary500: '#4285f4',
   primary600: '#669df6',
   primary700: '#8ab4f8',
+  
+  // Use mono colors for backgrounds in dark mode
+  mono100: '#1a1a1a',  // darkest
+  mono200: '#2d2d2d',
+  mono300: '#404040',
+  mono400: '#525252',
+  mono500: '#666666',
+  mono600: '#808080',
+  mono700: '#999999',
+  mono800: '#b3b3b3',
+  mono900: '#cccccc',
+  mono1000: '#ffffff', // lightest
 };
 
-// Create light theme - Base UI v14 doesn't support overrides in createTheme
-// Typography will use the primaryFontFamily from primitives
+// Create light theme
 export const customLightTheme = createTheme(customLightPrimitives);
 
 // Create dark theme

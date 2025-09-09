@@ -24,11 +24,12 @@ const Title = styled('h3', ({ $theme }) => ({
   margin: 0,
 }));
 
-const Section = styled('div', () => ({
-  marginBottom: '32px',
-  padding: '20px',
-  backgroundColor: '#f5f5f5',
+const Section = styled('div', ({ $theme }) => ({
+  marginBottom: '24px',
+  padding: '16px',
+  backgroundColor: $theme.colors.backgroundSecondary,
   borderRadius: '8px',
+  border: `1px solid ${$theme.colors.borderOpaque}`,
 }));
 
 const SectionTitle = styled('h4', ({ $theme }) => ({
@@ -92,6 +93,29 @@ const JsonDisplay = styled('pre', ({ $theme }) => ({
   lineHeight: 1.5,
 }));
 
+const ScrollableInfoSection = styled('div', ({ $theme }) => ({
+  maxHeight: '500px',
+  overflowY: 'auto',
+  padding: '16px',
+  backgroundColor: $theme.colors.backgroundSecondary,
+  borderRadius: '8px',
+  border: `1px solid ${$theme.colors.borderOpaque}`,
+  '&::-webkit-scrollbar': {
+    width: '8px',
+  },
+  '&::-webkit-scrollbar-track': {
+    backgroundColor: $theme.colors.backgroundTertiary,
+    borderRadius: '4px',
+  },
+  '&::-webkit-scrollbar-thumb': {
+    backgroundColor: $theme.colors.contentTertiary,
+    borderRadius: '4px',
+    ':hover': {
+      backgroundColor: $theme.colors.contentSecondary,
+    },
+  },
+}));
+
 const RawDataToggle = styled('button', ({ $theme }) => ({
   display: 'flex',
   alignItems: 'center',
@@ -136,13 +160,16 @@ const PDLEnrichment: React.FC<PDLEnrichmentProps> = ({ enrichmentData, onRefresh
       return (
         <NoDataMessage>
           <p>No PDL enrichment data available</p>
+          <p style={{ fontSize: '12px', marginTop: '8px', opacity: 0.8 }}>
+            People Data Labs enrichment provides professional and contact information
+          </p>
           <Button
             onClick={handleRefresh}
             startEnhancer={<ArrowLeft size={20} />}
             kind="secondary"
             style={{ marginTop: '16px' }}
           >
-            Fetch Enrichment Data
+            Fetch Enrichment Data ($0.25)
           </Button>
         </NoDataMessage>
       );
@@ -167,7 +194,7 @@ const PDLEnrichment: React.FC<PDLEnrichmentProps> = ({ enrichmentData, onRefresh
     const education = pdl_data.education || [];
 
     return (
-      <>
+      <ScrollableInfoSection>
         {/* Status Section */}
         <Section>
           <SectionTitle>Enrichment Status</SectionTitle>
@@ -193,11 +220,11 @@ const PDLEnrichment: React.FC<PDLEnrichmentProps> = ({ enrichmentData, onRefresh
               <InfoLabel>Data Availability</InfoLabel>
               <InfoValue>
                 <StatusBadge>
-                  {has_email && <Tag closeable={false} kind="positive">Email</Tag>}
-                  {has_phone && <Tag closeable={false} kind="positive">Phone</Tag>}
-                  {has_linkedin && <Tag closeable={false} kind="positive">LinkedIn</Tag>}
-                  {has_job_info && <Tag closeable={false} kind="positive">Job</Tag>}
-                  {has_education && <Tag closeable={false} kind="positive">Education</Tag>}
+                  {has_email && <Tag closeable={false} kind="positive" overrides={{ Root: { style: { marginRight: '4px', marginBottom: '4px' } } }}>Email</Tag>}
+                  {has_phone && <Tag closeable={false} kind="positive" overrides={{ Root: { style: { marginRight: '4px', marginBottom: '4px' } } }}>Phone</Tag>}
+                  {has_linkedin && <Tag closeable={false} kind="positive" overrides={{ Root: { style: { marginRight: '4px', marginBottom: '4px' } } }}>LinkedIn</Tag>}
+                  {has_job_info && <Tag closeable={false} kind="positive" overrides={{ Root: { style: { marginRight: '4px', marginBottom: '4px' } } }}>Job</Tag>}
+                  {has_education && <Tag closeable={false} kind="positive" overrides={{ Root: { style: { marginRight: '4px', marginBottom: '4px' } } }}>Education</Tag>}
                 </StatusBadge>
               </InfoValue>
             </InfoItem>
@@ -214,9 +241,17 @@ const PDLEnrichment: React.FC<PDLEnrichmentProps> = ({ enrichmentData, onRefresh
                   <InfoLabel>Emails</InfoLabel>
                   <InfoValue>
                     {emails.map((email: any, idx: number) => (
-                      <div key={idx}>
-                        {email.address}
-                        {email.type && <Tag closeable={false} kind="neutral">{email.type}</Tag>}
+                      <div key={idx} style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{typeof email === 'string' ? email : (email.address || email)}</span>
+                        {email.type && (
+                          <Tag 
+                            closeable={false} 
+                            kind="neutral" 
+                            overrides={{ Root: { style: { height: '20px', fontSize: '11px' } } }}
+                          >
+                            {email.type}
+                          </Tag>
+                        )}
                       </div>
                     ))}
                   </InfoValue>
@@ -227,7 +262,9 @@ const PDLEnrichment: React.FC<PDLEnrichmentProps> = ({ enrichmentData, onRefresh
                   <InfoLabel>Phone Numbers</InfoLabel>
                   <InfoValue>
                     {phones.map((phone: any, idx: number) => (
-                      <div key={idx}>{phone}</div>
+                      <div key={idx} style={{ marginBottom: '4px' }}>
+                        {typeof phone === 'string' ? phone : (phone.number || phone)}
+                      </div>
                     ))}
                   </InfoValue>
                 </InfoItem>
@@ -272,7 +309,12 @@ const PDLEnrichment: React.FC<PDLEnrichmentProps> = ({ enrichmentData, onRefresh
                 <InfoItem key={idx}>
                   <InfoLabel>{profile.network || 'Profile'}</InfoLabel>
                   <InfoValue>
-                    <a href={profile.url} target="_blank" rel="noopener noreferrer">
+                    <a 
+                      href={profile.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      style={{ color: 'inherit', textDecoration: 'underline' }}
+                    >
                       {profile.username || profile.url}
                     </a>
                   </InfoValue>
@@ -310,7 +352,7 @@ const PDLEnrichment: React.FC<PDLEnrichmentProps> = ({ enrichmentData, onRefresh
             <JsonDisplay>{JSON.stringify(pdl_data, null, 2)}</JsonDisplay>
           )}
         </Section>
-      </>
+      </ScrollableInfoSection>
     );
   };
 

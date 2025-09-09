@@ -110,8 +110,10 @@ const VotingHistory: React.FC<VotingHistoryProps> = ({ history }) => {
   const { primaries = [], generals = [] } = history;
 
   // Calculate summary statistics
-  const totalPrimaries = primaries.filter((p: any) => p.voted).length;
-  const totalGenerals = generals.filter((g: any) => g.voted).length;
+  const totalPrimariesVoted = primaries.filter((p: any) => p.voted).length;
+  const totalPrimariesAvailable = primaries.length;
+  const totalGeneralsVoted = generals.filter((g: any) => g.voted).length;
+  const totalGeneralsAvailable = generals.length;
 
   // Combine all years for display
   const allYears = new Set([
@@ -133,15 +135,15 @@ const VotingHistory: React.FC<VotingHistoryProps> = ({ history }) => {
       <Summary>
         <SummaryItem>
           <SummaryLabel>Primary Elections</SummaryLabel>
-          <SummaryValue>{totalPrimaries}</SummaryValue>
+          <SummaryValue>{totalPrimariesVoted} / {totalPrimariesAvailable}</SummaryValue>
         </SummaryItem>
         <SummaryItem>
           <SummaryLabel>General Elections</SummaryLabel>
-          <SummaryValue>{totalGenerals}</SummaryValue>
+          <SummaryValue>{totalGeneralsVoted} / {totalGeneralsAvailable}</SummaryValue>
         </SummaryItem>
         <SummaryItem>
           <SummaryLabel>Total Participation</SummaryLabel>
-          <SummaryValue>{totalPrimaries + totalGenerals}</SummaryValue>
+          <SummaryValue>{totalPrimariesVoted + totalGeneralsVoted} / {totalPrimariesAvailable + totalGeneralsAvailable}</SummaryValue>
         </SummaryItem>
       </Summary>
 

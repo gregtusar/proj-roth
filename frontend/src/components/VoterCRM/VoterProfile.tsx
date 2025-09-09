@@ -111,10 +111,13 @@ const VoterProfile: React.FC<VoterProfileProps> = ({ masterId, onClose }) => {
       const token = localStorage.getItem('access_token');
       const searchQuery = `Find all available information about ${voterProfile.basic_info.name.first} ${voterProfile.basic_info.name.last} from ${voterProfile.current_address.city}, NJ`;
       
-      // Use the agent to search for additional information
+      // Use the agent to search and analyze information
       const response = await axios.post(
         '/api/agent/search',
-        { query: searchQuery },
+        { 
+          query: searchQuery,
+          analyze: true  // Request AI analysis of results
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -122,9 +125,11 @@ const VoterProfile: React.FC<VoterProfileProps> = ({ masterId, onClose }) => {
         setSearchResults(response.data);
       }
     } catch (err) {
-      console.log('Could not fetch additional search results');
+      console.error('Error fetching search results:', err);
+      setSearchResults({ error: 'Unable to fetch additional information' });
     }
   };
+
 
   const handleEventAdded = (newEvent: any) => {
     setEvents([newEvent, ...events]);

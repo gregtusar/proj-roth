@@ -49,6 +49,7 @@ const ThemePreview = styled<'div', { $themeType: ThemeType }>('div', ({ $themeTy
     border: `2px solid ${colors.accent}`,
     background: `linear-gradient(135deg, ${colors.bg} 50%, ${colors.text} 50%)`,
     marginRight: $theme.sizing.scale300,
+    flexShrink: 0,
     boxShadow: $themeType === ThemeType.TERMINAL ? `0 0 5px ${colors.accent}` : 'none',
   };
 });
@@ -56,6 +57,7 @@ const ThemePreview = styled<'div', { $themeType: ThemeType }>('div', ({ $themeTy
 const OptionContent = styled('div', {
   display: 'flex',
   alignItems: 'center',
+  width: '100%',
 });
 
 interface ThemeSelectorProps {
@@ -128,36 +130,40 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
               width: size === 'compact' ? '140px' : '180px',
             },
           },
-          ValueContainer: {
-            component: ({ children, ...props }: any) => (
-              <div {...props}>
-                <OptionContent>
-                  <ThemePreview $themeType={currentTheme} />
-                  {children}
-                </OptionContent>
-              </div>
-            ),
-          },
           OptionContent: {
-            component: ({ option, $value, ...props }: any) => {
-              // Use $value if option is not available (for selected value display)
-              const displayOption = option || ($value && $value[0]);
-              
+            component: ({ option, ...props }: any) => {
               // Guard against undefined option
-              if (!displayOption) {
-                return null;
+              if (!option) {
+                return <div {...props} />;
               }
               
               return (
                 <div {...props}>
                   <OptionContent>
-                    <ThemePreview $themeType={displayOption.id as ThemeType} />
+                    <ThemePreview $themeType={option.id as ThemeType} />
                     <div>
-                      <div style={{ fontWeight: 500 }}>{displayOption.label || displayOption.id}</div>
-                      {displayOption.description && (
-                        <div style={{ fontSize: '11px', opacity: 0.7 }}>{displayOption.description}</div>
+                      <div style={{ fontWeight: 500 }}>{option.label}</div>
+                      {option.description && (
+                        <div style={{ fontSize: '11px', opacity: 0.7 }}>{option.description}</div>
                       )}
                     </div>
+                  </OptionContent>
+                </div>
+              );
+            },
+          },
+          SingleValue: {
+            component: ({ $value, ...props }: any) => {
+              const selectedOption = $value && $value[0];
+              if (!selectedOption) {
+                return <div {...props}>Select theme</div>;
+              }
+              
+              return (
+                <div {...props}>
+                  <OptionContent>
+                    <ThemePreview $themeType={selectedOption.id as ThemeType} />
+                    <span>{selectedOption.label}</span>
                   </OptionContent>
                 </div>
               );

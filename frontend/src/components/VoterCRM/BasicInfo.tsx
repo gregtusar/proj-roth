@@ -62,8 +62,36 @@ const SearchResults = styled('div', ({ $theme }) => ({
   fontSize: '14px',
   lineHeight: 1.6,
   color: $theme.colors.contentPrimary,
-  maxHeight: '300px',
+  maxHeight: '400px',
   overflow: 'auto',
+}));
+
+const AgentSummary = styled('div', ({ $theme }) => ({
+  padding: '16px',
+  backgroundColor: $theme.colors.backgroundSecondary,
+  borderRadius: '8px',
+  marginBottom: '16px',
+  fontSize: '14px',
+  lineHeight: 1.8,
+  color: $theme.colors.contentPrimary,
+  whiteSpace: 'pre-wrap',
+}));
+
+const SourcesSection = styled('details', ({ $theme }) => ({
+  marginTop: '16px',
+  padding: '12px',
+  backgroundColor: $theme.colors.backgroundTertiary,
+  borderRadius: '6px',
+  cursor: 'pointer',
+  '& summary': {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: $theme.colors.contentSecondary,
+    userSelect: 'none',
+    ':hover': {
+      color: $theme.colors.contentPrimary,
+    },
+  },
 }));
 
 const SearchResultItem = styled('div', ({ $theme }) => ({
@@ -231,51 +259,94 @@ const BasicInfo: React.FC<BasicInfoProps> = ({ profile, searchResults }) => {
       {searchResults && (
         <Section>
           <SectionTitle>Additional Information</SectionTitle>
-          <SearchResults>
-            {(() => {
-              // Handle different response formats
-              if (typeof searchResults === 'string') {
-                return <div>{searchResults}</div>;
-              }
-              
-              if (searchResults.error) {
-                return (
+          {(() => {
+            // Handle different response formats
+            if (typeof searchResults === 'string') {
+              return (
+                <SearchResults>
+                  <div>{searchResults}</div>
+                </SearchResults>
+              );
+            }
+            
+            if (searchResults.error) {
+              return (
+                <SearchResults>
                   <InfoLabel style={{ color: 'inherit' }}>
                     Unable to fetch additional information at this time.
                   </InfoLabel>
-                );
-              }
-              
-              if (searchResults.results && Array.isArray(searchResults.results)) {
-                if (searchResults.results.length === 0) {
-                  return (
+                </SearchResults>
+              );
+            }
+            
+            // If we have an agent summary, display it prominently
+            if (searchResults.summary) {
+              return (
+                <>
+                  <AgentSummary>
+                    {searchResults.summary}
+                  </AgentSummary>
+                  
+                  {searchResults.raw_results && searchResults.raw_results.length > 0 && (
+                    <SourcesSection>
+                      <summary>View sources ({searchResults.raw_results.length} results)</summary>
+                      <div style={{ marginTop: '12px' }}>
+                        {searchResults.raw_results.map((result: any, index: number) => (
+                          <SearchResultItem key={index}>
+                            <SearchResultTitle>{result.title}</SearchResultTitle>
+                            <SearchResultSnippet>{result.snippet}</SearchResultSnippet>
+                            {result.link && (
+                              <SearchResultLink href={result.link} target="_blank" rel="noopener noreferrer">
+                                View source →
+                              </SearchResultLink>
+                            )}
+                          </SearchResultItem>
+                        ))}
+                      </div>
+                    </SourcesSection>
+                  )}
+                </>
+              );
+            }
+            
+            // Original search results display
+            if (searchResults.results && Array.isArray(searchResults.results)) {
+              if (searchResults.results.length === 0) {
+                return (
+                  <SearchResults>
                     <InfoLabel style={{ color: 'inherit' }}>
                       No additional information found.
                     </InfoLabel>
-                  );
-                }
-                
-                return searchResults.results.map((result: any, index: number) => (
-                  <SearchResultItem key={index}>
-                    <SearchResultTitle>{result.title}</SearchResultTitle>
-                    <SearchResultSnippet>{result.snippet}</SearchResultSnippet>
-                    {result.link && (
-                      <SearchResultLink href={result.link} target="_blank" rel="noopener noreferrer">
-                        View source →
-                      </SearchResultLink>
-                    )}
-                  </SearchResultItem>
-                ));
+                  </SearchResults>
+                );
               }
               
-              // Fallback for unexpected format
               return (
+                <SearchResults>
+                  {searchResults.results.map((result: any, index: number) => (
+                    <SearchResultItem key={index}>
+                      <SearchResultTitle>{result.title}</SearchResultTitle>
+                      <SearchResultSnippet>{result.snippet}</SearchResultSnippet>
+                      {result.link && (
+                        <SearchResultLink href={result.link} target="_blank" rel="noopener noreferrer">
+                          View source →
+                        </SearchResultLink>
+                      )}
+                    </SearchResultItem>
+                  ))}
+                </SearchResults>
+              );
+            }
+            
+            // Fallback for unexpected format
+            return (
+              <SearchResults>
                 <pre style={{ fontSize: '12px', overflow: 'auto' }}>
                   {JSON.stringify(searchResults, null, 2)}
                 </pre>
-              );
-            })()}
-          </SearchResults>
+              </SearchResults>
+            );
+          })()}
         </Section>
       )}
     </>

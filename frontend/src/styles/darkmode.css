@@ -17,6 +17,14 @@
   background-color: #1a1a1a !important;
 }
 
+/* Force dark mode on body and root */
+.dark-mode,
+.dark-mode body,
+.dark-mode #root {
+  background-color: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
 /* Light mode (default) */
 :root {
   --bg-primary: #ffffff;
@@ -79,16 +87,23 @@
   color: var(--text-primary);
 }
 
-/* Apply dark mode to body and main containers */
-.dark-mode body,
-.dark-mode #root {
+/* Apply dark mode to main app container */
+.dark-mode > div,
+.dark-mode #root > div {
   background-color: var(--bg-primary) !important;
   color: var(--text-primary) !important;
 }
 
-/* Dark mode for all divs that use styled components */
-.dark-mode div[data-baseweb] {
+/* Dark mode for all Base Web styled components */
+.dark-mode [data-baseweb] {
   color: var(--text-primary);
+}
+
+/* Specific overrides for Base Web components that need background changes */
+.dark-mode [data-baseweb="block"],
+.dark-mode [data-baseweb="card"] {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
 }
 
 /* Dark mode for cards and panels */

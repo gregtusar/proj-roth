@@ -1,8 +1,122 @@
 /* Terminal Mode Styles */
 
-.terminal-mode {
+/* Apply to html element for maximum specificity */
+html.terminal-mode,
+html.terminal-mode body,
+html.terminal-mode #root,
+.terminal-mode,
+.terminal-mode body,
+.terminal-mode #root {
+  /* Force monospace font globally */
+  font-family: "JetBrains Mono", "Fira Code", Monaco, Consolas, "Courier New", monospace !important;
+  /* Very dark background */
+  background-color: #0a0a0a !important;
+  /* Green text globally */
+  color: #00ff00 !important;
   /* Add subtle glow effect to all text */
   text-shadow: 0 0 1px rgba(0, 255, 0, 0.8);
+}
+
+/* Apply terminal mode to ALL elements with maximum specificity */
+html.terminal-mode *,
+.terminal-mode * {
+  font-family: "JetBrains Mono", "Fira Code", Monaco, Consolas, "Courier New", monospace !important;
+  color: #00ff00 !important;
+}
+
+/* Force black background on ALL containers */
+html.terminal-mode div,
+html.terminal-mode section,
+html.terminal-mode article,
+html.terminal-mode aside,
+html.terminal-mode nav,
+html.terminal-mode header,
+html.terminal-mode footer,
+html.terminal-mode main,
+html.terminal-mode [data-baseweb],
+html.terminal-mode [class*="baseui"],
+html.terminal-mode [class*="css-"],
+.terminal-mode div,
+.terminal-mode section,
+.terminal-mode article,
+.terminal-mode aside,
+.terminal-mode nav,
+.terminal-mode header,
+.terminal-mode footer,
+.terminal-mode main,
+.terminal-mode [data-baseweb],
+.terminal-mode [class*="baseui"],
+.terminal-mode [class*="css-"] {
+  background-color: #0a0a0a !important;
+  color: #00ff00 !important;
+}
+
+/* Override Base UI components and Styletron styles for terminal mode */
+html.terminal-mode [data-baseweb],
+html.terminal-mode [class*="baseui"],
+html.terminal-mode div[class*="css-"],
+html.terminal-mode [style],
+.terminal-mode [data-baseweb],
+.terminal-mode [class*="baseui"],
+.terminal-mode div[class*="css-"],
+.terminal-mode [style] {
+  font-family: "JetBrains Mono", "Fira Code", Monaco, Consolas, "Courier New", monospace !important;
+  color: #00ff00 !important;
+  background-color: #0a0a0a !important;
+}
+
+/* Override inline styles */
+html.terminal-mode [style*="background"],
+html.terminal-mode [style*="color"],
+.terminal-mode [style*="background"],
+.terminal-mode [style*="color"] {
+  background-color: #0a0a0a !important;
+  color: #00ff00 !important;
+}
+
+/* Terminal mode inputs and textareas with maximum specificity */
+html.terminal-mode input,
+html.terminal-mode textarea,
+html.terminal-mode select,
+html.terminal-mode button,
+.terminal-mode input,
+.terminal-mode textarea,
+.terminal-mode select,
+.terminal-mode button {
+  font-family: "JetBrains Mono", "Fira Code", Monaco, Consolas, "Courier New", monospace !important;
+  color: #00ff00 !important;
+  background-color: #0a0a0a !important;
+  border: 1px solid #00ff00 !important;
+}
+
+/* Terminal mode for Base UI specific elements */
+html.terminal-mode [class*="baseui--input"] input,
+html.terminal-mode [class*="baseui--textarea"] textarea,
+html.terminal-mode [class*="baseui--select"],
+html.terminal-mode [class*="baseui--dropdown"],
+.terminal-mode [class*="baseui--input"] input,
+.terminal-mode [class*="baseui--textarea"] textarea,
+.terminal-mode [class*="baseui--select"],
+.terminal-mode [class*="baseui--dropdown"] {
+  font-family: "JetBrains Mono", "Fira Code", Monaco, Consolas, "Courier New", monospace !important;
+  background-color: #0a0a0a !important;
+  color: #00ff00 !important;
+  border-color: #00ff00 !important;
+}
+
+/* Chat specific overrides */
+html.terminal-mode .chat-container,
+html.terminal-mode .message-container,
+html.terminal-mode .sidebar,
+html.terminal-mode .message,
+html.terminal-mode .input-container,
+.terminal-mode .chat-container,
+.terminal-mode .message-container,
+.terminal-mode .sidebar,
+.terminal-mode .message,
+.terminal-mode .input-container {
+  background-color: #0a0a0a !important;
+  color: #00ff00 !important;
 }
 
 /* Terminal cursor animation */

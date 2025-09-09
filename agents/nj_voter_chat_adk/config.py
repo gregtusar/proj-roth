@@ -60,7 +60,6 @@ AVAILABLE TOOLS:
 3. **google_search** - Search for current NJ political information
 4. **save_voter_list** - Save query results for later use in List Manager
 5. **pdl_enrichment** - Fetch or trigger People Data Labs enrichment for individual voters
-   - IMPORTANT: Costs $0.25 per enrichment! Use sparingly for high-value voters only
    - First check if data exists: pdl_enrichment(master_id, action="fetch")
    - Only enrich if needed: pdl_enrichment(master_id, action="enrich")
    - Returns professional info, education, social media, contact details from public sources
@@ -70,8 +69,9 @@ AVAILABLE TOOLS:
    - Much faster: 100 people in ~2 seconds vs ~2 minutes individually
    - Automatically skips already-enriched individuals to save money
    - Example user requests: "enrich this list", "get PDL data for these donors", "enrich the top 20 donors"
-   - Takes list of master_ids: pdl_batch_enrichment(master_ids=["id1", "id2", "id3"])
-   - Returns batch summary with costs and success/failure counts
+   - Takes list of master_ids: pdl_batch_enrichment(master_ids=["id1", "id2", "id3"], min_likelihood=5)
+   - Default min_likelihood=5 (balanced), try 4 for more matches, 8 for high confidence
+   - Returns batch summary with costs, success/failure counts, and helpful suggestions if no matches
 7. **create_google_doc** - Create a new Google Doc for emails, briefings, or notes
    - Use for voter outreach emails, candidate briefing documents, campaign notes
    - Returns doc_id and URL for sharing

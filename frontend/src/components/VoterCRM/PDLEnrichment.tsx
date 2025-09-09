@@ -5,6 +5,7 @@ import { Spinner } from 'baseui/spinner';
 import { Tag } from 'baseui/tag';
 import { ArrowLeft, ChevronDown, ChevronRight } from 'baseui/icon';
 import { Accordion, Panel } from 'baseui/accordion';
+import PDLDataViewer from './PDLDataViewer';
 
 const Container = styled('div', {
   padding: '24px',
@@ -174,6 +175,35 @@ const PDLEnrichment: React.FC<PDLEnrichmentProps> = ({ enrichmentData, onRefresh
         </NoDataMessage>
       );
     }
+    
+    // If enrichmentData is a string, try to parse it
+    let parsedEnrichmentData = enrichmentData;
+    if (typeof enrichmentData === 'string') {
+      try {
+        parsedEnrichmentData = JSON.parse(enrichmentData);
+      } catch (e) {
+        // If it's not valid JSON, show error message
+        return (
+          <NoDataMessage>
+            <p>Error: Invalid PDL data format</p>
+            <p style={{ fontSize: '12px', marginTop: '8px', opacity: 0.8 }}>
+              The PDL data could not be parsed. Please refresh to try again.
+            </p>
+            <Button
+              onClick={handleRefresh}
+              startEnhancer={<ArrowLeft size={20} />}
+              kind="secondary"
+              style={{ marginTop: '16px' }}
+            >
+              Refresh Data
+            </Button>
+          </NoDataMessage>
+        );
+      }
+    }
+    
+    // Use parsed data from here on
+    enrichmentData = parsedEnrichmentData;
 
     // Extract key information from PDL data
     const {
@@ -184,8 +214,23 @@ const PDLEnrichment: React.FC<PDLEnrichmentProps> = ({ enrichmentData, onRefresh
       has_linkedin,
       has_job_info,
       has_education,
-      pdl_data = {},
+      pdl_data: rawPdlData,
     } = enrichmentData;
+    
+    // Parse pdl_data if it's a string
+    let pdl_data: any = {};
+    if (rawPdlData) {
+      if (typeof rawPdlData === 'string') {
+        try {
+          pdl_data = JSON.parse(rawPdlData);
+        } catch (e) {
+          console.error('Failed to parse PDL data:', e);
+          pdl_data = {};
+        }
+      } else {
+        pdl_data = rawPdlData;
+      }
+    }
 
     const emails = pdl_data.emails || [];
     const phones = pdl_data.phone_numbers || [];
@@ -342,14 +387,14 @@ const PDLEnrichment: React.FC<PDLEnrichmentProps> = ({ enrichmentData, onRefresh
           </Section>
         )}
 
-        {/* Raw Data (collapsible) */}
+        {/* Raw Data with Pretty Viewer */}
         <Section>
           <RawDataToggle onClick={() => setShowRawData(!showRawData)}>
             {showRawData ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
             View Raw PDL Data
           </RawDataToggle>
           {showRawData && (
-            <JsonDisplay>{JSON.stringify(pdl_data, null, 2)}</JsonDisplay>
+            <PDLDataViewer data={pdl_data} />
           )}
         </Section>
       </ScrollableInfoSection>

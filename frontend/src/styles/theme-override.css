@@ -1,0 +1,146 @@
+/* Ultimate theme overrides - This file uses maximum specificity to override all styles */
+
+/* DARK MODE - Force black backgrounds and white text EVERYWHERE */
+html.dark-mode,
+html.dark-mode body,
+html.dark-mode body * {
+  background-color: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
+/* Secondary backgrounds for cards/modals */
+html.dark-mode [data-baseweb="card"],
+html.dark-mode [data-baseweb="modal"],
+html.dark-mode [data-baseweb="popover"],
+html.dark-mode [data-baseweb="tooltip"],
+html.dark-mode [class*="card"],
+html.dark-mode [class*="modal"],
+html.dark-mode [class*="popover"] {
+  background-color: #2d2d2d !important;
+}
+
+/* Dark mode inputs */
+html.dark-mode input,
+html.dark-mode textarea,
+html.dark-mode select {
+  background-color: #2d2d2d !important;
+  color: #ffffff !important;
+  border-color: #404040 !important;
+}
+
+/* Dark mode buttons */
+html.dark-mode button {
+  background-color: #404040 !important;
+  color: #ffffff !important;
+  border-color: #525252 !important;
+}
+
+html.dark-mode button:hover {
+  background-color: #525252 !important;
+}
+
+/* TERMINAL MODE - Force black backgrounds and green text EVERYWHERE */
+html.terminal-mode,
+html.terminal-mode body,
+html.terminal-mode body * {
+  background-color: #0a0a0a !important;
+  color: #00ff00 !important;
+  font-family: "Courier New", Monaco, Consolas, monospace !important;
+  text-shadow: 0 0 2px rgba(0, 255, 0, 0.5) !important;
+}
+
+/* Terminal inputs and form elements */
+html.terminal-mode input,
+html.terminal-mode textarea,
+html.terminal-mode select,
+html.terminal-mode button {
+  background-color: #0a0a0a !important;
+  color: #00ff00 !important;
+  border: 1px solid #00ff00 !important;
+  font-family: "Courier New", Monaco, Consolas, monospace !important;
+}
+
+/* Terminal hover effects */
+html.terminal-mode button:hover,
+html.terminal-mode a:hover {
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.8) !important;
+  text-shadow: 0 0 5px #00ff00 !important;
+}
+
+/* Terminal placeholders */
+html.terminal-mode input::placeholder,
+html.terminal-mode textarea::placeholder {
+  color: #007700 !important;
+  opacity: 1 !important;
+}
+
+/* Terminal selections */
+html.terminal-mode ::selection {
+  background-color: #00ff00 !important;
+  color: #0a0a0a !important;
+}
+
+/* Override any inline styles with even higher specificity */
+html.dark-mode body [style*="background-color: rgb(255"],
+html.dark-mode body [style*="background: rgb(255"],
+html.dark-mode body [style*="background-color: white"],
+html.dark-mode body [style*="background: white"] {
+  background-color: #1a1a1a !important;
+}
+
+html.terminal-mode body [style*="background-color: rgb(255"],
+html.terminal-mode body [style*="background: rgb(255"],
+html.terminal-mode body [style*="background-color: white"],
+html.terminal-mode body [style*="background: white"] {
+  background-color: #0a0a0a !important;
+}
+
+/* Force override Styletron-generated styles */
+html.dark-mode [class^="css-"][style],
+html.dark-mode [class*=" css-"][style] {
+  background-color: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
+html.terminal-mode [class^="css-"][style],
+html.terminal-mode [class*=" css-"][style] {
+  background-color: #0a0a0a !important;
+  color: #00ff00 !important;
+  font-family: "Courier New", Monaco, Consolas, monospace !important;
+}
+
+/* Scrollbars for dark mode */
+html.dark-mode ::-webkit-scrollbar {
+  background-color: #1a1a1a !important;
+}
+
+html.dark-mode ::-webkit-scrollbar-track {
+  background-color: #1a1a1a !important;
+}
+
+html.dark-mode ::-webkit-scrollbar-thumb {
+  background-color: #404040 !important;
+}
+
+html.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background-color: #525252 !important;
+}
+
+/* Scrollbars for terminal mode */
+html.terminal-mode ::-webkit-scrollbar {
+  background-color: #0a0a0a !important;
+}
+
+html.terminal-mode ::-webkit-scrollbar-track {
+  background-color: #0a0a0a !important;
+  border: 1px solid #00ff00 !important;
+}
+
+html.terminal-mode ::-webkit-scrollbar-thumb {
+  background-color: #00ff00 !important;
+}
+
+html.terminal-mode ::-webkit-scrollbar-thumb:hover {
+  background-color: #33ff33 !important;
+  box-shadow: 0 0 5px #00ff00 !important;
+}

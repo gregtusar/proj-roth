@@ -84,6 +84,29 @@ const terminalPrimitives: Partial<ThemePrimitives> = {
   primary500: '#00bb00',
   primary600: '#00dd00',
   primary700: '#00ff00',
+  
+  // Very dark backgrounds for terminal
+  mono100: '#0a0a0a',  // darkest (background)
+  mono200: '#141414',  // slightly lighter
+  mono300: '#1e1e1e',
+  mono400: '#282828',
+  mono500: '#323232',
+  mono600: '#3c3c3c',
+  mono700: '#464646',
+  mono800: '#00ff00',  // Terminal green for text
+  mono900: '#33ff33',  // Brighter green
+  mono1000: '#66ff66', // Brightest green
+  
+  // Accent colors with amber/orange for warnings
+  accent: '#ffb000',
+  accent50: '#1a0f00',
+  accent100: '#331e00',
+  accent200: '#4d2d00',
+  accent300: '#663c00',
+  accent400: '#804b00',
+  accent500: '#995a00',
+  accent600: '#b36900',
+  accent700: '#ffb000',
 };
 
 export const terminalTheme = createTheme(terminalPrimitives);

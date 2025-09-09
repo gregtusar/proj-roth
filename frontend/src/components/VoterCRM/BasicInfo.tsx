@@ -338,12 +338,23 @@ const BasicInfo: React.FC<BasicInfoProps> = ({ profile, searchResults }) => {
               );
             }
             
+            // Check if this is PDL data
+            if (searchResults.pdl_id || searchResults.pdl_data || searchResults.enrichment) {
+              return (
+                <SearchResults>
+                  <InfoLabel style={{ color: 'inherit', marginBottom: '8px' }}>
+                    PDL enrichment data available. View in the PDL Enrichment tab for detailed information.
+                  </InfoLabel>
+                </SearchResults>
+              );
+            }
+            
             // Fallback for unexpected format
             return (
               <SearchResults>
-                <pre style={{ fontSize: '12px', overflow: 'auto' }}>
-                  {JSON.stringify(searchResults, null, 2)}
-                </pre>
+                <InfoLabel style={{ color: 'inherit' }}>
+                  Unable to display additional information in the expected format.
+                </InfoLabel>
               </SearchResults>
             );
           })()}

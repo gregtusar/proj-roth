@@ -1,6 +1,7 @@
 /* Dark Mode Global Styles */
 
 /* Apply dark mode when class is added to html element */
+html.dark-mode,
 .dark-mode {
   /* Base colors */
   --bg-primary: #1a1a1a;
@@ -17,12 +18,45 @@
   background-color: #1a1a1a !important;
 }
 
-/* Force dark mode on body and root */
+/* Force dark mode on ALL elements with maximum specificity */
+html.dark-mode,
+html.dark-mode body,
+html.dark-mode #root,
+html.dark-mode main,
+html.dark-mode div[class*="css-"],
+html.dark-mode div[data-baseweb],
 .dark-mode,
 .dark-mode body,
-.dark-mode #root {
+.dark-mode #root,
+.dark-mode main,
+.dark-mode div[class*="css-"],
+.dark-mode div[data-baseweb] {
   background-color: #1a1a1a !important;
   color: #ffffff !important;
+}
+
+/* Apply dark mode text color to all elements */
+html.dark-mode *,
+.dark-mode * {
+  color: #ffffff !important;
+}
+
+/* Dark backgrounds for all divs and containers */
+html.dark-mode div,
+html.dark-mode section,
+html.dark-mode article,
+html.dark-mode aside,
+html.dark-mode nav,
+html.dark-mode header,
+html.dark-mode footer,
+.dark-mode div,
+.dark-mode section,
+.dark-mode article,
+.dark-mode aside,
+.dark-mode nav,
+.dark-mode header,
+.dark-mode footer {
+  background-color: #1a1a1a !important;
 }
 
 /* Light mode (default) */
@@ -87,23 +121,57 @@
   color: var(--text-primary);
 }
 
-/* Apply dark mode to main app container */
+/* Apply dark mode to main app container and all nested divs */
+html.dark-mode > div,
+html.dark-mode #root > div,
+html.dark-mode #root div,
 .dark-mode > div,
-.dark-mode #root > div {
-  background-color: var(--bg-primary) !important;
-  color: var(--text-primary) !important;
+.dark-mode #root > div,
+.dark-mode #root div {
+  background-color: #1a1a1a !important;
+  color: #ffffff !important;
 }
 
-/* Dark mode for all Base Web styled components */
-.dark-mode [data-baseweb] {
-  color: var(--text-primary);
+/* Chat container specific */
+html.dark-mode .chat-container,
+html.dark-mode .message-container,
+html.dark-mode .sidebar,
+.dark-mode .chat-container,
+.dark-mode .message-container,
+.dark-mode .sidebar {
+  background-color: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
+/* Dark mode for all Base Web styled components with maximum specificity */
+html.dark-mode [data-baseweb],
+html.dark-mode [class*="baseui"],
+html.dark-mode div[class*="css-"],
+.dark-mode [data-baseweb],
+.dark-mode [class*="baseui"],
+.dark-mode div[class*="css-"] {
+  background-color: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
+/* Override Styletron generated styles */
+html.dark-mode [class*="css-"][style],
+.dark-mode [class*="css-"][style] {
+  background-color: #1a1a1a !important;
+  color: #ffffff !important;
 }
 
 /* Specific overrides for Base Web components that need background changes */
+html.dark-mode [data-baseweb="block"],
+html.dark-mode [data-baseweb="card"],
+html.dark-mode [data-baseweb="layer"],
+html.dark-mode [data-baseweb="popover"],
 .dark-mode [data-baseweb="block"],
-.dark-mode [data-baseweb="card"] {
-  background-color: var(--bg-secondary) !important;
-  color: var(--text-primary) !important;
+.dark-mode [data-baseweb="card"],
+.dark-mode [data-baseweb="layer"],
+.dark-mode [data-baseweb="popover"] {
+  background-color: #2d2d2d !important;
+  color: #ffffff !important;
 }
 
 /* Dark mode for cards and panels */
@@ -155,6 +223,15 @@
 
 .dark-mode .baseui--tabs-tab--active {
   color: var(--text-primary) !important;
+}
+
+/* Override inline styles with !important */
+html.dark-mode [style*="background"],
+html.dark-mode [style*="color"],
+.dark-mode [style*="background"],
+.dark-mode [style*="color"] {
+  background-color: #1a1a1a !important;
+  color: #ffffff !important;
 }
 
 /* Smooth transitions */

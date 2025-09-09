@@ -476,7 +476,7 @@ def save_voter_list(list_name: str, description: str, sql_query: str, row_count:
             "list_id": None
         }
 
-def pdl_batch_enrichment(master_ids: List[str], min_likelihood: int = 8, skip_existing: bool = True, force: bool = False) -> Dict[str, Any]:
+def pdl_batch_enrichment(master_ids: List[str], min_likelihood: int = 5, skip_existing: bool = True, force: bool = False) -> Dict[str, Any]:
     """Batch enrichment from People Data Labs for multiple voters (up to 100 at once).
     
     IMPORTANT COST OPTIMIZATION: Use this for lists of 3+ people instead of individual enrichments.
@@ -486,9 +486,10 @@ def pdl_batch_enrichment(master_ids: List[str], min_likelihood: int = 8, skip_ex
     
     Args:
         master_ids (List[str]): List of voter master_ids to enrich (max 100)
-        min_likelihood (int): Minimum confidence score (1-10, default 8)
-                             Lower = more matches but less accurate
-                             Higher = fewer matches but more accurate
+        min_likelihood (int): Minimum confidence score (1-10, default 5)
+                             Lower = more matches but less accurate (try 4 for max coverage)
+                             Higher = fewer matches but more accurate (8 for high confidence)
+                             Recommended: Start with 5, then try 4 if no matches
         skip_existing (bool): Skip individuals enriched in last 6 months (default True)
         force (bool): Bypass cost confirmations (use carefully!)
     
@@ -498,11 +499,12 @@ def pdl_batch_enrichment(master_ids: List[str], min_likelihood: int = 8, skip_ex
                        - enriched: List of successfully enriched individuals
                        - already_enriched: Individuals skipped (already have data)
                        - cost: Total cost for new enrichments
+                       - suggestions: If no matches, provides helpful next steps
     
     Examples:
         >>> # Enrich a list of high-value donors
         >>> master_ids = ["voter123", "voter456", "voter789"]
-        >>> pdl_batch_enrichment(master_ids, min_likelihood=8)
+        >>> pdl_batch_enrichment(master_ids, min_likelihood=5)
         {"status": "batch_complete", "batch_summary": {"successful": 2, "cost": 0.50}, ...}
     """
     try:
@@ -1369,6 +1371,37 @@ class NJVoterChatAgent(Agent):
             error_print(f"[ERROR] ADK Runner invocation failed: {e}")
             
             error_str = str(e)
+            
+            # Check for corrupted message history (data/text conflict)
+            if "oneof field 'data' is already set" in error_str or "Cannot set 'text'" in error_str:
+                print(f"[INFO] Detected corrupted conversation history with data/text conflict")
+                print(f"[INFO] This happens when the conversation history contains malformed messages")
+                
+                # Clear the corrupted session and retry with a fresh one
+                old_session_id = self._session_id
+                self._session_id = f"fresh_{int(time.time())}_{os.getpid()}"
+                self._conversation_history = []
+                
+                print(f"[INFO] Creating fresh session {self._session_id} to bypass corrupted history")
+                
+                try:
+                    # Create a completely new session
+                    session = _run_asyncio(self._session_service.create_session(
+                        app_name="nj_voter_chat",
+                        user_id=self._user_id,
+                        session_id=self._session_id
+                    ))
+                    print(f"[INFO] Created fresh ADK session, retrying request")
+                    
+                    # Retry the request with the fresh session
+                    return self.chat(prompt)
+                    
+                except Exception as retry_error:
+                    print(f"[ERROR] Failed to recover with fresh session: {retry_error}")
+                    return ("I encountered an issue with the conversation history that appears to be corrupted. "
+                           "This can happen when mixing different types of content in messages. "
+                           "Please start a new chat session to continue. "
+                           "If this persists, try clearing your browser cache and refreshing the page.")
             
             # Check for token limit errors
             if 'exceeds the maximum number of tokens' in error_str or 'token count' in error_str.lower():

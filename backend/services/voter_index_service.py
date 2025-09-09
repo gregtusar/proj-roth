@@ -62,7 +62,9 @@ class VoterTrie:
             node = node.children[char]
         
         # Get all voter IDs under this prefix
-        voter_ids = list(node.voter_refs)[:limit * 3]  # Get extra to account for duplicates
+        # Convert set to list first, then slice
+        all_voter_ids = list(node.voter_refs)
+        voter_ids = all_voter_ids[:limit * 3] if all_voter_ids else []  # Get extra to account for duplicates
         
         # Return unique voter data, sorted by name
         seen = set()

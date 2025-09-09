@@ -77,7 +77,7 @@ class PDLEnrichmentTool:
         self._pipeline = None
     
     @property
-    def pipeline(self):
+    def pipeline(self) -> PDLEnrichmentPipeline:
         """Lazy load the enrichment pipeline with API key"""
         if self._pipeline is None:
             api_key = self._get_pdl_api_key()
@@ -378,6 +378,20 @@ class PDLEnrichmentTool:
                     'message': 'No master_ids provided'
                 }
             
+            # Check if pipeline is available
+            try:
+                pipeline = self.pipeline
+                if not pipeline:
+                    raise Exception("PDL pipeline not initialized")
+            except Exception as e:
+                logger.error(f"PDL pipeline initialization failed: {e}")
+                return {
+                    'status': 'error',
+                    'message': 'PDL enrichment service is not available',
+                    'error': str(e),
+                    'details': 'The PDL enrichment pipeline could not be initialized. This may be due to missing API credentials or import issues.'
+                }
+            
             # Limit to 100 per batch (PDL API limit)
             if len(master_ids) > 100:
                 logger.warning(f"Batch size {len(master_ids)} exceeds limit of 100. Processing first 100.")
@@ -494,10 +508,24 @@ class PDLEnrichmentTool:
                     'already_enriched': already_enriched[:5],  # First 5 for preview
                 }
             else:
+                # No records found - provide detailed feedback
+                logger.warning(f"No PDL matches found for batch of {len(to_enrich)} at min_likelihood={min_likelihood}")
                 return {
                     'status': 'no_matches',
-                    'message': f'No PDL matches found for {len(to_enrich)} individuals at min_likelihood={min_likelihood}',
-                    'suggestion': f'Try lowering min_likelihood parameter (current: {min_likelihood}, try: 4)'
+                    'message': f'No PDL matches found for {len(to_enrich)} individuals at likelihood threshold {min_likelihood}/10',
+                    'details': {
+                        'attempted_enrichment': len(to_enrich),
+                        'already_enriched': len(already_enriched),
+                        'not_found_in_voters': len(not_found),
+                        'min_likelihood_used': min_likelihood,
+                        'cost_avoided': f'${len(to_enrich) * self.cost_per_enrichment:.2f}'
+                    },
+                    'suggestions': [
+                        f'Lower the likelihood threshold (current: {min_likelihood}, recommended: 5 or 4)',
+                        'Try enriching individuals one at a time to see specific match scores',
+                        'Verify the voter names and addresses are correct in the database'
+                    ],
+                    'command_example': f'Try: pdl_batch_enrichment(master_ids={to_enrich[:3]}, min_likelihood=5)'
                 }
                 
         except Exception as e:

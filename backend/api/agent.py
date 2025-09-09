@@ -63,17 +63,23 @@ async def search_agent(
         if "error" in result:
             return {"error": result["error"], "results": []}
         
-        search_results = result.get("result", [])
+        search_results = result.get("result", {})
+        
+        # Extract the actual results list from the search response
+        if isinstance(search_results, dict):
+            actual_results = search_results.get("results", [])
+        else:
+            actual_results = search_results if isinstance(search_results, list) else []
         
         # If analyze flag is set, process results through the agent
-        if request.analyze and search_results:
+        if request.analyze and actual_results:
             from services.agent_service import process_message_stream
             
             # Create analysis prompt
             # Format search results properly for the prompt
             results_text = "\n".join([
                 f"- {r.get('title', 'No title')}: {r.get('snippet', 'No snippet')}"
-                for r in search_results[:5]
+                for r in actual_results[:5] if isinstance(r, dict)
             ])
             
             analysis_prompt = f"""
@@ -111,17 +117,18 @@ async def search_agent(
                 if summary:
                     return {
                         "summary": summary,
-                        "raw_results": search_results
+                        "raw_results": actual_results,
+                        "full_response": search_results if isinstance(search_results, dict) else {"results": actual_results}
                     }
                 else:
-                    return {"results": search_results}
+                    return search_results if isinstance(search_results, dict) else {"results": actual_results}
                     
             except Exception as analysis_error:
                 print(f"Analysis error: {analysis_error}")
                 # If analysis fails, return raw results
-                return {"results": search_results}
+                return search_results if isinstance(search_results, dict) else {"results": actual_results}
         
-        return {"results": search_results}
+        return search_results if isinstance(search_results, dict) else {"results": actual_results}
         
     except Exception as e:
         print(f"Search error: {e}")

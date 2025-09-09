@@ -6,9 +6,9 @@ Based on ADK documentation:
 - partial=False/None: Current chunk is complete (conversation may continue)
 """
 
-import time
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
+import time
 
 
 @dataclass
@@ -83,11 +83,12 @@ class ADKChunkHandler:
         # Extract text from parts
         for part in chunk.content.parts:
             if hasattr(part, 'text') and part.text is not None:
+                import time as time_module
                 return ChunkData(
                     index=self.chunk_index,
                     text=part.text,
                     is_partial=is_partial,
-                    timestamp=time.time(),
+                    timestamp=time_module.time(),
                     chunk_id=getattr(chunk, 'id', None)
                 )
         

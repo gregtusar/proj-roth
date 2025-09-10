@@ -224,22 +224,31 @@ async def send_message(sid, data):
         
         # Collect full response for saving
         full_response = ""
+        chunk_sequence = 0
         print(f"[WebSocket] Starting to stream response for message: {message[:50]}...")
         try:
             async for chunk in process_message_stream(message, session_id, user_id, user_email, model_id):
                 full_response += chunk
+                chunk_sequence += 1
                 # Update in-flight tracking
                 if message_key in in_flight_messages:
                     in_flight_messages[message_key]['partial_response'] = full_response
-                print(f"[WebSocket] Emitting chunk: {chunk[:20]}...")
+                    in_flight_messages[message_key]['last_chunk_seq'] = chunk_sequence
+                print(f"[WebSocket] Emitting chunk {chunk_sequence}: {chunk[:20]}...")
                 # Check if client is still connected before emitting
                 if sid in connections:
-                    await sio.emit('message_chunk', chunk, room=sid)
+                    # Send chunk with sequence number and session info
+                    await sio.emit('message_chunk', {
+                        'chunk': chunk,
+                        'sequence': chunk_sequence,
+                        'session_id': session_id,
+                        'message_id': user_msg.message_id if 'user_msg' in locals() else None
+                    }, room=sid)
                     await asyncio.sleep(0.01)  # Small delay for smoother streaming
                 else:
                     print(f"[WebSocket] Client {sid} disconnected during streaming, stopping")
                     break
-            print(f"[WebSocket] Finished streaming. Total response: {len(full_response)} chars")
+            print(f"[WebSocket] Finished streaming. Total response: {len(full_response)} chars, {chunk_sequence} chunks")
         finally:
             # Clean up in-flight tracking - message is already saved to Firestore
             if message_key in in_flight_messages:

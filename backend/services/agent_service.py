@@ -260,7 +260,7 @@ async def process_message_stream(
                 yield chunk
                 await asyncio.sleep(0.05)  # Small delay for streaming effect
             
-                print("[Agent] Finished streaming response successfully")
+            print("[Agent] Finished streaming response successfully")
         
         # Context is automatically cleaned up when exiting the 'with' block
         # This ensures no context leakage between requests

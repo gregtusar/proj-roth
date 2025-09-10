@@ -140,8 +140,18 @@ class WebSocketService {
       store.dispatch(setStreamingMessage(''));
     });
 
-    this.socket.on('message_chunk', (chunk: string) => {
-      store.dispatch(updateStreamingMessage(chunk));
+    this.socket.on('message_chunk', (data: string | { chunk: string; sequence: number; session_id?: string; message_id?: string }) => {
+      // Handle both old format (string) and new format (object with sequence)
+      if (typeof data === 'string') {
+        // Legacy format - just the chunk text
+        store.dispatch(updateStreamingMessage(data));
+      } else {
+        // New format with sequence number
+        const { chunk, sequence, session_id, message_id } = data;
+        console.log(`[WebSocket] Received chunk ${sequence} for session ${session_id}`);
+        store.dispatch(updateStreamingMessage(chunk));
+        // TODO: Add sequence tracking to detect missing chunks
+      }
     });
 
     this.socket.on('message_end', () => {

@@ -1395,13 +1395,20 @@ class NJVoterChatAgent(Agent):
             if "oneof field 'data' is already set" in error_str or "Cannot set 'text'" in error_str:
                 print(f"[INFO] Detected corrupted conversation history with data/text conflict")
                 print(f"[INFO] This happens when the conversation history contains malformed messages")
+                print(f"[INFO] Error details: contents[25] suggests ~25 messages in history")
                 
-                # Clear the corrupted session and retry with a fresh one
-                old_session_id = self._session_id
-                self._session_id = f"fresh_{int(time.time())}_{os.getpid()}"
-                self._conversation_history = []
-                
-                print(f"[INFO] Creating fresh session {self._session_id} to bypass corrupted history")
+                # Log the current conversation history length for debugging
+                if hasattr(self, '_conversation_history') and self._conversation_history:
+                    print(f"[INFO] Current conversation history has {len(self._conversation_history)} messages")
+                    # Truncate history to last 10 messages to avoid the corruption
+                    self._conversation_history = self._conversation_history[-10:]
+                    print(f"[INFO] Truncated history to last 10 messages to avoid corruption")
+                else:
+                    # Clear the corrupted session and retry with a fresh one
+                    old_session_id = self._session_id
+                    self._session_id = f"fresh_{int(time.time())}_{os.getpid()}"
+                    self._conversation_history = []
+                    print(f"[INFO] Creating fresh session {self._session_id} to bypass corrupted history")
                 
                 try:
                     # Create a completely new session

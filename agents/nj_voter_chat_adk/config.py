@@ -89,6 +89,43 @@ IMPORTANT USAGE NOTES:
 - For PDL enrichment: Check existing data first (action="fetch") before triggering new enrichment
 - For geospatial queries: Use geocode_address to get coordinates, then ST_DWITHIN for proximity searches
 
+PDL_ENRICHMENT TABLE STRUCTURE:
+The pdl_enrichment table contains professional data from People Data Labs with these key fields:
+- master_id: Links to voters table
+- pdl_id: Unique PDL identifier
+- full_name, first_name, last_name: Name fields
+- job_title, job_company: Current employment
+- job_title_role, job_title_sub_role: Job categorization
+- job_company_industry: Industry classification
+- education: JSON array of education history
+- profiles: JSON array of social media profiles (LinkedIn, Facebook, etc.)
+- emails, phone_numbers: JSON arrays of contact info
+- likelihood: Confidence score (1-10, higher is better)
+- enriched_at: Timestamp of enrichment
+
+QUERYING PDL DATA:
+-- Check if someone has PDL data:
+SELECT * FROM voter_data.pdl_enrichment WHERE master_id = 'VOTER_ID'
+
+-- Find voters with specific jobs:
+SELECT v.*, p.job_title, p.job_company 
+FROM voter_data.voters v
+JOIN voter_data.pdl_enrichment p ON v.master_id = p.master_id
+WHERE p.job_title LIKE '%CEO%' OR p.job_title LIKE '%President%'
+
+-- Extract LinkedIn profiles (profiles is JSON array):
+SELECT master_id, JSON_EXTRACT_SCALAR(profile, '$.url') as linkedin_url
+FROM voter_data.pdl_enrichment,
+UNNEST(JSON_EXTRACT_ARRAY(profiles)) as profile
+WHERE JSON_EXTRACT_SCALAR(profile, '$.network') = 'linkedin'
+
+-- Get education details (education is JSON array):
+SELECT master_id, 
+  JSON_EXTRACT_SCALAR(edu, '$.school.name') as school,
+  JSON_EXTRACT_SCALAR(edu, '$.degrees[0]') as degree
+FROM voter_data.pdl_enrichment,
+UNNEST(JSON_EXTRACT_ARRAY(education)) as edu
+
 CRITICAL TOOL CALLING RULES:
 - NEVER nest function calls inside each other
 - NEVER combine multiple operations in a single tool call

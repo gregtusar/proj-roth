@@ -52,16 +52,23 @@ def extract_response_text(result, attempt_num=1, max_attempts=3):
     
     # Method 1: Standard ADK response with content.parts
     if hasattr(result, 'content') and hasattr(result.content, 'parts'):
-        debug_print(f"[EXTRACT] Method 1: Found content with {len(result.content.parts)} parts")
+        total_parts = len(result.content.parts)
+        debug_print(f"[EXTRACT] Method 1: Found content with {total_parts} parts")
+        
+        # Track what we find in each part for better debugging
+        parts_summary = []
         
         for i, part in enumerate(result.content.parts):
             part_info = {
                 'has_text': hasattr(part, 'text'),
                 'text_is_none': hasattr(part, 'text') and part.text is None,
                 'text_is_empty': hasattr(part, 'text') and part.text == '',
-                'text_length': len(part.text) if hasattr(part, 'text') and part.text else 0
+                'text_length': len(part.text) if hasattr(part, 'text') and part.text else 0,
+                'has_tool_use': hasattr(part, 'tool_use'),
+                'has_function_call': hasattr(part, 'function_call')
             }
-            debug_print(f"[EXTRACT] Part {i}: {part_info}")
+            parts_summary.append(part_info)
+            debug_print(f"[EXTRACT] Part {i}/{total_parts}: {part_info}")
             
             if hasattr(part, 'text'):
                 if part.text:
@@ -70,6 +77,8 @@ def extract_response_text(result, attempt_num=1, max_attempts=3):
                     if text:
                         extracted_texts.append(text)
                         debug_print(f"[EXTRACT] Part {i}: Extracted {len(text)} chars")
+                        # Log first 100 chars of each part for debugging
+                        debug_print(f"[EXTRACT] Part {i} content: {text[:100]}...")
                 elif part.text == '':
                     # Explicitly empty response from ADK
                     found_empty_response = True
@@ -80,16 +89,26 @@ def extract_response_text(result, attempt_num=1, max_attempts=3):
             
             # Also check for other part types (tool_use, function_call, etc.)
             if hasattr(part, 'tool_use'):
-                debug_print(f"[EXTRACT] Part {i}: Contains tool_use")
+                debug_print(f"[EXTRACT] Part {i}: Contains tool_use - may have additional response")
             if hasattr(part, 'function_call'):
-                debug_print(f"[EXTRACT] Part {i}: Contains function_call")
+                debug_print(f"[EXTRACT] Part {i}: Contains function_call - may have additional response")
+        
+        # Log summary of all parts for debugging
+        debug_print(f"[EXTRACT] Parts summary: Processed {total_parts} parts, extracted text from {len(extracted_texts)} parts")
         
         if extracted_texts:
-            # Successfully extracted text from parts
+            # Successfully extracted text from parts - combine ALL parts
             final_response = '\n'.join(extracted_texts)
             debug_print(f"[EXTRACT] Method 1 SUCCESS: Extracted {len(final_response)} characters from {len(extracted_texts)} parts")
             debug_print(f"[EXTRACT] Response preview: {final_response[:200]}...")
-            return final_response
+            
+            # Validation: Check for suspiciously short responses that might indicate truncation
+            if len(final_response) < 50 and total_parts > 1:
+                error_print(f"[EXTRACT] WARNING: Short response ({len(final_response)} chars) despite {total_parts} parts")
+                error_print(f"[EXTRACT] Parts summary: {parts_summary}")
+                # Continue to try other extraction methods instead of returning early
+            else:
+                return final_response
         elif found_empty_response:
             # ADK explicitly returned empty - this is different from extraction failure
             debug_print(f"[EXTRACT] Method 1: ADK returned empty response (not a failure)")

@@ -550,17 +550,13 @@ class PDLEnrichmentPipeline:
                 'master_id': record.master_id,
                 'pdl_id': record.pdl_id,
                 'likelihood': record.likelihood,
-                'pdl_data': json.dumps(record.pdl_data),  # Store as JSON string
+                'pdl_data': json.dumps(record.pdl_data),  # Store as JSON string - SINGLE SOURCE OF TRUTH
                 'has_email': record.has_email,
                 'has_phone': record.has_phone,
                 'has_linkedin': record.has_linkedin,
                 'has_job_info': record.has_job_info,
                 'has_education': record.has_education,
-                'location_city': record.location_city,
-                'location_state': record.location_state,
-                'location_zip': record.location_zip,
-                'job_title': record.job_title,
-                'job_company': record.job_company,
+                # REMOVED redundant columns - all data is in pdl_data JSON
                 'enriched_at': record.enriched_at.isoformat() if record.enriched_at else None,
                 'api_version': record.api_version,
                 'min_likelihood': record.min_likelihood,

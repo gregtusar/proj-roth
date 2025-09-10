@@ -33,7 +33,12 @@ class BigQueryReadOnlyTool:
     - Use voter_geo_view for complete voter info with addresses and geocoding
     - Use donor_view to find campaign contributors and match them to voters
     - Join tables on master_id to link individuals across datasets
-    - All 264K addresses have preserved geocoding (latitude/longitude)
+    - PDL enrichment: pdl_enrichment table has job_title, job_company as columns; detailed data in pdl_data JSON field
+    
+    PDL TABLE NOTE: The pdl_enrichment table stores ALL data in pdl_data JSON (clean schema, no redundant columns).
+    Core columns: master_id, pdl_id, likelihood, pdl_data (JSON), has_email, has_linkedin, enriched_at.
+    Extract fields using: JSON_EXTRACT_SCALAR(pdl_data, '$.job_title'), JSON_EXTRACT_SCALAR(pdl_data, '$.job_company_name'), etc.
+    OR use pdl_enrichment_view for convenience - it has virtual columns extracted from JSON.
     
     Supports BigQuery Geography functions like ST_DISTANCE, ST_GEOGPOINT for location-based queries. 
     IMPORTANT: demo_party field values must be exactly 'REPUBLICAN', 'DEMOCRAT', or 'UNAFFILIATED' (case-sensitive)."""
@@ -117,7 +122,24 @@ class BigQueryReadOnlyTool:
     def _apply_field_mappings(self, sql: str) -> str:
         mapped_sql = sql
         
+        # Check if query references PDL enrichment tables
+        pdl_pattern = r'\bpdl_enrichment\b|\bpdl_enrichment_view\b'
+        references_pdl = bool(re.search(pdl_pattern, sql, re.IGNORECASE))
+        
+        # Fields that should NOT be mapped for PDL tables
+        pdl_excluded_mappings = {
+            'first_name',  # PDL view uses first_name, not name_first
+            'last_name',   # PDL view uses last_name, not name_last
+            'middle_name', # PDL doesn't have middle_name
+            'city',        # PDL might have location_city in JSON
+        }
+        
         field_mappings = {k: v for k, v in self.FIELD_MAPPINGS.items() if not k.startswith("'")}
+        
+        # If PDL table is referenced, skip mappings that would break PDL queries
+        if references_pdl:
+            field_mappings = {k: v for k, v in field_mappings.items() if k not in pdl_excluded_mappings}
+        
         for user_field, actual_field in field_mappings.items():
             pattern = r'\b' + re.escape(user_field) + r'\b'
             mapped_sql = re.sub(pattern, actual_field, mapped_sql, flags=re.IGNORECASE)

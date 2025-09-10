@@ -24,7 +24,8 @@ ALLOWED_TABLES = {
     f"{PROJECT_ID}.{DATASET}.individual_addresses",
     f"{PROJECT_ID}.{DATASET}.donations",
     f"{PROJECT_ID}.{DATASET}.street_party_summary",
-    f"{PROJECT_ID}.{DATASET}.pdl_enrichment",  # People Data Labs enrichment
+    f"{PROJECT_ID}.{DATASET}.pdl_enrichment",  # People Data Labs enrichment (JSON-only schema)
+    f"{PROJECT_ID}.{DATASET}.pdl_enrichment_view",  # Convenience view with extracted JSON fields
     # Raw data tables
     f"{PROJECT_ID}.{DATASET}.raw_voters",
     f"{PROJECT_ID}.{DATASET}.raw_donations",
@@ -89,54 +90,75 @@ IMPORTANT USAGE NOTES:
 - For PDL enrichment: Check existing data first (action="fetch") before triggering new enrichment
 - For geospatial queries: Use geocode_address to get coordinates, then ST_DWITHIN for proximity searches
 
-PDL_ENRICHMENT TABLE STRUCTURE:
-The pdl_enrichment table contains professional data from People Data Labs with these key fields:
-- master_id: Links to voters table
-- pdl_id: Unique PDL identifier
-- full_name, first_name, last_name: Name fields
-- job_title, job_company: Current employment
-- job_title_role, job_title_sub_role: Job categorization
-- job_company_industry: Industry classification
-- education: JSON array of education history
-- profiles: JSON array of social media profiles (LinkedIn, Facebook, etc.)
-- emails, phone_numbers: JSON arrays of contact info
-- likelihood: Confidence score (1-10, higher is better)
-- enriched_at: Timestamp of enrichment
+PDL_ENRICHMENT TABLE STRUCTURE (CLEAN JSON-ONLY SCHEMA):
+The pdl_enrichment table uses a clean JSON-only approach with NO redundant columns:
+- master_id: Links to voters table (STRING)
+- pdl_id: Unique PDL identifier (STRING) 
+- likelihood: Confidence score 0-10, higher is better (FLOAT)
+- pdl_data: Full enrichment data as JSON (THE SINGLE SOURCE OF TRUTH for all PDL data)
+- has_email: Whether email found (BOOLEAN)
+- has_phone: Whether phone found (BOOLEAN)
+- has_linkedin: Whether LinkedIn profile found (BOOLEAN)
+- has_job_info: Whether job info found (BOOLEAN)
+- has_education: Whether education info found (BOOLEAN)
+- enriched_at: When enriched (TIMESTAMP)
+- api_version: PDL API version used (STRING)
+- min_likelihood: Minimum likelihood threshold used (INTEGER)
+
+IMPORTANT - NO REDUNDANT COLUMNS:
+- There are NO separate columns for job_title, job_company, location_city, etc.
+- ALL data fields must be extracted from pdl_data JSON using JSON_EXTRACT_SCALAR
+- This prevents data inconsistency and ensures a single source of truth
+
+For convenience, use pdl_enrichment_view which provides virtual columns extracted from JSON
 
 QUERYING PDL DATA:
 -- Check if someone has PDL data:
 SELECT * FROM voter_data.pdl_enrichment WHERE master_id = 'VOTER_ID'
 
--- Find voters with specific jobs:
-SELECT v.*, p.job_title, p.job_company 
+-- Find voters with specific jobs (MUST extract from JSON):
+SELECT v.*, 
+  JSON_EXTRACT_SCALAR(p.pdl_data, '$.job_title') as job_title,
+  JSON_EXTRACT_SCALAR(p.pdl_data, '$.job_company_name') as job_company,
+  p.likelihood
 FROM voter_data.voters v
 JOIN voter_data.pdl_enrichment p ON v.master_id = p.master_id
-WHERE p.job_title LIKE '%CEO%' OR p.job_title LIKE '%President%'
+WHERE JSON_EXTRACT_SCALAR(p.pdl_data, '$.job_title') LIKE '%CEO%' 
+   OR JSON_EXTRACT_SCALAR(p.pdl_data, '$.job_title') LIKE '%President%'
 
--- Extract LinkedIn profiles (profiles is JSON array):
-SELECT master_id, JSON_EXTRACT_SCALAR(profile, '$.url') as linkedin_url
-FROM voter_data.pdl_enrichment,
-UNNEST(JSON_EXTRACT_ARRAY(profiles)) as profile
-WHERE JSON_EXTRACT_SCALAR(profile, '$.network') = 'linkedin'
+-- OR use the convenience view (pdl_enrichment_view) which has virtual columns:
+SELECT v.*, pv.job_title, pv.job_company, pv.likelihood
+FROM voter_data.voters v
+JOIN voter_data.pdl_enrichment_view pv ON v.master_id = pv.master_id
+WHERE pv.job_title LIKE '%CEO%' OR pv.job_title LIKE '%President%'
 
--- Get education details (education is JSON array):
+-- Get detailed info from pdl_data JSON:
 SELECT master_id, 
-  JSON_EXTRACT_SCALAR(edu, '$.school.name') as school,
-  JSON_EXTRACT_SCALAR(edu, '$.degrees[0]') as degree
-FROM voter_data.pdl_enrichment,
-UNNEST(JSON_EXTRACT_ARRAY(education)) as edu
+  JSON_EXTRACT_SCALAR(pdl_data, '$.full_name') as full_name,
+  JSON_EXTRACT_SCALAR(pdl_data, '$.first_name') as first_name,
+  JSON_EXTRACT_SCALAR(pdl_data, '$.last_name') as last_name,
+  JSON_EXTRACT_SCALAR(pdl_data, '$.job_title') as job_title,
+  JSON_EXTRACT_SCALAR(pdl_data, '$.job_title_role') as job_role,
+  JSON_EXTRACT_SCALAR(pdl_data, '$.job_company_industry') as industry,
+  JSON_EXTRACT_SCALAR(pdl_data, '$.linkedin_url') as linkedin
+FROM voter_data.pdl_enrichment
+WHERE has_linkedin = TRUE
 
 CRITICAL TOOL CALLING RULES:
+- NEVER wrap tool calls in print() statements - tools return results directly
 - NEVER nest function calls inside each other
 - NEVER combine multiple operations in a single tool call
+- Call tools directly without any wrapper functions:
+  WRONG: print(pdl_batch_enrichment(master_ids=[...]))
+  WRONG: pdl_batch_enrichment(master_ids=[row['master_id'] for row in bigquery_select(...).get('rows', [])])
+  RIGHT: pdl_batch_enrichment(master_ids=["M_00001", "M_00002", "M_00003"])
 - Break complex operations into separate steps:
-  WRONG: pdl_batch_enrichment(master_ids=[row['master_id'] for row in bigquery_select(sql="SELECT...").get('rows', [])])
-  RIGHT: 
-    Step 1: result = bigquery_select(sql="SELECT master_id FROM...")
-    Step 2: ids = [row['master_id'] for row in result['rows']]
-    Step 3: pdl_batch_enrichment(master_ids=ids)
+  Step 1: result = bigquery_select(sql="SELECT master_id FROM...")
+  Step 2: ids = [row['master_id'] for row in result['rows']]
+  Step 3: pdl_batch_enrichment(master_ids=ids)
 - Each tool call must be independent and atomic
 - Store results in variables between tool calls if needed
+- Tools automatically display their results - no print() needed
 
 PDL ENRICHMENT STRATEGY:
 - SINGLE PERSON: Use pdl_enrichment(master_id, action="fetch") first, then "enrich" if needed

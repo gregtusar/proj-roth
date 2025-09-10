@@ -360,9 +360,9 @@ def geocode_address(address: str) -> Dict[str, Any]:
                        or error information if geocoding fails. Useful for finding exact
                        locations to use in geospatial BigQuery queries.
     
-    Example:
-        >>> geocode_address("Summit train station")
-        {"latitude": 40.7155, "longitude": -74.3574, "formatted_address": "Summit Station, Summit, NJ 07901, USA"}
+    Example usage:
+        result = geocode_address("Summit train station")
+        # Returns: {"latitude": 40.7155, "longitude": -74.3574, "formatted_address": "Summit Station, Summit, NJ 07901, USA"}
     """
     try:
         result = _get_geocoding_tool().geocode(address)
@@ -447,7 +447,7 @@ def save_voter_list(list_name: str, description: str, sql_query: str, row_count:
         Dict[str, Any]: Contains success status, list_id if successful, or error information.
     
     Example:
-        >>> save_voter_list(
+        save_voter_list(
         ...     "Young Democrats in Summit",
         ...     "Show me all Democrats under 30 in Summit",
         ...     "SELECT * FROM voters WHERE demo_party = 'DEM' AND age < 30 AND muni_name = 'SUMMIT'",
@@ -520,11 +520,11 @@ def pdl_batch_enrichment(master_ids: List[str], min_likelihood: int = 5, skip_ex
                        - cost: Total cost for new enrichments
                        - suggestions: If no matches, provides helpful next steps
     
-    Examples:
-        >>> # Enrich a list of high-value donors
-        >>> master_ids = ["voter123", "voter456", "voter789"]
-        >>> pdl_batch_enrichment(master_ids, min_likelihood=5)
-        {"status": "batch_complete", "batch_summary": {"successful": 2, "cost": 0.50}, ...}
+    Example usage:
+        # Enrich a list of high-value donors
+        master_ids = ["voter123", "voter456", "voter789"]
+        result = pdl_batch_enrichment(master_ids, min_likelihood=5)
+        # Returns: {"status": "batch_complete", "batch_summary": {"successful": 2, "cost": 0.50}, ...}
     """
     try:
         tool = _get_pdl_tool()
@@ -592,12 +592,12 @@ def pdl_enrichment(master_id: str, action: str = "fetch", min_likelihood: int = 
                        - For errors: Status and error messages
     
     Examples:
-        >>> # First check if data exists
-        >>> pdl_enrichment("abc123", action="fetch")
+        # First check if data exists
+        result = pdl_enrichment("abc123", action="fetch")
         {"status": "found", "enrichment": {...full PDL data...}}
         
-        >>> # Trigger new enrichment if needed
-        >>> pdl_enrichment("abc123", action="enrich", min_likelihood=8)
+        # Trigger new enrichment if needed
+        result = pdl_enrichment("abc123", action="enrich", min_likelihood=8)
         {"status": "enriched", "cost": 0.25, "enrichment": {...}}
     """
     try:

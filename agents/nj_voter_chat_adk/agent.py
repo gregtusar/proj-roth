@@ -1355,8 +1355,7 @@ class NJVoterChatAgent(Agent):
                 if attempt < max_extraction_attempts:
                     debug_print(f"[CHAT] Extraction attempt {attempt} failed, retrying...")
                     # Small delay before retry
-                    import time
-                    time.sleep(0.1)
+                    time.sleep(0.1)  # Use global time import
             
             # Validate extracted response
             if final_response and len(final_response.strip()) > 0:

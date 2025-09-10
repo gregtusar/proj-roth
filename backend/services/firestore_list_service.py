@@ -69,16 +69,14 @@ class FirestoreListService:
         user_id: str,
         limit: int = 100
     ) -> List[VoterList]:
-        """Get all lists for a user, ordered by most recent"""
+        """Get all lists (public access), ordered by most recent"""
         if not self.connected:
             print(f"[Firestore Lists] Not connected, returning empty list")
             return []
         
         try:
-            # Simplified query to avoid index requirements
-            query = self.lists_collection.where(
-                filter=firestore.FieldFilter("user_id", "==", user_id)
-            ).limit(limit)
+            # Get ALL lists, not filtered by user_id (public access)
+            query = self.lists_collection.limit(limit)
             
             lists = []
             async for doc in query.stream():
@@ -104,7 +102,7 @@ class FirestoreListService:
             return []
     
     async def get_list(self, list_id: str, user_id: str) -> Optional[VoterList]:
-        """Get a specific list"""
+        """Get a specific list (public access)"""
         if not self.connected:
             return None
             
@@ -113,8 +111,8 @@ class FirestoreListService:
         
         if doc.exists:
             list_data = doc.to_dict()
-            # Verify ownership
-            if list_data.get("user_id") == user_id and list_data.get("is_active"):
+            # No ownership check - public access
+            if list_data.get("is_active"):
                 return VoterList(**list_data)
         
         return None
@@ -129,19 +127,15 @@ class FirestoreListService:
         prompt: Optional[str] = None,
         row_count: Optional[int] = None
     ) -> bool:
-        """Update a voter list"""
+        """Update a voter list (public access)"""
         if not self.connected:
             return False
             
         doc_ref = self.lists_collection.document(list_id)
         
-        # First verify ownership
+        # No ownership verification - anyone can update
         doc = await doc_ref.get()
         if not doc.exists:
-            return False
-            
-        list_data = doc.to_dict()
-        if list_data.get("user_id") != user_id:
             return False
         
         # Build update dict
@@ -163,19 +157,15 @@ class FirestoreListService:
         return True
     
     async def delete_list(self, list_id: str, user_id: str) -> bool:
-        """Soft delete a list"""
+        """Soft delete a list (public access)"""
         if not self.connected:
             return False
             
         doc_ref = self.lists_collection.document(list_id)
         
-        # First verify ownership
+        # No ownership verification - anyone can delete
         doc = await doc_ref.get()
         if not doc.exists:
-            return False
-            
-        list_data = doc.to_dict()
-        if list_data.get("user_id") != user_id:
             return False
         
         # Soft delete
@@ -192,13 +182,13 @@ class FirestoreListService:
         query_text: str,
         limit: int = 20
     ) -> List[VoterList]:
-        """Search user's lists by name or description"""
+        """Search all lists by name or description (public access)"""
         if not self.connected:
             return []
             
-        # Get all user's lists and filter in memory
+        # Get ALL lists and filter in memory
         # (Firestore doesn't have full-text search without additional setup)
-        all_lists = await self.get_user_lists(user_id, limit=100)
+        all_lists = await self.get_user_lists(user_id, limit=100)  # user_id param ignored now
         
         query_lower = query_text.lower()
         filtered_lists = [

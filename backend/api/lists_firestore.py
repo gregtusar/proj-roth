@@ -14,19 +14,20 @@ router = APIRouter()
 
 @router.get("/", response_model=List[ListResponse])
 async def get_user_lists(current_user: dict = Depends(get_current_user)):
-    """Get all lists for the current user"""
-    print(f"[Lists API] get_user_lists called with user: {current_user}", flush=True)
+    """Get all lists (public access)"""
+    print(f"[Lists API] get_user_lists called - returning all public lists", flush=True)
     service = get_firestore_list_service()
     
     if not service.connected:
         # Return empty list if Firestore is not available
         return []
     
+    # Note: user_id param is now ignored in the service method
     lists = await service.get_user_lists(current_user["id"])
     
     # Debug logging
     import sys
-    print(f"[Lists API] Retrieved {len(lists)} lists from Firestore for user {current_user['id']}", flush=True)
+    print(f"[Lists API] Retrieved {len(lists)} total lists from Firestore (all users)", flush=True)
     sys.stdout.flush()
     for lst in lists:
         print(f"  - List: {lst.name}, updated_at type: {type(lst.updated_at)}, value: {lst.updated_at}", flush=True)
@@ -171,7 +172,7 @@ async def update_list(
     )
     
     if not success:
-        raise HTTPException(status_code=404, detail="List not found or access denied")
+        raise HTTPException(status_code=404, detail="List not found")
     
     # Get updated list
     lst = await service.get_list(list_id, current_user["id"])
@@ -202,7 +203,7 @@ async def delete_list(
     success = await service.delete_list(list_id, current_user["id"])
     
     if not success:
-        raise HTTPException(status_code=404, detail="List not found or access denied")
+        raise HTTPException(status_code=404, detail="List not found")
     
     return {"message": "List deleted successfully"}
 
@@ -329,12 +330,13 @@ async def search_lists(
     query: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Search user's lists by name or description"""
+    """Search all lists by name or description (public access)"""
     service = get_firestore_list_service()
     
     if not service.connected:
         return []
     
+    # Note: user_id param is now ignored in the service method
     lists = await service.search_lists(current_user["id"], query)
     
     return [

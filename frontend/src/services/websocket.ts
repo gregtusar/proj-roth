@@ -17,11 +17,60 @@ const PING_INTERVAL_MS = 20000;  // 20 seconds - do not change format
 const PING_TIMEOUT_MS = 40000;   // 40 seconds - do not change format
 const CONNECTION_TIMEOUT_MS = 600000; // 10 minutes - do not change format
 
+// Chunk buffer to handle out-of-order chunks
+class ChunkBuffer {
+  private chunks = new Map<number, string>();
+  private nextExpectedSequence = 1;
+  private messageId: string | null = null;
+  
+  reset(messageId?: string) {
+    this.chunks.clear();
+    this.nextExpectedSequence = 1;
+    this.messageId = messageId || null;
+    console.log(`[ChunkBuffer] Reset for message ${messageId}`);
+  }
+  
+  addChunk(sequence: number, text: string, messageId?: string): string[] {
+    // If this is for a different message, reset
+    if (messageId && messageId !== this.messageId) {
+      this.reset(messageId);
+    }
+    
+    this.chunks.set(sequence, text);
+    console.log(`[ChunkBuffer] Added chunk ${sequence}, buffer size: ${this.chunks.size}`);
+    
+    // Try to flush any sequential chunks we can
+    return this.flushInOrder();
+  }
+  
+  private flushInOrder(): string[] {
+    const ready: string[] = [];
+    
+    // Process all sequential chunks starting from nextExpectedSequence
+    while (this.chunks.has(this.nextExpectedSequence)) {
+      const chunk = this.chunks.get(this.nextExpectedSequence)!;
+      ready.push(chunk);
+      this.chunks.delete(this.nextExpectedSequence);
+      console.log(`[ChunkBuffer] Flushed chunk ${this.nextExpectedSequence}`);
+      this.nextExpectedSequence++;
+    }
+    
+    // Log if we have buffered chunks waiting
+    if (this.chunks.size > 0) {
+      const bufferedSequences = Array.from(this.chunks.keys()).sort((a, b) => a - b);
+      console.log(`[ChunkBuffer] Waiting for chunk ${this.nextExpectedSequence}, buffered: ${bufferedSequences.join(', ')}`);
+    }
+    
+    return ready;
+  }
+}
+
 class WebSocketService {
   private socket: Socket | null = null;
   private _reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private isConnecting = false;
+  private chunkBuffer = new ChunkBuffer();
   private activeSessionId: string | null = null;
   private messageQueue: MessageQueue;
 
@@ -138,19 +187,26 @@ class WebSocketService {
 
     this.socket.on('message_start', () => {
       store.dispatch(setStreamingMessage(''));
+      this.chunkBuffer.reset(); // Reset buffer for new message
     });
 
     this.socket.on('message_chunk', (data: string | { chunk: string; sequence: number; session_id?: string; message_id?: string }) => {
       // Handle both old format (string) and new format (object with sequence)
       if (typeof data === 'string') {
-        // Legacy format - just the chunk text
+        // Legacy format - just the chunk text (no buffering needed)
         store.dispatch(updateStreamingMessage(data));
       } else {
-        // New format with sequence number
+        // New format with sequence number - use buffer to handle out-of-order chunks
         const { chunk, sequence, session_id, message_id } = data;
         console.log(`[WebSocket] Received chunk ${sequence} for session ${session_id}`);
-        store.dispatch(updateStreamingMessage(chunk));
-        // TODO: Add sequence tracking to detect missing chunks
+        
+        // Add to buffer and get any ready chunks in order
+        const readyChunks = this.chunkBuffer.addChunk(sequence, chunk, message_id);
+        
+        // Dispatch all ready chunks in order
+        for (const readyChunk of readyChunks) {
+          store.dispatch(updateStreamingMessage(readyChunk));
+        }
       }
     });
 

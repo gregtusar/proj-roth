@@ -28,6 +28,29 @@ connections = {}
 in_flight_messages = {}  # Track messages being streamed per session
 message_sequence = {}  # Track message sequence numbers per session
 
+# Message processing queue to ensure sequential processing
+class MessageProcessor:
+    def __init__(self):
+        self.queue = asyncio.Queue()
+        self.processing = False
+    
+    async def add_message(self, sid, data):
+        """Add a message to the queue for processing"""
+        await self.queue.put((sid, data))
+        if not self.processing:
+            asyncio.create_task(self.process_queue())
+    
+    async def process_queue(self):
+        """Process messages sequentially"""
+        self.processing = True
+        while not self.queue.empty():
+            sid, data = await self.queue.get()
+            await handle_message_internal(sid, data)
+            self.queue.task_done()
+        self.processing = False
+
+message_processor = MessageProcessor()
+
 # Configuration for message retention
 MESSAGE_RETENTION_SECONDS = 300  # 5 minutes
 CLEANUP_INTERVAL_SECONDS = 60  # Run cleanup every minute
@@ -99,8 +122,12 @@ async def cleanup_old_messages():
 
 @sio.event
 async def send_message(sid, data):
-    """Handle incoming chat message"""
+    """Handle incoming chat message - queue for sequential processing"""
     print(f"[WebSocket] Received send_message event from {sid}: {data}")
+    await message_processor.add_message(sid, data)
+
+async def handle_message_internal(sid, data):
+    """Internal handler for processing messages sequentially"""
     try:
         message = data.get('message', '')
         session_id = data.get('session_id', None)
@@ -244,7 +271,7 @@ async def send_message(sid, data):
                         'session_id': session_id,
                         'message_id': user_msg.message_id if 'user_msg' in locals() else None
                     }, room=sid)
-                    await asyncio.sleep(0.01)  # Small delay for smoother streaming
+                    # Removed unnecessary sleep that was causing ordering issues
                 else:
                     print(f"[WebSocket] Client {sid} disconnected during streaming, stopping")
                     break

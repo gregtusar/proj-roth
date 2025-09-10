@@ -258,7 +258,7 @@ async def process_message_stream(
                 chunk = response[i:i + chunk_size]
                 print(f"[Agent] Streaming chunk {chunk_num}/{total_chunks}: '{chunk[:10]}...'")
                 yield chunk
-                await asyncio.sleep(0.05)  # Small delay for streaming effect
+                # Removed unnecessary sleep that added 50ms latency per chunk
             
             print("[Agent] Finished streaming response successfully")
         

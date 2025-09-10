@@ -89,6 +89,18 @@ IMPORTANT USAGE NOTES:
 - For PDL enrichment: Check existing data first (action="fetch") before triggering new enrichment
 - For geospatial queries: Use geocode_address to get coordinates, then ST_DWITHIN for proximity searches
 
+CRITICAL TOOL CALLING RULES:
+- NEVER nest function calls inside each other
+- NEVER combine multiple operations in a single tool call
+- Break complex operations into separate steps:
+  WRONG: pdl_batch_enrichment(master_ids=[row['master_id'] for row in bigquery_select(sql="SELECT...").get('rows', [])])
+  RIGHT: 
+    Step 1: result = bigquery_select(sql="SELECT master_id FROM...")
+    Step 2: ids = [row['master_id'] for row in result['rows']]
+    Step 3: pdl_batch_enrichment(master_ids=ids)
+- Each tool call must be independent and atomic
+- Store results in variables between tool calls if needed
+
 PDL ENRICHMENT STRATEGY:
 - SINGLE PERSON: Use pdl_enrichment(master_id, action="fetch") first, then "enrich" if needed
 - MULTIPLE PEOPLE (3+): ALWAYS use pdl_batch_enrichment(master_ids) - it's 50x faster!

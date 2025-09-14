@@ -542,8 +542,7 @@ def pdl_batch_enrichment(master_ids: List[str], min_likelihood: int = 5, skip_ex
         result = tool.trigger_batch_enrichment(
             master_ids=master_ids,
             min_likelihood=min_likelihood,
-            skip_existing=skip_existing,
-            require_confirmation=not force
+            skip_existing=skip_existing
         )
         
         _emit_reasoning_event("tool_end", {
@@ -556,7 +555,6 @@ def pdl_batch_enrichment(master_ids: List[str], min_likelihood: int = 5, skip_ex
         if result.get("status") == "batch_complete":
             summary = result.get("batch_summary", {})
             print(f"[BATCH COMPLETE] {summary.get('successful', 0)}/{summary.get('attempted', 0)} enriched")
-            print(f"[COST] ${summary.get('cost', 0):.2f}")
         
         return result
         
@@ -609,8 +607,7 @@ def pdl_enrichment(master_id: str, action: str = "fetch", min_likelihood: int = 
             return tool.trigger_enrichment(
                 master_id,
                 min_likelihood=min_likelihood,
-                skip_if_exists=not force,
-                require_confirmation=not force
+                skip_if_exists=not force
             )
         elif action == "session_summary":
             return tool.get_session_summary()

@@ -41,8 +41,7 @@ def test_batch_enrichment():
     batch_result = tool.trigger_batch_enrichment(
         master_ids=sample_master_ids,
         min_likelihood=8,
-        skip_existing=True,
-        require_confirmation=True  # Will show cost but not execute
+        skip_existing=True
     )
     
     print(f"\nBatch Result Status: {batch_result.get('status')}")

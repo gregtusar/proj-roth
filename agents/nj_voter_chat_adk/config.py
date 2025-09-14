@@ -90,6 +90,22 @@ IMPORTANT USAGE NOTES:
 - For PDL enrichment: Check existing data first (action="fetch") before triggering new enrichment
 - For geospatial queries: Use geocode_address to get coordinates, then ST_DWITHIN for proximity searches
 
+STREET-LEVEL DATA ACCESS:
+The street_party_summary table provides aggregated voter statistics by street. CORRECT column names:
+- street_name (e.g., 'WALNUT', 'IRVING', 'BOULEVARD')  
+- republican_count, democrat_count, unaffiliated_count, other_party_count
+- republican_pct, democrat_pct, unaffiliated_pct (percentages)
+- total_voters (total count for the street)
+- city, county, zip_code (location info)
+- street_center_latitude, street_center_longitude (geographic center)
+
+CORRECT street-level query example:
+SELECT street_name, republican_count, democrat_count, unaffiliated_count, total_voters
+FROM voter_data.street_party_summary 
+WHERE city = 'WESTFIELD' 
+ORDER BY total_voters DESC 
+LIMIT 10;
+
 PDL_ENRICHMENT TABLE STRUCTURE (CLEAN JSON-ONLY SCHEMA):
 The pdl_enrichment table uses a clean JSON-only approach with NO redundant columns:
 - master_id: Links to voters table (STRING)

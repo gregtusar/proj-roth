@@ -100,8 +100,8 @@ const GoogleSignIn: React.FC = () => {
     <Container>
       <LoginContent>
         <HeadingLevel>
-          <Logo src="/greywolf_logo.png" alt="Greywolf Analytica" />
-          <Heading styleLevel={3}>Greywolf Analytica</Heading>
+          <Logo src="/greywolf_logo.png" alt="Greywolf Analytics" />
+          <Heading styleLevel={3}>Greywolf Analytics</Heading>
           <div style={{ marginTop: '20px' }}>
             <Heading styleLevel={6}>
               An AI Powered Campaign Management Platform

@@ -1,6 +1,6 @@
-# Setup New OAuth Client for Greywolf Analytica
+# Setup New OAuth Client for Greywolf Analytics
 
-If the OAuth consent screen continues to show the URL instead of "Greywolf Analytica", follow these steps to create a new OAuth client:
+If the OAuth consent screen continues to show the URL instead of "Greywolf Analytics", follow these steps to create a new OAuth client:
 
 ## Step 1: Create New OAuth 2.0 Client ID
 
@@ -8,7 +8,7 @@ If the OAuth consent screen continues to show the URL instead of "Greywolf Analy
 2. Click "+ CREATE CREDENTIALS" → "OAuth client ID"
 3. Configure as follows:
    - **Application type**: Web application
-   - **Name**: Greywolf Analytica OAuth Client
+   - **Name**: Greywolf Analytics OAuth Client
    - **Authorized JavaScript origins**:
      - `https://nj-voter-chat-app-nwv4o72vjq-uc.a.run.app`
      - `http://localhost:3000`
@@ -62,7 +62,7 @@ Before creating the new client, ensure the OAuth consent screen is properly conf
 1. Go to: https://console.cloud.google.com/apis/credentials/consent?project=proj-roth
 2. Click "EDIT APP"
 3. Ensure these are set:
-   - **App name**: Greywolf Analytica
+   - **App name**: Greywolf Analytics
    - **User support email**: Your email
    - **Developer contact email**: Your email
 4. Save all changes

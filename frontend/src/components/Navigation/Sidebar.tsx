@@ -162,7 +162,7 @@ const Sidebar: React.FC = () => {
         <Logo $isOpen={isOpen} $isDarkMode={isDarkMode}>
           <LogoImage src="/greywolf_logo.png" alt="Greywolf" />
           <div>
-            <LogoText $isOpen={isOpen} $isDarkMode={isDarkMode}>Greywolf Analytica</LogoText>
+            <LogoText $isOpen={isOpen} $isDarkMode={isDarkMode}>Greywolf Analytics</LogoText>
             <VersionText $isOpen={isOpen} $isDarkMode={isDarkMode}>{getVersionDisplay()}</VersionText>
           </div>
         </Logo>
